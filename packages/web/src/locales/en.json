@@ -282,6 +282,7 @@
     "copied": "Copied!",
     "appIcon": "App icon",
     "appIconHint": "Tray and window icon style",
+    "restartToApply": "Restart to apply",
     "iconVoiceWave": "Bars",
     "iconDarkSphere": "Sphere",
     "iconSingleWave": "Wave",

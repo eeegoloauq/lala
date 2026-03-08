@@ -787,25 +787,37 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                 <div className="settings-row-desc" style={{ marginBottom: 12 }}>{t('settings.appIconHint')}</div>
                 {(() => {
                   const [currentIcon, setCurrentIcon] = useState<string>('voice-wave');
+                  const [initialIcon, setInitialIcon] = useState<string>('voice-wave');
                   useEffect(() => {
-                    window.electronAPI?.getAppIcon?.().then(setCurrentIcon);
+                    window.electronAPI?.getAppIcon?.().then(v => { setCurrentIcon(v); setInitialIcon(v); });
                   }, []);
+                  const needsRestart = currentIcon !== initialIcon;
                   return (
-                    <div className="settings-icon-picker">
-                      {ICON_VARIANTS.map(v => (
+                    <>
+                      <div className="settings-icon-picker">
+                        {ICON_VARIANTS.map(v => (
+                          <button
+                            key={v.id}
+                            className={`settings-icon-option${currentIcon === v.id ? ' settings-icon-option--active' : ''}`}
+                            onClick={async () => {
+                              const ok = await window.electronAPI?.setAppIcon?.(v.id);
+                              if (ok) setCurrentIcon(v.id);
+                            }}
+                          >
+                            <div className="settings-icon-preview">{v.svg}</div>
+                            <span className="settings-icon-label">{t(v.labelKey)}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {needsRestart && (
                         <button
-                          key={v.id}
-                          className={`settings-icon-option${currentIcon === v.id ? ' settings-icon-option--active' : ''}`}
-                          onClick={async () => {
-                            const ok = await window.electronAPI?.setAppIcon?.(v.id);
-                            if (ok) setCurrentIcon(v.id);
-                          }}
+                          className="settings-restart-btn"
+                          onClick={() => window.electronAPI?.relaunch?.()}
                         >
-                          <div className="settings-icon-preview">{v.svg}</div>
-                          <span className="settings-icon-label">{t(v.labelKey)}</span>
+                          {t('settings.restartToApply')}
                         </button>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>

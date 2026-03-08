@@ -316,6 +316,22 @@
   color: var(--text-primary);
 }
 
+.settings-restart-btn {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.settings-restart-btn:hover {
+  background: var(--accent-hover);
+}
+
 .settings-about {
   display: flex;
   align-items: center;

@@ -25,6 +25,10 @@ app.setAppUserModelId('app.lala.desktop');
 // ─── Platform Flags ──────────────────────────────────────────────────────────
 // Wayland screen capture (PipeWire) — must be set before app is ready.
 app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
+// Merge audio service into the renderer process — prevents duplicate entries
+// in the Windows volume mixer (Chromium spawns a separate audio utility process
+// that gets its own mixer entry with the baked-in .exe icon).
+app.commandLine.appendSwitch('disable-features', 'AudioServiceOutOfProcess');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const IS_MAC = process.platform === 'darwin';
@@ -64,6 +68,7 @@ const IPC = {
     SAVE_SESSION: 'lala:save-session',
     GET_APP_ICON: 'lala:get-app-icon',
     SET_APP_ICON: 'lala:set-app-icon',
+    RELAUNCH: 'lala:relaunch',
 
     // Main → Renderer
     NAVIGATE_BACK: 'lala:navigate-back',
@@ -640,8 +645,37 @@ function registerIpcHandlers() {
     ipcMain.handle(IPC.SET_APP_ICON, (_event, name) => {
         if (!ICON_VARIANTS.includes(name)) return false;
         saveIconPreference(name);
-        applyIcon(name);
+        // Only update tray immediately — window/taskbar icon requires restart
+        // to avoid duplicate mixer entries and stale icon cache on Windows/Linux.
+        if (tray) {
+            const variantDir = getVariantIconPath(name);
+            const p16 = path.join(variantDir, 'tray-16.png');
+            const p32 = path.join(variantDir, 'tray-32.png');
+            const p48 = path.join(variantDir, 'tray-48.png');
+
+            if (IS_MAC) {
+                // macOS: use default tray template
+            } else if (process.platform === 'win32' && fs.existsSync(p16)) {
+                const img = nativeImage.createFromPath(p16);
+                if (fs.existsSync(p32)) img.addRepresentation({ scaleFactor: 2, filename: p32 });
+                tray.setImage(img);
+            } else if (fs.existsSync(p48)) {
+                tray.setImage(nativeImage.createFromPath(p48));
+            } else if (fs.existsSync(p32)) {
+                tray.setImage(nativeImage.createFromPath(p32));
+            }
+        }
         return true;
+    });
+
+    ipcMain.on(IPC.RELAUNCH, () => {
+        const options = { args: process.argv.slice(1) };
+        if (process.env.APPIMAGE) {
+            options.execPath = process.env.APPIMAGE;
+            options.args.unshift('--appimage-extract-and-run');
+        }
+        app.relaunch(options);
+        app.exit(0);
     });
 
     // Session persistence
