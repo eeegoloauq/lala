@@ -32,6 +32,7 @@ const IS_LINUX = process.platform === 'linux';
 const IS_WAYLAND = IS_LINUX && (
     process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY
 );
+const IS_GNOME = IS_LINUX && (process.env.XDG_CURRENT_DESKTOP || '').toLowerCase().includes('gnome');
 
 const WINDOW_MIN_WIDTH = 800;
 const WINDOW_MIN_HEIGHT = 600;
@@ -370,9 +371,11 @@ function createWindow() {
     mainWindow.on('resize', debouncedSave);
     mainWindow.on('move', debouncedSave);
 
-    // Minimize to tray on close (unless quitting)
+    // Minimize to tray on close (unless quitting).
+    // GNOME 3.26+ removed the system tray — hiding the window leaves users stranded.
+    // On GNOME, just quit normally.
     mainWindow.on('close', (event) => {
-        if (!isQuitting) {
+        if (!isQuitting && !IS_GNOME) {
             event.preventDefault();
             mainWindow.hide();
         }
@@ -458,10 +461,33 @@ function clearPendingScreenShare() {
 }
 
 function setupScreenShareHandler() {
-    // On Wayland, getDisplayMedia() goes through the XDG portal natively —
-    // registering our handler would cause a pointless double picker.
     if (IS_WAYLAND) {
-        console.log('[Lala] Wayland detected — skipping custom screen share handler (portal will handle it)');
+        // On Wayland, desktopCapturer.getSources() triggers the XDG desktop portal
+        // (PipeWire) which shows the native screen/window picker. We must still
+        // register setDisplayMediaRequestHandler — without it Electron denies
+        // getDisplayMedia() entirely. Inside the handler we call getSources()
+        // to invoke the portal, then pass the user-selected source to the callback.
+        console.log('[Lala] Wayland detected — using XDG portal for screen share');
+        session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+            try {
+                console.log('[Lala] Screen share (Wayland): requesting sources via portal');
+                const sources = await desktopCapturer.getSources({
+                    types: ['screen', 'window'],
+                });
+                if (sources.length > 0) {
+                    // The portal returns only the user-selected source
+                    console.log('[Lala] Screen share (Wayland): got source', sources[0].id);
+                    callback({ video: sources[0] });
+                } else {
+                    // User cancelled the portal picker
+                    console.log('[Lala] Screen share (Wayland): no source selected (user cancelled)');
+                    callback({});
+                }
+            } catch (err) {
+                console.error('[Lala] Screen share (Wayland): portal error', err.message);
+                callback({});
+            }
+        });
         return;
     }
 
