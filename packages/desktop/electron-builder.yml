@@ -1,0 +1,52 @@
+appId: app.lala.desktop
+productName: Lala
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - main.js
+  - preload.js
+  - index.html
+  - build/**/*
+  - "!build/icon-variants/*.svg"
+
+extraMetadata:
+  main: main.js
+
+linux:
+  icon: build/icons
+  target:
+    - AppImage
+    - rpm
+    - tar.gz
+  category: Network
+  desktop:
+    Name: Lala
+    Comment: Voice & Video Chat
+    StartupWMClass: lala-desktop
+
+win:
+  icon: build/icons-win
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: "${productName}-Setup-${version}.${ext}"
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+
+mac:
+  icon: build/icon.png
+  target:
+    - dmg
+  category: public.app-category.social-networking
+
+publish:
+  provider: github
+  owner: eeegoloauq
+  repo: lala
+  releaseType: release

@@ -1,0 +1,58 @@
+# LiveKit Server Configuration
+# Docs: https://docs.livekit.io/realtime/self-hosting/deployment/
+#
+# This is a TEMPLATE. The actual livekit.yaml is generated at container
+# startup by docker-compose (sed substitution from environment variables).
+# To run outside Docker, copy this file to livekit.yaml and replace the
+# ${...} placeholders with real values.
+
+port: 7880
+
+rtc:
+  # TCP fallback for clients behind strict firewalls
+  tcp_port: 7881
+
+  # UDP mux — all media through a single port (simplifies NAT/firewall)
+  udp_port: 50000
+
+  # Public IP or domain for WebRTC ICE candidates
+  use_external_ip: false
+  node_ip: ${NODE_IP}
+
+  # Enable ICE lite for better NAT traversal
+  use_ice_lite: true
+
+# Built-in TURN server — needed for clients behind strict NAT (Firefox, corporate networks)
+# TURN/UDP on 3478 is sufficient; no HTTP proxy needed (NPM can't proxy TURN)
+turn:
+  enabled: true
+  domain: ${LIVEKIT_DOMAIN}
+  udp_port: 3478
+
+room:
+  # Max participants per room
+  max_participants: 10
+  # Remove empty rooms after 5 minutes
+  empty_timeout: 300
+  # Disconnect clients after 30 seconds of no pong
+  departure_timeout: 30
+
+# API keys for authentication
+keys:
+  ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+
+# Redis for room state / signaling
+redis:
+  address: redis:6379
+  password: lala_redis_internal
+
+# Webhook — push room events to our API (internal Docker network, no external port needed)
+webhook:
+  api_key: ${LIVEKIT_API_KEY}
+  urls:
+    - http://api:3001/api/webhook
+
+# Logging
+logging:
+  level: info
+  json: false

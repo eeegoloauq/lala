@@ -1,0 +1,36 @@
+# Environment — contains secrets, never commit
+.env
+.env.local
+.env.*.local
+
+# LiveKit config (generated from template, contains secrets)
+livekit.yaml
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+**/dist/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Electron build output
+packages/desktop/out/
+packages/desktop/release/
+
+# Local scripts
+release.sh

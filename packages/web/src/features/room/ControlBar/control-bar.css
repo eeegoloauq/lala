@@ -1,0 +1,190 @@
+/* ─── Floating Control Bar ─── */
+.cb-wrap {
+    position: relative;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: transparent;
+}
+
+.cb-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--cb-pill-bg);
+    border: 1px solid var(--cb-pill-border);
+    border-radius: var(--cb-pill-radius);
+    backdrop-filter: var(--cb-pill-backdrop);
+    -webkit-backdrop-filter: var(--cb-pill-backdrop);
+    box-shadow: var(--cb-pill-shadow);
+}
+
+.cb-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--cb-btn-radius);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    background: var(--cb-btn-bg);
+    color: var(--cb-btn-color);
+    box-shadow: var(--cb-btn-shadow);
+    flex-shrink: 0;
+}
+
+.cb-btn:hover:not(:disabled) {
+    background: var(--cb-btn-bg-hover);
+    color: var(--text-primary);
+    transform: var(--cb-btn-hover-transform);
+}
+
+.cb-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* Red = off/muted */
+.cb-btn.cb-off {
+    background: var(--cb-btn-off-bg);
+    color: var(--cb-btn-off-color);
+}
+
+.cb-btn.cb-off:hover:not(:disabled) {
+    background: var(--cb-btn-off-bg);
+    opacity: 0.85;
+}
+
+/* Soft off = camera/video not enabled (not an error, just inactive) */
+.cb-btn.cb-off-soft {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.cb-btn.cb-off-soft:hover:not(:disabled) {
+    opacity: 1;
+    background: var(--cb-btn-bg-hover);
+    color: var(--text-primary);
+}
+
+/* Active (screen share, chat) */
+.cb-btn.cb-active {
+    background: var(--cb-btn-active-bg);
+    color: var(--cb-btn-active-color);
+    box-shadow: var(--cb-btn-active-shadow);
+}
+
+.cb-btn.cb-active:hover:not(:disabled) {
+    background: var(--cb-btn-bg-hover);
+    box-shadow: none;
+}
+
+.cb-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border-color);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.cb-btn.cb-leave {
+    background: var(--cb-btn-leave-bg);
+    color: var(--cb-btn-leave-color);
+}
+
+.cb-btn.cb-leave:hover {
+    background: #ef4444;
+    color: white;
+    transform: var(--cb-btn-hover-transform);
+}
+
+/* Unread badge on chat button */
+.cb-btn {
+    position: relative;
+}
+
+.cb-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #ef4444;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+/* ─── Icon micro-animations (target svg, not button wrapper) ─── */
+
+/* Base: smooth transition on all cb-btn svgs */
+.cb-btn svg {
+    transition: transform 0.2s ease;
+}
+
+/* Mic: slight scale pulse */
+.cb-anim-pulse:hover:not(:disabled) svg {
+    transform: scale(1.2);
+}
+
+/* Screen share: rises up */
+.cb-anim-rise:hover:not(:disabled) svg {
+    transform: translateY(-2px) scale(1.1);
+}
+
+/* Chat: bounces up */
+.cb-anim-bounce:hover:not(:disabled) svg {
+    transform: translateY(-3px);
+}
+
+/* Leave: phone shake */
+.cb-anim-shake:hover:not(:disabled) svg {
+    animation: icon-shake 0.4s ease;
+}
+
+@keyframes icon-shake {
+    0%   { transform: rotate(0deg); }
+    20%  { transform: rotate(-12deg); }
+    40%  { transform: rotate(10deg); }
+    60%  { transform: rotate(-8deg); }
+    80%  { transform: rotate(6deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* Safe area inset for iOS home indicator */
+.cb-wrap {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─── Mobile ─── */
+@media (max-width: 640px) {
+    .cb-wrap {
+        height: 64px;
+    }
+
+    .cb-pill {
+        gap: 2px;
+        padding: 6px 10px;
+    }
+
+    .cb-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .cb-divider {
+        margin: 0 2px;
+    }
+}

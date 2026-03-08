@@ -1,0 +1,125 @@
+.emoji-picker {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ctx-menu-radius, var(--border-radius));
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Scrollable area with all sections */
+.emoji-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 240px;
+    padding: 4px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-hover) transparent;
+}
+
+.emoji-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.emoji-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.emoji-scroll::-webkit-scrollbar-thumb {
+    background: var(--bg-hover);
+    border-radius: 2px;
+}
+
+/* Section wrapper — adds breathing room between groups */
+.emoji-section {
+    margin-bottom: 4px;
+}
+
+/* Section label */
+.emoji-section-header {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    padding: 10px 4px 5px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.emoji-section-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+    opacity: 0.5;
+}
+
+/* Emoji grid — 7 cols gives ~34px/cell in 260px picker, no overflow */
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+}
+
+.emoji-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px;
+    border-radius: 4px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, transform 0.1s;
+    aspect-ratio: 1;
+}
+
+.emoji-btn:hover {
+    background: var(--bg-hover);
+    transform: scale(1.2);
+}
+
+/* Category nav at bottom */
+.emoji-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px 6px;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: nowrap;
+}
+
+.emoji-nav-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    width: 30px;
+    height: 26px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: opacity 0.1s, background 0.1s;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.emoji-nav-btn:hover {
+    opacity: 1;
+    background: var(--bg-hover);
+}

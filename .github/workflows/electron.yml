@@ -1,0 +1,108 @@
+name: Build & Publish Desktop Clients
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build & Publish (Windows)
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./packages/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/desktop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: packages/desktop
+        run: npm ci || npm install
+
+      - name: Generate icons
+        working-directory: packages/desktop
+        run: npm run generate-icons
+
+      - name: Build & Publish
+        working-directory: packages/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run publish:win
+
+  build-linux:
+    name: Build & Publish (Linux)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./packages/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/desktop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: packages/desktop
+        run: npm ci || npm install
+
+      - name: Generate icons
+        working-directory: packages/desktop
+        run: npm run generate-icons
+
+      - name: Build & Publish
+        working-directory: packages/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run publish:linux
+
+      - name: Update release description
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v${VERSION}"
+          cat > /tmp/release-notes.md <<EOF
+          ## Downloads
+
+          | Platform | File | Description |
+          |----------|------|-------------|
+          | Windows | \`Lala-Setup-${VERSION}.exe\` | Windows installer (x64) |
+          | Linux | \`Lala-${VERSION}.AppImage\` | AppImage (portable, no install needed) |
+          | Linux | \`lala-desktop-${VERSION}.x86_64.rpm\` | RPM package (Fedora, RHEL) |
+          | Linux | \`lala-desktop-${VERSION}.tar.gz\` | Archive (extract and run) |
+
+          ## Installation
+
+          **Windows**: Download and run the .exe installer. Auto-updates are supported.
+
+          **Linux (AppImage)**: Download, make executable (\`chmod +x\`), and run. Auto-updates are supported.
+
+          **Linux (RPM)**: Install with \`sudo rpm -i lala-desktop-${VERSION}.x86_64.rpm\`
+          EOF
+          sed -i 's/^          //' /tmp/release-notes.md
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md

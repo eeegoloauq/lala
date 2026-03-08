@@ -1,0 +1,20 @@
+.avatar-badge-wrap {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.avatar-badge {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.avatar-badge--top-right    { top: -3px; right: -3px; }
+.avatar-badge--top-left     { top: -3px; left: -3px; }
+.avatar-badge--bottom-right { bottom: -3px; right: -3px; }
+.avatar-badge--bottom-left  { bottom: -3px; left: -3px; }
+/* Crown: sits on top of the head, slightly right of center, tilted */
+.avatar-badge--top-crown    { top: -5px; left: 58%; transform: translateX(-50%) rotate(18deg); }

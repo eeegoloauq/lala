@@ -1,0 +1,382 @@
+/* ─── Sidebar Base ─── */
+.sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-header {
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--panel-header-color);
+    background: var(--panel-header-bg);
+    text-shadow: var(--panel-header-text-shadow);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-header .logo {
+    color: var(--accent);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.sidebar-section {
+    padding: 12px 8px 4px;
+}
+
+.sidebar-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 8px;
+}
+
+.sidebar-section-title {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.sidebar-add-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--border-radius);
+    transition: color var(--transition-fast);
+    padding: 0;
+}
+
+.sidebar-add-btn:hover {
+    color: var(--text-primary);
+}
+
+.sidebar-empty {
+    padding: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-footer-avatar {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.sidebar-footer .user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ─── Channel List ─── */
+.channel-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    color: var(--text-secondary);
+}
+
+.channel-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.channel-item.active {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--text-accent);
+    border-left: 3px solid var(--accent);
+    padding-left: 9px;
+}
+
+.channel-item .channel-icon {
+    font-size: 14px;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.channel-item .channel-name {
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.channel-item .channel-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+/* ─── Participant mini-cards in sidebar ─── */
+.channel-users {
+    padding: 6px 8px 8px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border-left: 2px solid var(--border-color);
+    margin: 2px 0 4px 20px;
+}
+
+.channel-user-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 6px;
+    border-radius: 6px;
+    transition: background var(--transition-fast);
+    cursor: default;
+}
+
+.channel-user-card:hover {
+    background: var(--bg-hover);
+}
+
+.channel-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--avatar-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    transition: box-shadow 0.15s ease;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.channel-user-avatar.speaking {
+    box-shadow: 0 0 0 2px #22c55e, 0 0 0 4px rgba(34, 197, 94, 0.2);
+}
+
+.channel-user-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.channel-user-you {
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    padding: 1px 5px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.channel-user-stream {
+    display: flex;
+    align-items: center;
+    color: var(--accent);
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+/* Fixed-width slot so icons don't shift layout */
+.channel-user-indicators {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    min-width: 14px;
+    /* reserve space for at least one icon */
+}
+
+.channel-user-indicator {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    opacity: 0.75;
+}
+
+.channel-user-indicator svg {
+    width: 11px;
+    height: 11px;
+}
+
+/* ─── Invite copy button in channel item ─── */
+.channel-copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    padding: 0;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+@media (hover: hover) {
+    .channel-item:hover .channel-copy-btn {
+        opacity: 1;
+    }
+}
+
+.channel-copy-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.channel-copy-btn.copied {
+    opacity: 1;
+    color: #22c55e;
+}
+
+/* ─── Mobile close button in sidebar header ─── */
+.sidebar-close-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    border-radius: 4px;
+    margin-left: auto;
+    line-height: 1;
+    transition: color var(--transition-fast);
+}
+
+.sidebar-close-btn:hover {
+    color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+    .sidebar-close-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Settings button in sidebar using cb-btn style but smaller and flat */
+.sidebar-settings-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--avatar-radius);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    background: transparent;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.sidebar-settings-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.sidebar-settings-btn svg {
+    transition: transform 0.35s ease;
+}
+
+.sidebar-settings-btn:hover svg {
+    transform: rotate(90deg);
+}
+
+/* ─── Rename controls in footer ─── */
+.sidebar-rename-input {
+    flex: 1;
+    background: var(--bg-hover);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 6px;
+    outline: none;
+    min-width: 0;
+}
+
+.sidebar-theme-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--avatar-radius);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.sidebar-theme-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.sidebar-theme-btn svg {
+    transition: transform 0.35s ease;
+}
+
+.sidebar-theme-btn:hover svg {
+    transform: rotate(-25deg) scale(1.15);
+}
+
+/* ─── Offline bookmarks ─── */
+.channel-item-offline {
+    opacity: 0.55;
+}
+
+.channel-item-offline:hover {
+    opacity: 0.75;
+}
+
+.channel-copy-btn.bookmarked {
+    opacity: 0.7;
+    color: var(--accent);
+}
