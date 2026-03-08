@@ -29,6 +29,9 @@ app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
 // ─── Constants ───────────────────────────────────────────────────────────────
 const IS_MAC = process.platform === 'darwin';
 const IS_LINUX = process.platform === 'linux';
+const IS_WAYLAND = IS_LINUX && (
+    process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY
+);
 
 const WINDOW_MIN_WIDTH = 800;
 const WINDOW_MIN_HEIGHT = 600;
@@ -455,12 +458,19 @@ function clearPendingScreenShare() {
 }
 
 function setupScreenShareHandler() {
+    // On Wayland, getDisplayMedia() goes through the XDG portal natively —
+    // registering our handler would cause a pointless double picker.
+    if (IS_WAYLAND) {
+        console.log('[Lala] Wayland detected — skipping custom screen share handler (portal will handle it)');
+        return;
+    }
+
     session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
         if (pendingScreenShareSourceId) {
             const sourceId = pendingScreenShareSourceId;
             clearPendingScreenShare();
             console.log('[Lala] Screen share: using pre-selected source', sourceId);
-            callback({ video: { id: sourceId, name: sourceId }, audio: 'loopback' });
+            callback({ video: { id: sourceId, name: sourceId }, audio: 'loopbackWithoutChrome' });
         } else {
             // Source must be pre-selected by the React UI via IPC.
             // If we get here, it means the UI flow was bypassed — cancel gracefully.
@@ -534,6 +544,7 @@ function registerIpcHandlers() {
         name: app.getName(),
         platform: process.platform,
         arch: process.arch,
+        isWayland: IS_WAYLAND,
     }));
 
     // Update window title
