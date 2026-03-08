@@ -13,6 +13,7 @@ function parseRoomId(pathname: string): string | null {
     return m ? m[1] : null;
 }
 
+
 export function useRoute(): Route {
     const [path, setPath] = useState(window.location.pathname);
 

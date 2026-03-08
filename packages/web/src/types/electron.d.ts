@@ -11,6 +11,7 @@ export interface AppInfo {
     name: string;
     platform: string;
     arch: string;
+    isWayland?: boolean;
 }
 
 export interface UpdateStatus {

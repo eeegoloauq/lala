@@ -10,6 +10,16 @@ import './video-grid.css';
 
 const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
 
+/** Walk up the DOM from target to find the nearest element with data-identity. */
+function findTileIdentity(target: EventTarget | null, container: HTMLElement | null): string | null {
+    let el = target as HTMLElement | null;
+    while (el && el !== container) {
+        if (el.dataset.identity) return el.dataset.identity;
+        el = el.parentElement;
+    }
+    return null;
+}
+
 interface VideoGridProps {
     onFocusTile?: (identity: string) => void;
     onCamEnabled?: (identity: string) => void;
@@ -54,6 +64,7 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const prevCamEnabled = useRef(isCameraEnabled);
+    const gridRef = useRef<HTMLDivElement>(null);
 
     // Auto-focus self when camera is turned on
     useEffect(() => {
@@ -71,10 +82,10 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
         if (track) await track.restartTrack({ facingMode: next });
     }, [facingMode, localParticipant]);
 
-    const handleContextMenu = useCallback((e: React.MouseEvent, participant: Participant) => {
-        e.preventDefault();
+    /** Opens context menu for a participant at given coordinates. */
+    const openContextMenu = useCallback((participant: Participant, x: number, y: number) => {
         const hasScreenAudio = screenAudioTracks.some(
-            t => isTrackReference(t) && t.participant.identity === participant.identity && t.publication.isSubscribed && !t.publication.isMuted
+            (t: TrackReferenceOrPlaceholder) => isTrackReference(t) && t.participant.identity === participant.identity && t.publication.isSubscribed && !t.publication.isMuted
         );
         const screenPub = participant instanceof RemoteParticipant
             ? participant.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined
@@ -87,10 +98,24 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
             hasScreenSharePub: !!screenPub,
             screenShareHidden: !!screenPub && !screenPub.isSubscribed,
             serverMuted: participant.permissions?.canPublish === false,
-            x: e.clientX,
-            y: e.clientY,
+            x,
+            y,
         });
-    }, [screenAudioTracks]);
+    }, []);
+
+    const handleContextMenu = useCallback((e: React.MouseEvent, participant: Participant) => {
+        e.preventDefault();
+        openContextMenu(participant, e.clientX, e.clientY);
+    }, [openContextMenu]);
+
+    // Touch devices: tap opens context menu via event delegation on grid
+    const handleGridTap = useCallback((e: React.MouseEvent) => {
+        if (!isTouchDevice) return;
+        const identity = findTileIdentity(e.target, gridRef.current);
+        if (!identity) return;
+        const p = participants.find(p => p.identity === identity);
+        if (p) openContextMenu(p, e.clientX, e.clientY);
+    }, [participants, openContextMenu]);
 
     const handleTileClick = useCallback((identity: string) => {
         const p = participants.find(p => p.identity === identity);
@@ -113,7 +138,12 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
 
     return (
         <div className="vg-area">
-            <div className="vg-grid" data-count={String(Math.min(count, 9))}>
+            <div
+                className="vg-grid"
+                data-count={String(Math.min(count, 9))}
+                ref={gridRef}
+                onClick={isTouchDevice ? handleGridTap : undefined}
+            >
                 {participants.map((p) => {
                     const trackRef = trackMap.get(p.identity);
                     const hasActiveVideo =
@@ -132,7 +162,7 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
                             trackRef={trackRef}
                             audioMuted={isLocal ? audioMuted : undefined}
                             avatarUrl={avatarCache?.get(p.identity)}
-                            onClick={onFocusTile && (hasActiveVideo || hasScreenPub) ? handleTileClick : undefined}
+                            onClick={!isTouchDevice && onFocusTile && (hasActiveVideo || hasScreenPub) ? handleTileClick : undefined}
                             onFlip={isLocal && isTouchDevice ? handleFlip : undefined}
                             onContextMenu={(e) => handleContextMenu(e, p)}
                         />

@@ -149,6 +149,28 @@ export function ChannelSidebar({
         setContextMenu({ identity: participantIdentity, name: participantName, roomId, x: e.clientX, y: e.clientY });
     };
 
+    // Keep room participants in a ref for the long-press callback
+    const roomParticipantsRef = useRef(roomParticipants);
+    roomParticipantsRef.current = roomParticipants;
+    const channelListRef = useRef<HTMLDivElement>(null);
+
+    const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
+
+    const handleUserCardClick = useCallback((e: React.MouseEvent) => {
+        if (!isTouchDevice) return;
+        let el = e.target as HTMLElement | null;
+        while (el && el !== channelListRef.current) {
+            if (el.dataset.participantIdentity) {
+                const pid = el.dataset.participantIdentity;
+                const pname = el.dataset.participantName || pid;
+                const roomId = el.dataset.participantRoom || '';
+                setContextMenu({ identity: pid, name: pname, roomId, x: e.clientX, y: e.clientY });
+                return;
+            }
+            el = el.parentElement;
+        }
+    }, []);
+
     const getAdminProps = (roomId: string, identity: string) => {
         const secret = localStorage.getItem(`lala_admin_${roomId}`);
         if (!secret) return undefined;
@@ -173,7 +195,12 @@ export function ChannelSidebar({
             </div>
 
             {/* Channel List */}
-            <div className="sidebar-section" style={{ flex: 1, overflowY: 'auto' }}>
+            <div
+                className="sidebar-section"
+                style={{ flex: 1, overflowY: 'auto' }}
+                ref={channelListRef}
+                onClick={handleUserCardClick}
+            >
                 <div className="sidebar-section-header">
                     <span className="sidebar-section-title">{t('sidebar.voiceChannels')}</span>
                     <button
@@ -249,6 +276,9 @@ export function ChannelSidebar({
                                             <div
                                                 key={p.identity}
                                                 className="channel-user-card"
+                                                data-participant-identity={p.identity}
+                                                data-participant-name={displayName}
+                                                data-participant-room={room.id}
                                                 onContextMenu={(e) => handleUserContextMenu(e, p.identity, displayName, room.id)}
                                             >
                                                 <AvatarBadge

@@ -18,13 +18,13 @@
   --text-primary: #e4e4ec;
   --text-secondary: #8b8b9e;
   --text-muted: #55556a;
-  --text-accent: #a78bfa;
+  --text-accent: #f2879a;
 
   /* Accent */
-  --accent: #7c3aed;
-  --accent-hover: #6d28d9;
-  --accent-glow: rgba(124, 58, 237, 0.3);
-  --accent-gradient: linear-gradient(135deg, #7c3aed, #a78bfa);
+  --accent: #e05a6f;
+  --accent-hover: #c44d60;
+  --accent-glow: rgba(224, 90, 111, 0.35);
+  --accent-gradient: linear-gradient(135deg, #e05a6f, #f2879a);
 
   /* Status */
   --color-success: #22c55e;
@@ -170,7 +170,7 @@
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
-  --text-accent: #6d28d9;
+  --text-accent: #c44d60;
 
   --color-success: #16a34a;
   --color-danger: #dc2626;
@@ -795,6 +795,13 @@ body {
   background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable], .cp-bubble, .cp-system {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 a {

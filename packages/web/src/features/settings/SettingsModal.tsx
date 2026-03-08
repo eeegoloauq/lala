@@ -33,6 +33,7 @@ const LANGUAGE_OPTIONS: SelectOption[] = [
 ];
 
 const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
+const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
 
 // Load speech synthesis voices (they load async in some browsers)
 function useTtsVoices() {
@@ -116,7 +117,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
         { id: 'screenshare', label: t('settings.screenShare') },
         { id: 'chat', label: t('settings.chat') },
         { id: 'sounds', label: t('settings.sounds') },
-        { id: 'keybinds', label: t('settings.keybinds') },
+        ...(!isTouchDevice ? [{ id: 'keybinds' as Section, label: t('settings.keybinds') }] : []),
         ...(isElectron ? [{ id: 'desktop' as Section, label: t('settings.desktop') }] : []),
       ],
     },
@@ -660,7 +661,8 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
               })()}
             </div>
 
-            {/* -- Keybinds -- */}
+            {/* -- Keybinds (hidden on touch devices) -- */}
+            {!isTouchDevice && <>
             <h2 className="settings-header" ref={setSectionRef('keybinds')}>{t('settings.keybinds')}</h2>
             <div className="settings-section">
               <div className="settings-row" style={{ marginBottom: 8 }}>
@@ -744,6 +746,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
               })()}
               <p className="keybinds-note">{t('settings.keybindsNote')}</p>
             </div>
+            </>}
 
             {/* -- Desktop (Electron only) -- */}
             {isElectron && (<>

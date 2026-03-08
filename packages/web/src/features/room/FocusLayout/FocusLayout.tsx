@@ -10,6 +10,16 @@ import type { AdminActions } from '../VideoGrid/ParticipantContextMenu';
 import './focus-layout.css';
 
 const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
+
+/** Walk up the DOM from target to find the nearest element with data-identity. */
+function findTileIdentity(target: EventTarget | null, container: HTMLElement | null): string | null {
+    let el = target as HTMLElement | null;
+    while (el && el !== container) {
+        if (el.dataset.identity) return el.dataset.identity;
+        el = el.parentElement;
+    }
+    return null;
+}
 const fullscreenSupported = typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
 function asActiveTrack(ref: TrackReferenceOrPlaceholder | undefined): TrackReference | null {
@@ -159,20 +169,38 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
         return { hasScreenSharePub: !!screenPub, screenShareHidden: !!screenPub && !screenPub.isSubscribed };
     };
 
-    const handleStripContextMenu = (e: React.MouseEvent, identity: string) => {
-        e.preventDefault();
-        const p = participants.find(p => p.identity === identity);
+    const stripRef = useRef<HTMLDivElement>(null);
+
+    const openContextMenuForIdentity = useCallback((identity: string, x: number, y: number) => {
+        const pts = participants;
+        const lp = localParticipant;
+        const sas = screenAudioSet;
+        const gsp = getScreenSharePubInfo;
+        const p = pts.find(p => p.identity === identity);
+        if (!p) return;
         setContextMenu({
             identity,
-            name: p?.name || identity,
-            isRemote: identity !== localParticipant.identity,
-            hasScreenAudio: screenAudioSet.has(identity),
-            ...getScreenSharePubInfo(identity, p),
+            name: p.name || identity,
+            isRemote: identity !== lp.identity,
+            hasScreenAudio: sas.has(identity),
+            ...gsp(identity, p),
             serverMuted: p?.permissions?.canPublish === false,
-            x: e.clientX,
-            y: e.clientY,
+            x,
+            y,
         });
+    }, [participants, localParticipant, screenAudioSet, getScreenSharePubInfo]);
+
+    const handleStripContextMenu = (e: React.MouseEvent, identity: string) => {
+        e.preventDefault();
+        openContextMenuForIdentity(identity, e.clientX, e.clientY);
     };
+
+    // Touch devices: tap opens context menu via event delegation
+    const handleStripTap = useCallback((e: React.MouseEvent) => {
+        if (!isTouchDevice) return;
+        const identity = findTileIdentity(e.target, stripRef.current);
+        if (identity) openContextMenuForIdentity(identity, e.clientX, e.clientY);
+    }, [openContextMenuForIdentity]);
 
     // Resolve main track: prefer screen share for selected, fallback to camera
     const resolveMainTrack = (): { track: TrackReference; type: 'screen' | 'camera' } | null => {
@@ -191,6 +219,12 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
 
     const focused = resolveMainTrack();
 
+    // Touch devices: tap on main view opens context menu
+    const handleMainTap = useCallback((e: React.MouseEvent) => {
+        if (!isTouchDevice || !focused) return;
+        openContextMenuForIdentity(focused.track.participant.identity, e.clientX, e.clientY);
+    }, [focused, openContextMenuForIdentity]);
+
     // Auto-exit focus mode when the focused participant has no active tracks
     // (e.g. they turned off camera after being auto-focused)
     useEffect(() => {
@@ -207,6 +241,7 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
                 className={`fl-main${focused?.type === 'camera' ? ' fl-main-camera' : ''}`}
                 ref={mainRef}
                 onDoubleClick={fullscreenSupported ? toggleFullscreen : undefined}
+                onClick={isTouchDevice ? handleMainTap : undefined}
                 onContextMenu={(e) => {
                     if (!focused) return;
                     e.preventDefault();
@@ -290,7 +325,11 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
             </div>
 
             {/* Side strip — all participants, all clickable */}
-            <div className="fl-strip">
+            <div
+                className="fl-strip"
+                ref={stripRef}
+                onClick={isTouchDevice ? handleStripTap : undefined}
+            >
                 {participants.map((p) => {
                     const isSelected = p.identity === selectedIdentity;
                     const hasScreenShare = screenMap.has(p.identity);

@@ -13,6 +13,8 @@ interface ScreenShareModalProps {
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onConfirm: (quality: ScreenShareQuality, sourceId?: string, audio?: boolean) => void;
     onCancel: () => void;
+    /** When true, skip the desktop source picker (e.g. Wayland — portal handles selection) */
+    skipSourcePicker?: boolean;
 }
 
 const REFRESH_INTERVAL = 8000;
@@ -28,7 +30,7 @@ const FPS_OPTIONS = SCREEN_SHARE_FPS_STEPS.map((v, i) => ({
     label: `${v} FPS`,
 }));
 
-export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCancel }: ScreenShareModalProps) {
+export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCancel, skipSourcePicker }: ScreenShareModalProps) {
     const { t } = useTranslation();
     useEscapeKey(onCancel);
     const [fpsIdx, setFpsIdx] = useState(settings.screenShareFpsIdx);
@@ -37,6 +39,8 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
     const [audio, setAudio] = useState(settings.screenShareAudio ?? true);
 
     const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
+    // On Wayland (skipSourcePicker), show settings-only mode like browser — portal handles source selection.
+    const showSourcePicker = isElectron && !skipSourcePicker;
     const [sources, setSources] = useState<DesktopSource[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedSourceId, setSelectedSourceId] = useState<string | undefined>();
@@ -59,11 +63,12 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
     }, []);
 
     useEffect(() => {
+        if (!showSourcePicker) return; // Wayland / browser — no source fetching needed
         mountedRef.current = true;
         fetchSources();
         const timer = setInterval(fetchSources, REFRESH_INTERVAL);
         return () => { mountedRef.current = false; clearInterval(timer); };
-    }, [fetchSources]);
+    }, [fetchSources, showSourcePicker]);
 
     const fps = SCREEN_SHARE_FPS_STEPS[fpsIdx];
     const mbps = SCREEN_SHARE_BITRATE_STEPS[brIdx];
@@ -84,7 +89,7 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
             screenShareSkipDialog: skipDialog,
             screenShareAudio: audio,
         });
-        onConfirm(quality, selectedSourceId, audio);
+        onConfirm(quality, showSourcePicker ? selectedSourceId : undefined, audio);
     };
 
     const screens = useMemo(() => sources.filter(s => s.id.startsWith('screen:')), [sources]);
@@ -115,10 +120,10 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
 
     return (
         <div className="ss-backdrop" onClick={onCancel}>
-            <div className={`ss-modal ${isElectron ? 'ss-modal-large' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`ss-modal ${showSourcePicker ? 'ss-modal-large' : ''}`} onClick={(e) => e.stopPropagation()}>
                 <h3 className="ss-title">{t('screenShare.title')}</h3>
 
-                {isElectron ? (
+                {showSourcePicker ? (
                     <>
                         <div className="ss-desktop-picker">
                             <div className="ss-tabs">
