@@ -1,0 +1,392 @@
+/* ─── Chat Panel ─── */
+.cp-panel {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cp-panel.cp-inline {
+  width: 100%;
+  flex: 1;
+  border-left: none;
+  animation: none;
+  background: var(--bg-primary);
+}
+
+/* Overlay — floats over video as a mini window, no layout shift */
+.cp-panel.cp-overlay {
+  position: absolute;
+  right: 10px;
+  top: calc(80px + env(safe-area-inset-bottom, 0px) + 10px);
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px) + 10px);
+  width: 256px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  border-radius: var(--border-radius-lg);
+  background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+}
+
+@media (max-width: 640px) {
+  .cp-panel.cp-overlay {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
+    border: none;
+    background: var(--bg-primary);
+    z-index: 1000;
+  }
+
+  .cp-panel.cp-overlay .cp-header {
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  }
+
+  .cp-resize {
+    display: none !important;
+  }
+}
+
+/* Drag cursor on header */
+.cp-panel.cp-overlay .cp-header {
+  cursor: grab;
+  user-select: none;
+}
+
+.cp-panel.cp-overlay .cp-header:active {
+  cursor: grabbing;
+}
+
+/* ── Resize handles (8-directional) ── */
+.cp-resize {
+  position: absolute;
+  z-index: 10;
+}
+
+/* Edges */
+.cp-resize-n {
+  top: -4px;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.cp-resize-s {
+  bottom: -4px;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.cp-resize-w {
+  left: -4px;
+  top: 10px;
+  bottom: 10px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.cp-resize-e {
+  right: -4px;
+  top: 10px;
+  bottom: 10px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+/* Corners */
+.cp-resize-nw {
+  top: -4px;
+  left: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+
+.cp-resize-ne {
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.cp-resize-sw {
+  bottom: -4px;
+  left: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.cp-resize-se {
+  bottom: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+
+.cp-resize:hover {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 4px;
+}
+
+/* Messages area more transparent so video shows through */
+.cp-panel.cp-overlay .cp-messages {
+  background: transparent;
+}
+
+.cp-panel.cp-overlay .cp-header {
+  background: color-mix(in srgb, var(--panel-header-bg) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+}
+
+.cp-panel.cp-overlay .cp-input-area {
+  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+}
+
+/* Message bubbles get slight extra contrast in overlay mode */
+.cp-panel.cp-overlay .cp-bubble {
+  background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
+}
+
+
+/* ─── Header ─── */
+.cp-header {
+  padding: 16px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--panel-header-color);
+  background: var(--panel-header-bg);
+  text-shadow: var(--panel-header-text-shadow);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.cp-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color var(--transition-fast);
+  line-height: 1;
+}
+
+.cp-close:hover {
+  color: var(--text-primary);
+}
+
+/* ─── Messages area ─── */
+.cp-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cp-messages::-webkit-scrollbar {
+  width: 3px;
+}
+
+.cp-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cp-messages::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: 2px;
+}
+
+.cp-empty {
+  margin: auto;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ─── System message ─── */
+.cp-system {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 14px;
+  user-select: none;
+}
+
+/* ─── Message group ─── */
+.cp-group {
+  padding: 4px 14px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cp-group-header {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-bottom: 1px;
+}
+
+.cp-sender {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cp-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+/* ─── Individual bubble ─── */
+.cp-bubble {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  word-break: break-word;
+  padding: 5px 9px;
+  border-radius: var(--bubble-radius);
+  background: var(--bg-primary);
+  max-width: 100%;
+  align-self: flex-start;
+}
+
+/* Own messages: right-aligned, accent tinted */
+.cp-group-own {
+  align-items: flex-end;
+}
+
+.cp-group-own .cp-group-header {
+  flex-direction: row-reverse;
+}
+
+.cp-group-own .cp-bubble {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-primary));
+  align-self: flex-end;
+}
+
+/* ─── Rate limit warning ─── */
+.cp-rate-limit {
+  padding: 5px 14px;
+  font-size: 11px;
+  color: var(--error, #f44);
+  text-align: center;
+  flex-shrink: 0;
+  animation: cp-rate-limit-in 0.15s ease-out;
+}
+
+@keyframes cp-rate-limit-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Input area ─── */
+.cp-input-area {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.cp-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-family);
+  outline: none;
+  resize: none;
+  height: 36px;
+  transition: border-color var(--transition-fast);
+}
+
+.cp-input:focus {
+  border-color: var(--accent);
+}
+
+.cp-input::placeholder {
+  color: var(--text-muted);
+}
+
+.cp-send {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--border-radius);
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.cp-send:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.cp-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Emoji button wrapper */
+.cp-emoji-wrap {
+  flex-shrink: 0;
+}
+
+.cp-emoji-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.cp-emoji-btn:hover,
+.cp-emoji-btn.active {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-primary));
+}

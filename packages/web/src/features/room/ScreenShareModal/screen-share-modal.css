@@ -1,0 +1,340 @@
+/* ─── Screen Share Modal ─── */
+.ss-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 16px;
+}
+
+.ss-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ss-modal-radius);
+    padding: 20px;
+    width: 90%;
+    max-width: 440px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+}
+
+.ss-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 16px;
+}
+
+/* ─── Desktop Picker (Electron) ─── */
+.ss-modal-large {
+    width: 680px;
+    max-width: 90%;
+}
+
+.ss-desktop-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.ss-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.ss-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s;
+    /* Prevent width jump when count appears */
+    min-width: 100px;
+    text-align: center;
+}
+
+.ss-tab:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.ss-tab.active {
+    background: var(--bg-active);
+    color: var(--text-primary);
+}
+
+.ss-source-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    /* ~2 rows visible, scroll for more */
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+    overscroll-behavior: contain;
+    align-content: start;
+}
+
+.ss-source-grid::-webkit-scrollbar {
+    width: 5px;
+}
+
+.ss-source-grid::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.ss-no-sources {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    padding: 32px 0;
+    font-size: 13px;
+}
+
+.ss-source-tile {
+    background: var(--bg-primary);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex;
+    flex-direction: column;
+}
+
+.ss-source-tile:hover {
+    border-color: var(--border-color);
+}
+
+.ss-source-tile.selected {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+}
+
+.ss-source-thumbnail {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.ss-source-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ss-source-name {
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ss-source-name span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ss-source-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+/* ─── Skeleton Loading ─── */
+.ss-skeleton {
+    pointer-events: none;
+    cursor: default;
+}
+
+.ss-skeleton-thumb {
+    background: var(--bg-hover) !important;
+    animation: ss-pulse 1.2s ease-in-out infinite;
+}
+
+.ss-skeleton-text {
+    height: 10px;
+    width: 60%;
+    border-radius: 4px;
+    background: var(--bg-hover);
+    animation: ss-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ss-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+}
+
+/* ─── Compact Bottom Bar ─── */
+.ss-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.ss-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Compact variant of the shared Select component */
+.ss-select-compact .lala-select-trigger {
+    padding: 5px 28px 5px 10px;
+    font-size: 12px;
+    min-height: 0;
+}
+
+.ss-select-compact .lala-select-option {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.ss-audio-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.ss-audio-toggle:hover {
+    background: var(--bg-active);
+    color: var(--text-primary);
+}
+
+.ss-audio-toggle.active {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ─── Browser Mode ─── */
+.ss-browser-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+.ss-browser-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.ss-browser-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ss-browser-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ─── Skip / Actions ─── */
+.ss-skip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.ss-skip input[type="checkbox"] {
+    width: 13px;
+    height: 13px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.ss-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.ss-btn-cancel,
+.ss-btn-confirm {
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.12s;
+    white-space: nowrap;
+}
+
+.ss-btn-cancel {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.ss-btn-cancel:hover {
+    background: var(--bg-active);
+    color: var(--text-primary);
+}
+
+.ss-btn-confirm {
+    background: var(--accent);
+    color: white;
+}
+
+.ss-btn-confirm:hover {
+    background: var(--accent-hover, #6d28d9);
+}
+
+.ss-btn-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+}

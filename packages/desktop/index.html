@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:;">
+    <title>Lala</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d24;
+            --surface-hover: #22252d;
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: #2d3140;
+            --primary: #7c3aed;
+            --primary-hover: #6d28d9;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            -webkit-app-region: drag;
+            user-select: none;
+        }
+
+        .container {
+            background: var(--surface);
+            padding: 36px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 16px 48px -8px rgba(0, 0, 0, 0.6);
+        }
+
+        .logo {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+            display: block;
+            border-radius: 16px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-bottom: 28px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-app-region: no-drag;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        input[type="url"] {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+
+        input::placeholder { color: #4b5563; }
+
+        .btn-connect {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .btn-connect:hover { background: var(--primary-hover); }
+        .btn-connect:active { transform: scale(0.98); }
+        .btn-connect:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Recent servers */
+        .recent { margin-top: 20px; }
+
+        .recent-header {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .recent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            -webkit-app-region: no-drag;
+        }
+
+        .recent-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s;
+            width: 100%;
+        }
+
+        .recent-item:hover { background: var(--surface-hover); }
+
+        .recent-item-url {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .recent-item-remove {
+            opacity: 0;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0 4px;
+            transition: opacity 0.15s, color 0.15s;
+            -webkit-app-region: no-drag;
+        }
+
+        .recent-item:hover .recent-item-remove { opacity: 1; }
+        .recent-item-remove:hover { color: var(--danger); }
+
+        .error-msg {
+            color: var(--danger);
+            font-size: 12px;
+            text-align: center;
+            min-height: 18px;
+        }
+
+        .version {
+            text-align: center;
+            font-size: 11px;
+            color: #4b5563;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img class="logo" src="build/icons/64x64.png" alt="Lala" />
+        <h1>Lala</h1>
+        <p class="subtitle" id="subtitleText"></p>
+
+        <form id="connectForm">
+            <div class="input-group">
+                <input type="url" id="urlInput" placeholder="https://lala.example.com" required autocomplete="url" autofocus />
+            </div>
+            <button type="submit" class="btn-connect" id="connectBtn"></button>
+            <div class="error-msg" id="errorMsg"></div>
+        </form>
+
+        <div class="recent" id="recentSection" style="display:none">
+            <div class="recent-header" id="recentHeader"></div>
+            <div class="recent-list" id="recentList"></div>
+            <label id="autoConnectToggle" style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:12px; color:var(--text-muted); cursor:pointer; -webkit-app-region:no-drag;">
+                <input type="checkbox" id="noAutoConnectCheckbox" />
+                <span id="noAutoConnectLabel"></span>
+            </label>
+        </div>
+
+        <div class="version" id="versionInfo"></div>
+    </div>
+
+    <script>
+        const TRANSLATIONS = {
+            en: {
+                subtitle: 'Connect to server',
+                connect: 'Connect',
+                recentServers: 'Recent servers',
+                noAutoConnect: "Don't auto-connect",
+                connecting: 'Connecting...',
+                remove: 'Remove',
+                connectionFailed: 'Failed to connect',
+                connectingTo: 'Connecting to <strong style="color: var(--text)">%s</strong>...',
+                cancel: 'Cancel',
+            },
+            ru: {
+                subtitle: 'Подключиться к серверу',
+                connect: 'Подключиться',
+                recentServers: 'Недавние серверы',
+                noAutoConnect: 'Не подключаться автоматически',
+                connecting: 'Подключение...',
+                remove: 'Удалить',
+                connectionFailed: 'Не удалось подключиться',
+                connectingTo: 'Подключение к <strong style="color: var(--text)">%s</strong>...',
+                cancel: 'Отмена',
+            }
+        };
+
+        function detectLanguage() {
+            const saved = localStorage.getItem('lala_language');
+            if (saved) return saved;
+            const nav = navigator.language || 'en';
+            return nav.startsWith('ru') ? 'ru' : 'en';
+        }
+
+        function t(key) {
+            const lang = detectLanguage();
+            return (TRANSLATIONS[lang] || TRANSLATIONS.en)[key] || TRANSLATIONS.en[key] || key;
+        }
+
+        const STORAGE_KEY = 'lala_recent_servers';
+        const MAX_RECENT = 5;
+
+        const form = document.getElementById('connectForm');
+        const input = document.getElementById('urlInput');
+        const errorMsg = document.getElementById('errorMsg');
+        const connectBtn = document.getElementById('connectBtn');
+        const recentSection = document.getElementById('recentSection');
+        const recentList = document.getElementById('recentList');
+        const versionInfo = document.getElementById('versionInfo');
+
+        // ─── Recent servers ─────────────────────────────────────────
+
+        function getRecentServers() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function saveRecentServer(url) {
+            const recent = getRecentServers().filter(u => u !== url);
+            recent.unshift(url);
+            if (recent.length > MAX_RECENT) recent.length = MAX_RECENT;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(recent));
+        }
+
+        function removeRecentServer(url) {
+            const recent = getRecentServers().filter(u => u !== url);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(recent));
+            renderRecent();
+        }
+
+        function connectTo(url) {
+            saveRecentServer(url);
+            connectBtn.disabled = true;
+            connectBtn.textContent = t('connecting');
+            errorMsg.textContent = '';
+            window.electronAPI.loadUrl(url);
+        }
+
+        function renderRecent() {
+            const servers = getRecentServers();
+            if (servers.length === 0) {
+                recentSection.style.display = 'none';
+                return;
+            }
+            recentSection.style.display = 'block';
+            recentList.innerHTML = '';
+            servers.forEach(url => {
+                const item = document.createElement('button');
+                item.className = 'recent-item';
+                item.type = 'button';
+
+                const urlSpan = document.createElement('span');
+                urlSpan.className = 'recent-item-url';
+                try {
+                    urlSpan.textContent = new URL(url).host;
+                } catch {
+                    urlSpan.textContent = url;
+                }
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'recent-item-remove';
+                removeBtn.type = 'button';
+                removeBtn.textContent = '\u00D7';
+                removeBtn.title = t('remove');
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeRecentServer(url);
+                });
+
+                item.appendChild(urlSpan);
+                item.appendChild(removeBtn);
+                item.addEventListener('click', () => {
+                    input.value = url;
+                    connectTo(url);
+                });
+                recentList.appendChild(item);
+            });
+        }
+
+        // ─── Form submit ────────────────────────────────────────────
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const url = input.value.trim();
+            if (!url) return;
+            connectTo(url);
+        });
+
+        // ─── Error handling ─────────────────────────────────────────
+
+        if (window.electronAPI?.onLoadUrlError) {
+            window.electronAPI.onLoadUrlError((error) => {
+                if (autoConnecting) {
+                    // Auto-connect failed — fall back to connection page
+                    autoConnecting = false;
+                    const autoDiv = document.getElementById('autoConnectDiv');
+                    if (autoDiv) autoDiv.remove();
+                    form.style.display = '';
+                    renderRecent();
+                }
+                errorMsg.textContent = error.message || t('connectionFailed');
+                connectBtn.disabled = false;
+                connectBtn.textContent = t('connect');
+            });
+        }
+
+        // ─── Auto-connect ────────────────────────────────────────────
+
+        let autoConnecting = false;
+        let autoConnectCancelled = false;
+        const AUTO_CONNECT_KEY = 'lala_no_auto_connect';
+
+        function showAutoConnect(url) {
+            autoConnecting = true;
+            const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+            form.style.display = 'none';
+            recentSection.style.display = 'none';
+
+            const autoDiv = document.createElement('div');
+            autoDiv.id = 'autoConnectDiv';
+            autoDiv.style.textAlign = 'center';
+            autoDiv.innerHTML = `
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">${t('connectingTo').replace('%s', host)}</p>
+                <button type="button" class="btn-connect" id="cancelAutoBtn" style="background: transparent; border: 1px solid var(--border); font-size: 13px; padding: 8px 20px;">${t('cancel')}</button>
+            `;
+            form.parentNode.insertBefore(autoDiv, form.nextSibling);
+
+            document.getElementById('cancelAutoBtn').addEventListener('click', () => {
+                autoConnectCancelled = true;
+                autoConnecting = false;
+                autoDiv.remove();
+                form.style.display = '';
+                renderRecent();
+            });
+
+            saveRecentServer(url);
+            connectBtn.disabled = true;
+            window.electronAPI.loadUrl(url);
+        }
+
+        // ─── Init ───────────────────────────────────────────────────
+
+        // Apply translations to static elements
+        document.documentElement.lang = detectLanguage();
+        document.getElementById('subtitleText').textContent = t('subtitle');
+        connectBtn.textContent = t('connect');
+        document.getElementById('recentHeader').textContent = t('recentServers');
+        document.getElementById('noAutoConnectLabel').textContent = t('noAutoConnect');
+
+        renderRecent();
+
+        // Auto-connect toggle
+        const noAutoCheckbox = document.getElementById('noAutoConnectCheckbox');
+        noAutoCheckbox.checked = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
+        noAutoCheckbox.addEventListener('change', () => {
+            if (noAutoCheckbox.checked) {
+                localStorage.setItem(AUTO_CONNECT_KEY, 'true');
+            } else {
+                localStorage.removeItem(AUTO_CONNECT_KEY);
+            }
+        });
+
+        // Pre-fill from most recent
+        const recent = getRecentServers();
+        if (recent.length > 0) {
+            input.value = recent[0];
+        }
+
+        // Auto-connect to last server unless disabled
+        const noAutoConnect = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
+        if (recent.length > 0 && !noAutoConnect) {
+            showAutoConnect(recent[0]);
+        }
+
+        // Show version
+        if (window.electronAPI?.getAppInfo) {
+            window.electronAPI.getAppInfo().then(info => {
+                versionInfo.textContent = `v${info.version} · ${info.platform}`;
+            });
+        }
+    </script>
+</body>
+
+</html>

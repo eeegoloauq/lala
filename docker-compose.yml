@@ -1,0 +1,93 @@
+services:
+  # ─── LiveKit Media Server ───
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: lala-livekit
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sed \
+          -e 's|$${NODE_IP}|'"$$NODE_IP"'|g' \
+          -e 's|$${LIVEKIT_DOMAIN}|'"$$LIVEKIT_DOMAIN"'|g' \
+          -e 's|$${LIVEKIT_API_KEY}|'"$$LIVEKIT_API_KEY"'|g' \
+          -e 's|$${LIVEKIT_API_SECRET}|'"$$LIVEKIT_API_SECRET"'|g' \
+          /etc/livekit-template.yaml > /etc/livekit.yaml \
+        && /livekit-server --config /etc/livekit.yaml --node-ip $$NODE_IP
+    environment:
+      - NODE_IP=${NODE_IP}
+      - LIVEKIT_DOMAIN=${LIVEKIT_DOMAIN}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+    ports:
+      - "7880:7880"       # API + WebSocket signaling
+      - "7881:7881"       # ICE/TCP fallback
+      - "50000:50000/udp" # WebRTC media (UDP mux)
+      - "3478:3478/udp"   # TURN (UDP) — for clients behind strict NAT
+    volumes:
+      - ./livekit.yaml.example:/etc/livekit-template.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ─── Redis (LiveKit state) ───
+  redis:
+    image: redis:7-alpine
+    container_name: lala-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --requirepass lala_redis_internal
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "lala_redis_internal", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── API Server (token + rooms) ───
+  api:
+    build:
+      context: ./packages/api
+      dockerfile: Dockerfile
+    container_name: lala-api
+    restart: unless-stopped
+    expose:
+      - "3001"
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - API_PORT=3001
+      - LIVEKIT_HOST=lala-livekit:7880
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/rooms"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - livekit
+
+  # ─── Web Frontend ───
+  web:
+    build:
+      context: ./packages/web
+      dockerfile: Dockerfile
+      args:
+        VITE_LIVEKIT_URL: ${LIVEKIT_URL}
+    container_name: lala-web
+    restart: unless-stopped
+    environment:
+      CSP_CONNECT_SRC: "${CSP_CONNECT_SRC:-wss: ws:}"
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - api
+
+volumes:
+  redis_data:

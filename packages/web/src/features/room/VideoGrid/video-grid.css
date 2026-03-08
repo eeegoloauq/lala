@@ -1,0 +1,274 @@
+.vg-area {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+}
+
+.vg-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    max-width: 1200px;
+    align-content: center;
+    justify-content: center;
+    margin: 0 auto;
+    min-height: 100%;
+}
+
+/* ── Desktop Layout / Default ── */
+.vg-grid[data-count="1"] .p-tile {
+    width: 100%;
+    max-width: 720px;
+}
+
+.vg-grid[data-count="2"] .p-tile {
+    width: calc(50% - 4px);
+    max-width: 560px;
+}
+
+.vg-grid[data-count="3"] .p-tile,
+.vg-grid[data-count="4"] .p-tile {
+    width: calc(50% - 4px);
+    max-width: 480px;
+}
+
+.vg-grid[data-count="5"] .p-tile,
+.vg-grid[data-count="6"] .p-tile {
+    width: calc(33.333% - 6px);
+    max-width: 360px;
+}
+
+.vg-grid[data-count="7"] .p-tile,
+.vg-grid[data-count="8"] .p-tile,
+.vg-grid[data-count="9"] .p-tile,
+.vg-grid[data-count="10"] .p-tile,
+.vg-grid[data-count="11"] .p-tile,
+.vg-grid[data-count="12"] .p-tile {
+    width: calc(25% - 6px);
+    max-width: 280px;
+}
+
+/* ─── Participant Tile ─── */
+.p-tile {
+    position: relative;
+    background: var(--bg-secondary);
+    border-radius: var(--tile-radius);
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: border-color var(--transition-normal);
+    width: 100%;
+    aspect-ratio: 4/3;
+    flex-shrink: 0;
+}
+
+.p-tile.p-tile-clickable {
+    cursor: pointer;
+}
+
+.p-tile.p-tile-clickable:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Speaking: glow on the whole tile */
+.p-tile.speaking {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 1px #22c55e, 0 0 16px rgba(34, 197, 94, 0.2);
+}
+
+.p-tile video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Centers avatar when no video is active */
+.p-tile-avatar {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.p-tile-meta {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.p-tile-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    background: var(--overlay-bg);
+    backdrop-filter: var(--overlay-backdrop);
+    padding: 3px 8px;
+    border-radius: var(--overlay-radius);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.p-tile-status {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.p-tile-status-icon {
+    background: var(--overlay-bg);
+    backdrop-filter: var(--overlay-backdrop);
+    padding: 3px 5px;
+    border-radius: var(--overlay-radius);
+    display: flex;
+    align-items: center;
+    color: white;
+}
+
+.p-tile-status-icon svg {
+    width: 12px;
+    height: 12px;
+}
+
+.p-tile-screen-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--overlay-bg);
+    backdrop-filter: var(--overlay-backdrop);
+    border-radius: var(--overlay-radius);
+    padding: 3px 5px;
+    display: flex;
+    align-items: center;
+    color: white;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.p-tile-screen-badge svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* ─── Avatar (no video) ─── */
+.p-avatar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.p-avatar-circle {
+    border-radius: var(--avatar-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -1px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── FocusLayout strip override: fill the strip tile ─── */
+.fl-strip-tile .p-tile {
+    aspect-ratio: auto;
+    min-height: 0;
+    height: 100%;
+}
+
+/* ─── Mobile ─── */
+@media (max-width: 640px) {
+    .vg-area {
+        padding: 8px;
+    }
+
+    /* 1, 2 people: 1 column */
+    .vg-grid[data-count="1"] .p-tile,
+    .vg-grid[data-count="2"] .p-tile {
+        width: 100%;
+        max-width: 480px;
+    }
+
+    /* 3+ people: 2 columns */
+    .vg-grid:not([data-count="1"]):not([data-count="2"]) .p-tile {
+        width: calc(50% - 4px);
+        max-width: none;
+    }
+}
+
+/* ─── Flip camera button (local tile, touch devices) ─── */
+.p-tile-flip {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--overlay-bg);
+    backdrop-filter: var(--overlay-backdrop);
+    border: none;
+    color: white;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--overlay-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.p-tile-flip:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Connection quality bars ─── */
+.cq-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+    padding: 0 2px;
+}
+
+.cq-bar {
+    width: 3px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    transition: background 0.3s;
+}
+
+.cq-bar:nth-child(1) {
+    height: 5px;
+}
+
+.cq-bar:nth-child(2) {
+    height: 9px;
+}
+
+.cq-bar:nth-child(3) {
+    height: 13px;
+}
+
+.cq-bars[data-quality="excellent"] .cq-bar {
+    background: #22c55e;
+}
+
+.cq-bars[data-quality="good"] .cq-bar:nth-child(1),
+.cq-bars[data-quality="good"] .cq-bar:nth-child(2) {
+    background: #f59e0b;
+}
+
+.cq-bars[data-quality="poor"] .cq-bar:nth-child(1) {
+    background: #ef4444;
+}

@@ -1,0 +1,77 @@
+.crm-modal {
+    max-width: 360px;
+}
+
+@media (max-width: 640px) {
+    .crm-modal {
+        width: calc(100% - 32px);
+        max-width: none;
+        margin: 16px;
+    }
+}
+
+.crm-optional {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.crm-password-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.crm-password-wrap .input {
+    width: 100%;
+    padding-right: 38px;
+}
+
+.crm-eye-btn {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border-radius: var(--border-radius);
+    transition: color var(--transition-fast);
+}
+
+.crm-eye-btn:hover {
+    color: var(--text-primary);
+}
+
+.crm-limit-group .input-group {
+    margin-bottom: 0;
+}
+
+.crm-limit-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.crm-limit-row .settings-range {
+    flex: 1;
+    max-width: none;
+}
+
+.crm-limit-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 24px;
+    text-align: right;
+}
+
+.crm-error {
+    font-size: 13px;
+    color: var(--color-danger);
+    margin-bottom: 12px;
+}

@@ -1,0 +1,119 @@
+/* ─── Participant Right-Click Context Menu ─── */
+.ctx-menu {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ctx-menu-radius);
+    box-shadow: var(--shadow-lg);
+    min-width: 240px;
+    z-index: 9999;
+    overflow: hidden;
+    animation: selectFadeIn 100ms ease-out;
+}
+
+.ctx-menu-name {
+    padding: 10px 14px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-accent);
+    border-bottom: 1px solid var(--border-color);
+    letter-spacing: 0.2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ctx-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: background var(--transition-fast);
+}
+
+.ctx-menu-item:hover {
+    background: var(--bg-hover);
+}
+
+.ctx-menu-volume {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.ctx-menu-volume-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ctx-menu-volume-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.ctx-menu-volume-val {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+    min-width: 36px;
+    text-align: right;
+}
+
+.ctx-menu-slider {
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--bg-hover);
+}
+
+.ctx-menu-slider::-webkit-slider-thumb {
+    width: 18px;
+    height: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.ctx-menu-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.ctx-menu-local-note {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.ctx-menu-admin {
+    border-top: 1px solid var(--border-color);
+    padding-top: 2px;
+}
+
+.ctx-menu-item--warn {
+    color: #f59e0b;
+}
+
+.ctx-menu-item--warn:hover {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.ctx-menu-item--danger {
+    color: var(--color-danger);
+}
+
+.ctx-menu-item--danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-danger);
+}

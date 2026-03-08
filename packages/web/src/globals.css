@@ -1,0 +1,1015 @@
+/* ============================================
+   Lala — Global Styles & Dark Theme
+   ============================================ */
+
+/* Theme variables */
+:root,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-primary: #0b0b10;
+  --bg-secondary: #13131a;
+  --bg-sidebar: #111118;
+  --bg-hover: #1c1c27;
+  --bg-active: #23233a;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --bg-control: #1a1a26;
+
+  /* Text */
+  --text-primary: #e4e4ec;
+  --text-secondary: #8b8b9e;
+  --text-muted: #55556a;
+  --text-accent: #a78bfa;
+
+  /* Accent */
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-glow: rgba(124, 58, 237, 0.3);
+  --accent-gradient: linear-gradient(135deg, #7c3aed, #a78bfa);
+
+  /* Status */
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Borders */
+  --border-color: #1e1e2e;
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-round: 50%;
+
+  /* Spacing & Sizes */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --sidebar-width: 240px;
+  --control-bar-height: 64px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px var(--accent-glow);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* Font */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ─────────────────────────────────────────────────────────
+     STRUCTURAL VARIABLES — override in themes for zero-cost
+     per-component styling. New components using these vars
+     are automatically themed correctly.
+     ───────────────────────────────────────────────────────── */
+
+  /* Control bar pill (floating container) */
+  --cb-pill-bg:       rgba(15, 15, 22, 0.75);
+  --cb-pill-border:   rgba(255, 255, 255, 0.07);
+  --cb-pill-radius:   48px;
+  --cb-pill-backdrop: blur(20px);
+  --cb-pill-shadow:   0 8px 32px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+
+  /* Control bar buttons */
+  --cb-btn-radius:          50%;
+  --cb-btn-bg:              var(--bg-hover);
+  --cb-btn-color:           var(--text-secondary);
+  --cb-btn-shadow:          none;
+  --cb-btn-bg-hover:        var(--bg-active);
+  --cb-btn-hover-transform: scale(1.08);
+  --cb-btn-off-bg:          rgba(239, 68, 68, 0.15);
+  --cb-btn-off-color:       #ef4444;
+  --cb-btn-active-bg:       color-mix(in srgb, var(--accent) 20%, transparent);
+  --cb-btn-active-color:    var(--text-accent);
+  --cb-btn-active-shadow:   none;
+  --cb-btn-leave-bg:        rgba(239, 68, 68, 0.12);
+  --cb-btn-leave-color:     #ef4444;
+
+  /* Avatars / circles */
+  --avatar-radius: 50%;
+
+  /* Video tile */
+  --tile-radius: var(--border-radius-lg);
+
+  /* Overlays (name badge, muted icon, flip btn overlaid on tiles) */
+  --overlay-bg:       rgba(0, 0, 0, 0.55);
+  --overlay-backdrop: blur(6px);
+  --overlay-radius:   6px;
+
+  /* FocusLayout main panel */
+  --fl-main-radius: 10px;
+  --fl-main-border: none;
+  --fl-main-shadow: none;
+
+  /* FocusLayout overlay buttons (back, fullscreen) */
+  --fl-btn-bg:       rgba(0, 0, 0, 0.65);
+  --fl-btn-backdrop: blur(8px);
+  --fl-btn-radius:   6px;
+  --fl-btn-border:   none;
+  --fl-btn-color:    white;
+  --fl-btn-shadow:   none;
+
+  /* FocusLayout label */
+  --fl-label-bg:       rgba(0, 0, 0, 0.65);
+  --fl-label-backdrop: blur(8px);
+  --fl-label-radius:   6px;
+
+  /* FocusLayout strip tiles */
+  --fl-strip-tile-radius: 8px;
+
+  /* Chat bubbles */
+  --bubble-radius: 8px;
+
+  /* Panel headers (sidebar header, chat panel header) */
+  --panel-header-bg:          transparent;
+  --panel-header-color:       inherit;
+  --panel-header-text-shadow: none;
+
+  /* Settings modal */
+  --settings-modal-radius: 8px;
+  --settings-modal-border: none;
+  --settings-modal-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+
+  /* Settings nav items */
+  --settings-nav-radius: var(--border-radius);
+
+  /* Close / icon buttons */
+  --settings-close-radius: 50%;
+
+  /* Toggle switch */
+  --toggle-track-radius: 11px;
+  --toggle-thumb-radius: 50%;
+
+  /* Screen share modal */
+  --ss-modal-radius: 14px;
+
+  /* Context menu */
+  --ctx-menu-radius: var(--border-radius);
+
+  /* Scrollbar */
+  --scrollbar-width:        6px;
+  --scrollbar-thumb-radius: 3px;
+}
+
+/* ─── Light Theme ─── */
+[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-sidebar: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --bg-active: #cbd5e1;
+  --bg-overlay: rgba(255, 255, 255, 0.7);
+  --bg-control: #ffffff;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-accent: #6d28d9;
+
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+  --color-warning: #d97706;
+  --color-info: #2563eb;
+
+  --border-color: #cbd5e1;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.2);
+}
+
+/* ─── Amoled Theme ─── */
+[data-theme="amoled"] {
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-sidebar: #000000;
+  --bg-hover: #111111;
+  --bg-active: #222222;
+  --bg-control: #000000;
+  --border-color: #1a1a1a;
+
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+}
+
+/* ─── Discord Theme ─── */
+[data-theme="discord"] {
+  --bg-primary: #313338;
+  --bg-secondary: #2b2d31;
+  --bg-sidebar: #1e1f22;
+  --bg-hover: #35373c;
+  --bg-active: #404249;
+  --bg-control: #2b2d31;
+
+  --text-primary: #dbdee1;
+  --text-secondary: #b5bac1;
+  --text-muted: #80848e;
+  --text-accent: #5865f2;
+
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --accent-glow: rgba(88, 101, 242, 0.3);
+  --accent-gradient: linear-gradient(135deg, #5865f2, #7983f5);
+
+  --color-success: #43b581;
+  --color-danger: #f04747;
+  --color-warning: #faa61a;
+  --color-info: #5865f2;
+
+  --border-color: #1e1f22;
+}
+
+/* ═══════════════════════════════════════════════════════
+   WINDOWS XP THEME — Luna / Classic, circa 2003
+   Silver panels, blue title bars, Tahoma, bevel buttons.
+   ═══════════════════════════════════════════════════════ */
+[data-theme="winxp"] {
+  --bg-primary:    #ece9d8;
+  --bg-secondary:  #d4d0c8;
+  --bg-sidebar:    #d9d5c8;
+  --bg-hover:      #c8d4e8;
+  --bg-active:     #316ac5;
+  --bg-overlay:    rgba(0, 0, 0, 0.5);
+  --bg-control:    #ece9d8;
+
+  --text-primary:   #000000;
+  --text-secondary: #444444;
+  --text-muted:     #808080;
+  --text-accent:    #ffffff;
+
+  --accent:          #316ac5;
+  --accent-hover:    #1e4d9b;
+  --accent-glow:     rgba(49, 106, 197, 0.25);
+  --accent-gradient: linear-gradient(180deg, #5b9bd5 0%, #316ac5 50%, #1e4d9b 100%);
+
+  --color-success: #008000;
+  --color-danger:  #cc0000;
+  --color-warning: #cc6600;
+  --color-info:    #316ac5;
+
+  --border-color:      #aca899;
+  --border-radius:     3px;
+  --border-radius-lg:  4px;
+  --border-radius-round: 50%;
+
+  --shadow-sm:   inset -1px -1px #ffffff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #404040;
+  --shadow-md:   2px 2px 4px rgba(0,0,0,0.3);
+  --shadow-lg:   3px 3px 8px rgba(0,0,0,0.35);
+  --shadow-glow: 0 0 0 2px #316ac5;
+
+  --transition-fast:   100ms ease;
+  --transition-normal: 180ms ease;
+
+  --font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  --font-mono:   'Courier New', Courier, monospace;
+
+  /* ─── Structural overrides ─── */
+
+  /* Pill */
+  --cb-pill-bg:       #ece9d8;
+  --cb-pill-border:   #aca899;
+  --cb-pill-radius:   4px;
+  --cb-pill-backdrop: none;
+  --cb-pill-shadow:   inset -1px -1px #888, inset 1px 1px #fff, 0 2px 6px rgba(0,0,0,0.25);
+
+  /* Buttons */
+  --cb-btn-radius:          3px;
+  --cb-btn-bg:              linear-gradient(180deg, #f4f0e8 0%, #dedad0 100%);
+  --cb-btn-color:           #000000;
+  --cb-btn-shadow:          inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888;
+  --cb-btn-bg-hover:        linear-gradient(180deg, #dce8f8 0%, #b8d0f0 100%);
+  --cb-btn-hover-transform: none;
+  --cb-btn-off-bg:          linear-gradient(180deg, #f8e8e8 0%, #e8c8c8 100%);
+  --cb-btn-off-color:       #880000;
+  --cb-btn-active-bg:       linear-gradient(180deg, #b0c8f0 0%, #7090d0 100%);
+  --cb-btn-active-color:    #ffffff;
+  --cb-btn-active-shadow:   inset -1px -1px 0 #6090e0, inset 1px 1px 0 #1040a0;
+  --cb-btn-leave-bg:        linear-gradient(180deg, #f8d8d8 0%, #e0a0a0 100%);
+  --cb-btn-leave-color:     #880000;
+
+  /* Shapes */
+  --avatar-radius:        50%;
+  --tile-radius:          2px;
+  --overlay-radius:       4px;
+  --fl-main-radius:       2px;
+  --fl-main-border:       2px solid #aca899;
+  --fl-main-shadow:       inset 1px 1px #fff, inset -1px -1px #808080;
+  --fl-btn-bg:            linear-gradient(180deg, #f4f0e8, #dedad0);
+  --fl-btn-backdrop:      none;
+  --fl-btn-radius:        3px;
+  --fl-btn-shadow:        inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888;
+  --fl-btn-color:         #000000;
+  --fl-label-radius:      0px;
+  --fl-strip-tile-radius: 2px;
+  --bubble-radius:        2px;
+
+  /* Panel headers → blue title bar */
+  --panel-header-bg:          linear-gradient(180deg, #3a77c8 0%, #2460b0 100%);
+  --panel-header-color:       #ffffff;
+  --panel-header-text-shadow: 1px 1px rgba(0,0,0,0.4);
+
+  /* Modal + UI chrome */
+  --settings-modal-radius: 4px;
+  --settings-modal-border: 2px solid #316ac5;
+  --settings-modal-shadow: 3px 3px 10px rgba(0,0,0,0.4);
+  --settings-nav-radius:   0px;
+  --settings-close-radius: 3px;
+  --toggle-track-radius:   2px;
+  --toggle-thumb-radius:   1px;
+  --ss-modal-radius:       4px;
+  --ctx-menu-radius:       2px;
+
+  /* Scrollbar */
+  --scrollbar-width:        16px;
+  --scrollbar-thumb-radius: 0px;
+}
+
+/* ── XP body ── */
+[data-theme="winxp"] body {
+  -webkit-font-smoothing: auto;
+  font-size: 12px;
+}
+
+/* ── XP cb-btn hover/active state tweaks not expressible as single vars ── */
+[data-theme="winxp"] .cb-btn:hover:not(:disabled) {
+  box-shadow: inset 1px 1px 0 #98c0f0, inset -1px -1px 0 #2060c0;
+}
+[data-theme="winxp"] .cb-btn.cb-off {
+  box-shadow: inset 1px 1px 0 #ffaaaa, inset -1px -1px 0 #880000;
+}
+[data-theme="winxp"] .cb-btn.cb-off-soft {
+  color: #888;
+  opacity: 0.8;
+}
+[data-theme="winxp"] .cb-btn.cb-leave:hover {
+  background: linear-gradient(180deg, #cc0000 0%, #880000 100%);
+  color: #ffffff;
+  box-shadow: inset 1px 1px 0 #ff8888, inset -1px -1px 0 #660000;
+}
+[data-theme="winxp"] .cb-divider {
+  background: #aca899;
+  box-shadow: 1px 0 0 #fff;
+}
+
+/* ── Sidebar — XP panel look ── */
+[data-theme="winxp"] .channel-sidebar {
+  border-right: 1px solid #aca899;
+}
+[data-theme="winxp"] .channel-item {
+  font-size: 12px;
+  font-family: Tahoma, Arial, sans-serif;
+}
+[data-theme="winxp"] .channel-item:hover {
+  background: #c8d4e8;
+}
+[data-theme="winxp"] .channel-item.active {
+  background: #316ac5 !important;
+  color: #ffffff !important;
+  border-left: none !important;
+  padding-left: 12px !important;
+  text-shadow: 1px 1px rgba(0,0,0,0.3);
+}
+
+/* ── Settings modal ── */
+[data-theme="winxp"] .settings-sidebar {
+  background: #d9d5c8;
+  border-right: 1px solid #aca899;
+}
+[data-theme="winxp"] .settings-nav-item:hover {
+  background: #c8d4e8;
+  color: #000;
+}
+[data-theme="winxp"] .settings-nav-item.active {
+  background: #316ac5;
+  color: #ffffff;
+}
+[data-theme="winxp"] .settings-header {
+  font-size: 14px;
+  font-family: Tahoma, Arial, sans-serif;
+}
+[data-theme="winxp"] .settings-close-circle {
+  background: linear-gradient(180deg, #f4f0e8, #dedad0);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #888;
+  color: #000;
+}
+[data-theme="winxp"] .toggle-slider {
+  border: 1px solid #888;
+}
+
+/* ── Video tiles ── */
+[data-theme="winxp"] .p-tile {
+  border: 1px solid #aca899 !important;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
+}
+[data-theme="winxp"] .p-tile.speaking {
+  outline: 2px solid #316ac5 !important;
+  box-shadow: 0 0 8px rgba(49, 106, 197, 0.5) !important;
+}
+
+/* ── Focus layout ── */
+[data-theme="winxp"] .fl-main-label {
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
+  font-family: Tahoma, Arial, sans-serif;
+}
+
+/* ── Chat panel ── */
+[data-theme="winxp"] .cp-panel {
+  border-left: 1px solid #aca899;
+}
+[data-theme="winxp"] .cp-close {
+  background: linear-gradient(180deg, #f4f0e8, #dedad0);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #888;
+  color: #000;
+  width: 22px;
+  height: 22px;
+}
+[data-theme="winxp"] .cp-bubble {
+  border: 1px solid #d4d0c8;
+  background: #ffffff;
+  color: #000000;
+}
+[data-theme="winxp"] .cp-group-own .cp-bubble {
+  background: #e8f0ff;
+  border-color: #b0c4e8;
+}
+[data-theme="winxp"] .cp-input {
+  border: 2px inset #808080 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 12px;
+}
+[data-theme="winxp"] .cp-send {
+  background: linear-gradient(180deg, #f4f0e8, #dedad0);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #888;
+  color: #000;
+}
+
+/* ── Context menu ── */
+[data-theme="winxp"] .ctx-menu {
+  border: 1px solid #aca899;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+  background: #ece9d8;
+}
+[data-theme="winxp"] .ctx-menu-item:hover {
+  background: #316ac5;
+  color: #ffffff;
+}
+[data-theme="winxp"] .ctx-menu-name {
+  color: #316ac5;
+}
+
+/* ── Inputs ── */
+[data-theme="winxp"] input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
+[data-theme="winxp"] textarea {
+  border: 2px solid #7f9db9 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 12px;
+}
+
+/* ── Scrollbars ── */
+[data-theme="winxp"] ::-webkit-scrollbar {
+  background: #d4d0c8;
+}
+[data-theme="winxp"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f4f0e8, #d4d0c8);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #888;
+}
+[data-theme="winxp"] ::-webkit-scrollbar-track {
+  background: #d4d0c8;
+  border: 1px inset #888;
+}
+[data-theme="winxp"] ::-webkit-scrollbar-button {
+  background: linear-gradient(180deg, #f4f0e8, #d4d0c8);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #888;
+  display: block;
+  height: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RETRO THEME — Terminal / CRT / Early-2000s VoIP
+   Green phosphor on black. No rounded corners. No mercy.
+   ═══════════════════════════════════════════════════════ */
+[data-theme="retro"] {
+  --bg-primary:    #000d00;
+  --bg-secondary:  #001200;
+  --bg-sidebar:    #000a00;
+  --bg-hover:      #001a00;
+  --bg-active:     #002e00;
+  --bg-overlay:    rgba(0, 0, 0, 0.92);
+  --bg-control:    #000d00;
+
+  --text-primary:   #00cc00;
+  --text-secondary: #008800;
+  --text-muted:     #004d00;
+  --text-accent:    #00ff41;
+
+  --accent:          #00aa00;
+  --accent-hover:    #00cc00;
+  --accent-glow:     rgba(0, 200, 0, 0.35);
+  --accent-gradient: linear-gradient(180deg, #003800, #00aa00);
+
+  --color-success: #00ff00;
+  --color-danger:  #ff3333;
+  --color-warning: #ffaa00;
+  --color-info:    #00aaff;
+
+  --border-color:      #006600;
+  --border-radius:     0px;
+  --border-radius-lg:  0px;
+  --border-radius-round: 0px;
+
+  --shadow-sm:   0 0 4px rgba(0, 180, 0, 0.4);
+  --shadow-md:   0 0 10px rgba(0, 180, 0, 0.3), inset 0 0 6px rgba(0, 100, 0, 0.2);
+  --shadow-lg:   0 0 20px rgba(0, 200, 0, 0.4);
+  --shadow-glow: 0 0 24px rgba(0, 220, 0, 0.6);
+
+  --transition-fast:   60ms steps(3);
+  --transition-normal: 100ms steps(4);
+
+  --font-family: 'Courier New', Courier, monospace;
+  --font-mono:   'Courier New', Courier, monospace;
+
+  /* ─── Structural overrides ─── */
+
+  /* Pill */
+  --cb-pill-bg:       #000d00;
+  --cb-pill-border:   #006600;
+  --cb-pill-radius:   0px;
+  --cb-pill-backdrop: none;
+  --cb-pill-shadow:   0 0 16px rgba(0, 200, 0, 0.3), inset 0 1px 0 rgba(0, 255, 0, 0.1), inset 0 -1px 0 rgba(0, 40, 0, 0.8);
+
+  /* Buttons */
+  --cb-btn-radius:          0px;
+  --cb-btn-bg:              #000d00;
+  --cb-btn-color:           #00aa00;
+  --cb-btn-bg-hover:        #001a00;
+  --cb-btn-hover-transform: none;
+  --cb-btn-off-bg:          #120000;
+  --cb-btn-off-color:       #ff4444;
+  --cb-btn-active-bg:       #002800;
+  --cb-btn-active-color:    #00ff41;
+  --cb-btn-leave-bg:        #120000;
+  --cb-btn-leave-color:     #ff4444;
+
+  /* Shapes — all sharp */
+  --avatar-radius:        0px;
+  --tile-radius:          0px;
+  --overlay-radius:       0px;
+  --fl-main-radius:       0px;
+  --fl-btn-radius:        0px;
+  --fl-label-radius:      0px;
+  --fl-strip-tile-radius: 0px;
+  --bubble-radius:        0px;
+  --settings-modal-radius: 0px;
+  --settings-nav-radius:   0px;
+  --settings-close-radius: 0px;
+  --toggle-track-radius:   0px;
+  --toggle-thumb-radius:   0px;
+  --ss-modal-radius:       0px;
+  --ctx-menu-radius:       0px;
+
+  /* Scrollbar */
+  --scrollbar-width:        8px;
+  --scrollbar-thumb-radius: 0px;
+}
+
+/* CRT scanline overlay */
+[data-theme="retro"]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.12) 3px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  pointer-events: none;
+  z-index: 99999;
+}
+
+/* Phosphor text glow */
+[data-theme="retro"] body {
+  text-shadow: 0 0 6px rgba(0, 200, 0, 0.5);
+  -webkit-font-smoothing: none;
+  font-size: 13px;
+}
+
+/* ── Control bar buttons — phosphor glow ── */
+[data-theme="retro"] .cb-btn {
+  border: 1px solid #004400;
+  box-shadow: inset 1px 1px rgba(0, 200, 0, 0.15), inset -1px -1px rgba(0, 30, 0, 0.8);
+}
+[data-theme="retro"] .cb-btn:hover:not(:disabled) {
+  border-color: #00aa00;
+  box-shadow: 0 0 8px rgba(0, 200, 0, 0.5), inset 1px 1px rgba(0, 255, 0, 0.2), inset -1px -1px rgba(0, 30, 0, 0.8);
+}
+[data-theme="retro"] .cb-btn.cb-off {
+  border-color: #660000;
+  box-shadow: inset 1px 1px rgba(255, 80, 80, 0.1), inset -1px -1px rgba(50, 0, 0, 0.8);
+}
+[data-theme="retro"] .cb-btn.cb-off:hover:not(:disabled) {
+  border-color: #aa0000;
+}
+[data-theme="retro"] .cb-btn.cb-active {
+  border-color: #00aa00;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.4), inset 0 0 6px rgba(0, 100, 0, 0.4);
+}
+[data-theme="retro"] .cb-btn.cb-off-soft {
+  border-color: #003300;
+}
+[data-theme="retro"] .cb-btn.cb-leave:hover {
+  background: #ff3333;
+  color: #000;
+  border-color: #ff0000;
+  text-shadow: none;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.6);
+}
+[data-theme="retro"] .cb-divider {
+  background: #004400;
+}
+
+/* ── Settings modal ── */
+[data-theme="retro"] .settings-modal-box {
+  border: 1px solid #006600;
+  box-shadow: 0 0 30px rgba(0, 200, 0, 0.25);
+}
+[data-theme="retro"] .settings-sidebar {
+  border-right-color: #006600;
+}
+[data-theme="retro"] .settings-nav-item.active {
+  background: #001a00;
+  color: #00ff41;
+}
+[data-theme="retro"] .settings-nav-item:hover {
+  background: #001200;
+}
+[data-theme="retro"] .settings-close-circle {
+  border: 1px solid #006600;
+}
+
+/* ── Sidebar channels ── */
+[data-theme="retro"] .channel-item {
+  font-size: 12px;
+}
+[data-theme="retro"] .channel-item.active {
+  background: #002800 !important;
+  color: #00ff41 !important;
+  border-left-color: #00ff00 !important;
+}
+[data-theme="retro"] .channel-header {
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+/* ── Video tiles ── */
+[data-theme="retro"] .p-tile {
+  border: 1px solid #004400 !important;
+}
+[data-theme="retro"] .p-tile.speaking {
+  outline: 2px solid #00ff00;
+  box-shadow: 0 0 14px rgba(0, 255, 0, 0.5) !important;
+}
+
+/* ── Focus layout ── */
+[data-theme="retro"] .fl-main {
+  border: 1px solid #005500;
+}
+[data-theme="retro"] .fl-back-btn,
+[data-theme="retro"] .fl-fullscreen-btn {
+  border: 1px solid #005500;
+  background: rgba(0, 15, 0, 0.85);
+}
+[data-theme="retro"] .fl-main-label {
+  background: rgba(0, 15, 0, 0.9);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── Chat panel ── */
+[data-theme="retro"] .cp-panel {
+  border-left: 1px solid #006600;
+}
+[data-theme="retro"] .cp-header {
+  border-bottom: 1px solid #006600;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+[data-theme="retro"] .cp-bubble {
+  border: 1px solid #002800;
+  font-size: 12px;
+}
+[data-theme="retro"] .cp-group-own .cp-bubble {
+  background: #001800;
+  border-color: #004400;
+}
+[data-theme="retro"] .cp-system {
+  font-size: 11px;
+  color: #008800;
+  letter-spacing: 0.5px;
+}
+[data-theme="retro"] .cp-input {
+  border-color: #006600 !important;
+  background: #000800 !important;
+  color: #00cc00 !important;
+  caret-color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+[data-theme="retro"] .cp-send {
+  border: 1px solid #006600;
+}
+
+/* ── Screen share modal ── */
+[data-theme="retro"] .ss-modal {
+  border: 1px solid #006600;
+}
+
+/* ── Context menu ── */
+[data-theme="retro"] .ctx-menu {
+  border-color: #006600;
+}
+
+/* ── Scrollbars ── */
+[data-theme="retro"] ::-webkit-scrollbar {
+  background: #000800;
+}
+[data-theme="retro"] ::-webkit-scrollbar-thumb {
+  background: #003300;
+  border: 1px solid #005500;
+}
+[data-theme="retro"] ::-webkit-scrollbar-thumb:hover {
+  background: #006600;
+}
+
+/* ── Inputs ── */
+[data-theme="retro"] input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
+[data-theme="retro"] textarea,
+[data-theme="retro"] select {
+  border-color: #006600 !important;
+  background: #000800 !important;
+  color: #00cc00 !important;
+  caret-color: #00ff00;
+  font-family: 'Courier New', monospace;
+}
+
+/* ─── Reset ─── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: var(--scrollbar-thumb-radius);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+
+
+/* ─── Form Inputs ─── */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.input-group label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-family);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background: var(--accent-gradient);
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+
+
+/* ─── LiveKit Component Overrides ─── */
+.lk-room-container {
+  height: 100% !important;
+  background: transparent !important;
+}
+
+.lk-grid-layout {
+  gap: 8px !important;
+}
+
+.lk-participant-tile {
+  border-radius: var(--border-radius-lg) !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  transition: border-color var(--transition-normal) !important;
+}
+
+.lk-participant-tile[data-lk-speaking="true"] {
+  border-color: var(--accent) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+
+.lk-focus-layout {
+  gap: 8px !important;
+}
+
+/* ─── Create Channel Modal ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn 0.2s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ─── Base range slider ─── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+

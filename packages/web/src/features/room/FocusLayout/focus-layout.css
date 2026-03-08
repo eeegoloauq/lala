@@ -1,0 +1,213 @@
+/* ─── Focus Layout (screen share active) ─── */
+.fl-area {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.fl-main {
+    flex: 1;
+    background: #000;
+    overflow: hidden;
+    position: relative;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--fl-main-radius);
+    border: var(--fl-main-border);
+    box-shadow: var(--fl-main-shadow);
+    max-height: calc(100% - 0px);
+}
+
+.fl-main video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+/* Ambient mode: blurred canvas behind video fills letterbox areas with color */
+.fl-ambient-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    filter: blur(70px) saturate(2.2) brightness(0.9);
+    opacity: 0.7;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.fl-ambient-hidden {
+    display: none;
+}
+
+/* Camera in main view: contain to preserve aspect ratio (handles vertical video) */
+.fl-main.fl-main-camera video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Bottom bar: back btn + label + fullscreen btn */
+.fl-main-bar {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+    gap: 8px;
+    z-index: 2;
+}
+
+.fl-back-btn {
+    pointer-events: auto;
+    background: var(--fl-btn-bg);
+    backdrop-filter: var(--fl-btn-backdrop);
+    -webkit-backdrop-filter: var(--fl-btn-backdrop);
+    border: var(--fl-btn-border);
+    color: var(--fl-btn-color);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--fl-btn-radius);
+    box-shadow: var(--fl-btn-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.fl-back-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.fl-main-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    background: var(--fl-label-bg);
+    backdrop-filter: var(--fl-label-backdrop);
+    -webkit-backdrop-filter: var(--fl-label-backdrop);
+    padding: 4px 10px;
+    border-radius: var(--fl-label-radius);
+}
+
+.fl-fullscreen-btn {
+    pointer-events: auto;
+    background: var(--fl-btn-bg);
+    backdrop-filter: var(--fl-btn-backdrop);
+    -webkit-backdrop-filter: var(--fl-btn-backdrop);
+    border: var(--fl-btn-border);
+    color: var(--fl-btn-color);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--fl-btn-radius);
+    box-shadow: var(--fl-btn-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.fl-fullscreen-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Participant strip (right side) ─── */
+.fl-strip {
+    width: 148px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding-right: 2px;
+}
+
+.fl-strip::-webkit-scrollbar {
+    width: 3px;
+}
+
+.fl-strip::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.fl-strip::-webkit-scrollbar-thumb {
+    background: var(--bg-hover);
+    border-radius: 2px;
+}
+
+.fl-strip-tile {
+    height: 104px;
+    flex-shrink: 0;
+    border-radius: var(--fl-strip-tile-radius);
+    overflow: hidden;
+    position: relative;
+    border: 2px solid transparent;
+    transition: border-color 0.15s;
+    cursor: default;
+}
+
+/* Video inside strip must not eat pointer events */
+.fl-strip-tile video {
+    pointer-events: none;
+}
+
+/* p-tile override is in video-grid.css */
+
+.fl-strip-tile.fl-strip-active {
+    border-color: var(--accent);
+}
+
+.fl-strip-tile.fl-strip-clickable {
+    cursor: pointer;
+}
+
+.fl-strip-tile.fl-strip-clickable:hover {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+
+/* ─── Mobile: stack vertically, strip at bottom ─── */
+@media (max-width: 640px) {
+    .fl-area {
+        flex-direction: column;
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .fl-strip {
+        width: 100%;
+        flex-direction: row;
+        height: 80px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-right: 0;
+        padding-bottom: 2px;
+    }
+
+    .fl-strip-tile {
+        height: 76px;
+        width: 100px;
+        flex-shrink: 0;
+    }
+
+    .fl-main {
+        flex: 1;
+    }
+}
