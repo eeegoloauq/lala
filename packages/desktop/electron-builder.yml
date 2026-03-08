@@ -11,6 +11,8 @@ files:
   - build/**/*
   - "!build/icon-variants/*.svg"
 
+afterPack: ./scripts/afterPack.js
+
 extraMetadata:
   main: main.js
 

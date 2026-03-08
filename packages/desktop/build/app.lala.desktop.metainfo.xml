@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>app.lala.desktop</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Lala</name>
+  <summary>Self-hosted voice &amp; video chat</summary>
+  <description>
+    <p>Self-hosted voice and video chat built on LiveKit (WebRTC SFU). Like Mumble or Discord, but yours.</p>
+    <p>Features E2EE for password-protected rooms, screen sharing with system audio, configurable audio quality, 6 themes, and room administration.</p>
+  </description>
+  <launchable type="desktop-id">lala-desktop.desktop</launchable>
+  <url type="homepage">https://github.com/eeegoloauq/lala</url>
+  <url type="bugtracker">https://github.com/eeegoloauq/lala/issues</url>
+  <url type="donation">https://github.com/eeegoloauq/lala#donate</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Screen sharing with system audio</caption>
+      <image type="source" width="1022" height="687">https://raw.githubusercontent.com/eeegoloauq/lala/main/screenshots/stream.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Home screen</caption>
+      <image type="source" width="973" height="644">https://raw.githubusercontent.com/eeegoloauq/lala/main/screenshots/home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Voice call</caption>
+      <image type="source" width="974" height="640">https://raw.githubusercontent.com/eeegoloauq/lala/main/screenshots/call.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1" />
+  <provides>
+    <binary>lala-desktop</binary>
+  </provides>
+  <categories>
+    <category>Network</category>
+    <category>Chat</category>
+    <category>AudioVideo</category>
+  </categories>
+</component>

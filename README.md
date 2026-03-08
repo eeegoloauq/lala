@@ -1,7 +1,9 @@
 # Lala
 
-Self-hosted voice & video chat. Like Mumble or Discord, but yours.
+Self-hosted voice & video chat inspired by Mumble and Discord.
 Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are ephemeral, chat goes over data channels, state lives in LiveKit + Redis.
+
+![Screen sharing in Lala](screenshots/stream.png)
 
 **Demo:** [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
 
@@ -17,6 +19,11 @@ Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are 
 - 6 themes — dark, light, AMOLED, Discord, retro, Windows XP
 - RNNoise noise suppression (AudioWorklet)
 - Desktop app with auto-updates, tray, native screen share picker
+
+<p>
+  <img src="screenshots/home.png" width="49%" alt="Home screen" />
+  <img src="screenshots/call.png" width="49%" alt="Voice call" />
+</p>
 
 ## Setup
 

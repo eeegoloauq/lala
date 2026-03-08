@@ -18,6 +18,7 @@ const IPC = {
     SAVE_SESSION: 'lala:save-session',
     GET_APP_ICON: 'lala:get-app-icon',
     SET_APP_ICON: 'lala:set-app-icon',
+    RELAUNCH: 'lala:relaunch',
     NAVIGATE_BACK: 'lala:navigate-back',
     LOAD_URL_ERROR: 'lala:load-url-error',
     UPDATE_STATUS: 'lala:update-status',
@@ -87,8 +88,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     /** Get current app icon variant name */
     getAppIcon: () => ipcRenderer.invoke(IPC.GET_APP_ICON),
 
-    /** Set app icon variant (tray + window) */
+    /** Set app icon variant (saves preference, updates tray) */
     setAppIcon: (name) => ipcRenderer.invoke(IPC.SET_APP_ICON, name),
+
+    /** Relaunch the app (used after icon change to apply window icon) */
+    relaunch: () => ipcRenderer.send(IPC.RELAUNCH),
 
     /** Check if running in Electron */
     isElectron: true,

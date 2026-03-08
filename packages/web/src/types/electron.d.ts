@@ -81,8 +81,11 @@ export interface ElectronAPI {
     /** Get current app icon variant name */
     getAppIcon: () => Promise<IconVariant>;
 
-    /** Set app icon variant (tray + window) */
+    /** Set app icon variant (saves preference, updates tray) */
     setAppIcon: (name: IconVariant) => Promise<boolean>;
+
+    /** Relaunch the app */
+    relaunch: () => void;
 
     /** Always true when running in Electron */
     isElectron: true;
