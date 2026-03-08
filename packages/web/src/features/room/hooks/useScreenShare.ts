@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import i18next from 'i18next';
 import { useLocalParticipant, useTracks, isTrackReference } from '@livekit/components-react';
-import { Track } from 'livekit-client';
-import type { VideoEncoding, VideoResolution } from 'livekit-client';
+import { Track, AudioPresets } from 'livekit-client';
+import type { AudioCaptureOptions, VideoEncoding, VideoResolution } from 'livekit-client';
 import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS } from '../../../lib/constants';
+
+/**
+ * Audio constraints for screen share — disable all voice processing
+ * so system/game/music audio is captured 1:1 without "barrel" effect.
+ */
+const screenShareAudioOptions: AudioCaptureOptions = {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
+    channelCount: 2,
+    sampleRate: 48000,
+};
 
 export interface ScreenShareQuality {
     id: string;
@@ -53,12 +65,24 @@ export function useScreenShare() {
                 console.log('[Lala] Screen share: setting source via IPC:', sourceId);
                 await window.electronAPI!.setScreenShareSource(sourceId);
             } else if (isElectron && !sourceId) {
-                console.warn('[Lala] Screen share: Electron detected but no sourceId! This will cancel in main process.');
+                // No sourceId is expected on Wayland — the XDG portal handles source selection
+                // natively without setDisplayMediaRequestHandler.
+                console.log('[Lala] Screen share: Electron without sourceId (expected on Wayland)');
             }
             await localParticipant.setScreenShareEnabled(
                 true,
-                { audio, systemAudio: audio ? 'include' : 'exclude', resolution: quality.resolution },
-                { videoEncoding: quality.encoding, simulcast: false, dtx: false, red: false },
+                {
+                    audio: audio ? screenShareAudioOptions : false,
+                    systemAudio: audio ? 'include' : 'exclude',
+                    resolution: quality.resolution,
+                },
+                {
+                    videoEncoding: quality.encoding,
+                    simulcast: false,
+                    dtx: false,
+                    red: false,
+                    audioPreset: AudioPresets.musicHighQualityStereo,
+                },
             );
         } finally {
             setPending(false);

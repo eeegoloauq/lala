@@ -1,7 +1,7 @@
 /** Deterministic color per participant identity. */
 
 const PALETTE = [
-    '#7c3aed', '#2563eb', '#0891b2', '#16a34a',
+    '#e05a6f', '#2563eb', '#0891b2', '#16a34a',
     '#d97706', '#dc2626', '#c026d3', '#0d9488',
 ];
 

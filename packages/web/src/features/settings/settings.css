@@ -164,8 +164,10 @@
   }
 
   .settings-close-circle {
-    top: calc(12px + env(safe-area-inset-top, 0px));
+    top: calc(16px + env(safe-area-inset-top, 0px));
     right: 12px;
+    width: 36px;
+    height: 36px;
     position: fixed;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   }

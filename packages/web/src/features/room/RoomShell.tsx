@@ -466,17 +466,27 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
 
     const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
 
+    // Wayland detection: on Wayland, the XDG portal handles source selection natively,
+    // so we skip our custom source picker and don't call setScreenShareSource IPC.
+    const [isWayland, setIsWayland] = useState(false);
+    useEffect(() => {
+        if (!isElectron) return;
+        window.electronAPI!.getAppInfo().then(info => {
+            if (info.isWayland) setIsWayland(true);
+        }).catch(() => {});
+    }, [isElectron]);
+
     const handleScreenShareToggle = useCallback(() => {
         if (screenEnabled) {
             stopScreen();
-        } else if (settingsRef.current.screenShareSkipDialog && !isElectron) {
-            console.log('[Lala] Screen share: skip dialog (web mode)');
+        } else if (settingsRef.current.screenShareSkipDialog && (!isElectron || isWayland)) {
+            console.log('[Lala] Screen share: skip dialog');
             startScreen(getScreenShareQuality(settingsRef.current.screenShareFpsIdx, settingsRef.current.screenShareBrIdx));
         } else {
-            console.log('[Lala] Screen share: opening modal (isElectron:', isElectron, ')');
+            console.log('[Lala] Screen share: opening modal (isElectron:', isElectron, ', isWayland:', isWayland, ')');
             setScreenShareModalOpen(true);
         }
-    }, [screenEnabled, startScreen, stopScreen, isElectron]);
+    }, [screenEnabled, startScreen, stopScreen, isElectron, isWayland]);
 
     const handleScreenShareModalConfirm = useCallback((quality: ScreenShareQuality, sourceId?: string, audio?: boolean) => {
         setScreenShareModalOpen(false);
@@ -574,6 +584,7 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
                         onUpdateSettings={onUpdateSettings}
                         onConfirm={handleScreenShareModalConfirm}
                         onCancel={() => setScreenShareModalOpen(false)}
+                        skipSourcePicker={isWayland}
                     />
                 </Suspense>
             )}

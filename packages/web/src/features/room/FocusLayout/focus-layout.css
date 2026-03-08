@@ -205,6 +205,17 @@
         height: 76px;
         width: 100px;
         flex-shrink: 0;
+        overflow: hidden;
+    }
+
+    .fl-strip-tile .p-tile {
+        overflow: hidden;
+    }
+
+    .fl-strip-tile .p-avatar-circle {
+        max-width: 48px;
+        max-height: 48px;
+        font-size: 18px !important;
     }
 
     .fl-main {

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import './lib/i18n';
 import { ChannelSidebar } from './features/channels';
 import { RoomView } from './features/room';
+import { WaveformWelcome } from './features/welcome/WaveformWelcome';
 import { useSettings } from './features/settings';
 import { useRooms } from './hooks/useRooms';
 import { useRoute } from './hooks/useRoute';
@@ -201,16 +202,7 @@ export default function App() {
                         onVolumeChange={handleVolumeChange}
                     />
                 ) : (
-                    <div className="empty-state">
-                        <div className="empty-state-icon">
-                            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-                            </svg>
-                        </div>
-                        <h2 className="empty-state-title">{t('welcome.title')}</h2>
-                        <p className="empty-state-sub">{t('welcome.subtitle')}</p>
-                    </div>
+                    <WaveformWelcome />
                 )}
             </main>
 

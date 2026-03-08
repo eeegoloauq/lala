@@ -117,6 +117,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 
 .p-tile-status {
@@ -206,6 +207,14 @@
     .vg-grid:not([data-count="1"]):not([data-count="2"]) .p-tile {
         width: calc(50% - 4px);
         max-width: none;
+    }
+
+    .p-tile-meta {
+        gap: 4px;
+    }
+
+    .p-tile-name {
+        max-width: calc(100% - 60px);
     }
 }
 

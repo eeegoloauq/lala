@@ -113,6 +113,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
     return (
         <div
             className={`p-tile${isSpeaking ? ' speaking' : ''}${onClick ? ' p-tile-clickable' : ''}`}
+            data-identity={participant.identity}
             onClick={onClick ? () => onClick(participant.identity) : undefined}
             onContextMenu={onContextMenu}
         >
