@@ -660,7 +660,7 @@ function registerIpcHandlers() {
 
     ipcMain.on(IPC.INSTALL_UPDATE, () => {
         isQuitting = true;
-        autoUpdater.quitAndInstall(false, true);
+        autoUpdater.quitAndInstall(true, true);
     });
 
     // Badge count for unread messages
@@ -768,6 +768,14 @@ function setupAutoUpdater() {
 
     autoUpdater.on('error', (err) => {
         console.error('[Lala] Auto-updater error:', err.message);
+
+        // 404 means the release is still building (latest.yml not uploaded yet)
+        // or the current version's tag was just pushed. Show a friendly message.
+        if (err.message && err.message.includes('404')) {
+            sendToRenderer(IPC.UPDATE_STATUS, { status: 'not-available' });
+            return;
+        }
+
         const detail = `${err.message}\n\nLala ${app.getVersion()} / ${process.platform} ${process.arch}`;
         sendToRenderer(IPC.UPDATE_STATUS, {
             status: 'error',
@@ -775,12 +783,13 @@ function setupAutoUpdater() {
         });
     });
 
-    // Check for updates after a short delay
+    // Check for updates after a delay. Longer delay avoids hitting 404 when
+    // the app was just updated and CI is still building the next release assets.
     setTimeout(() => {
         autoUpdater.checkForUpdates().catch(err => {
             console.error('[Lala] Initial update check failed:', err.message);
         });
-    }, 5_000);
+    }, 30_000);
 }
 
 // ─── Crash Handling ─────────────────────────────────────────────────────────
