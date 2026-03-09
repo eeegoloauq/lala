@@ -847,6 +847,20 @@ function registerIpcHandlers() {
 
             execFile(sudo, args, (error) => {
                 if (error) {
+                    // RPM %postun scriptlet failures (e.g. update-alternatives) can cause
+                    // dnf to report a failed transaction even though the new package was
+                    // installed successfully. Check the installed version before giving up.
+                    try {
+                        const { execFileSync } = require('child_process');
+                        const installed = execFileSync('rpm', ['-q', '--qf', '%{VERSION}', 'lala-desktop'], { encoding: 'utf8' }).trim();
+                        const expected = path.basename(installerPath).match(/(\d+\.\d+\.\d+)/)?.[1];
+                        if (expected && installed === expected) {
+                            app.relaunch();
+                            app.exit(0);
+                            return;
+                        }
+                    } catch {}
+
                     sendToRenderer(IPC.UPDATE_STATUS, {
                         status: 'error',
                         error: `${error.message}\n\nLala ${app.getVersion()} / ${process.platform} ${process.arch}`,
