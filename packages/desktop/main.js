@@ -14,6 +14,8 @@ const {
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { execFile } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 
 // ─── App User Model ID (Windows) ────────────────────────────────────────────
@@ -273,13 +275,64 @@ function applyIcon(variantName) {
         }
     }
 
-    // Update window icon (multi-size for proper Windows taskbar display)
+    // Update window icon (title bar + alt-tab)
     if (mainWindow && !mainWindow.isDestroyed()) {
         const icon = buildMultiSizeIcon(variantDir);
         if (icon) {
             mainWindow.setIcon(icon);
         }
+
+        // Update Windows taskbar icon via Shell property store.
+        // setIcon() changes window/alt-tab icon; setAppDetails() changes the taskbar button icon.
+        if (process.platform === 'win32') {
+            const icoPath = path.join(variantDir, 'icon.ico');
+            if (fs.existsSync(icoPath)) {
+                mainWindow.setAppDetails({
+                    appId: 'app.lala.desktop',
+                    appIconPath: icoPath,
+                });
+            }
+        }
     }
+
+    // Linux: install icons to ~/.local/share/icons/hicolor/ and update .desktop override.
+    // GNOME Wayland reads the dock icon from the .desktop file, not from the window.
+    // The change takes effect on next app launch (GNOME caches running app icons).
+    if (IS_LINUX) {
+        installLinuxDesktopIcon(variantDir);
+    }
+}
+
+function installLinuxDesktopIcon(variantDir) {
+    const home = os.homedir();
+    const sizes = [16, 32, 48, 64, 256];
+
+    // Copy variant PNGs to user's hicolor theme (overrides system icons)
+    for (const size of sizes) {
+        const src = path.join(variantDir, `icon-${size}.png`);
+        if (!fs.existsSync(src)) continue;
+
+        const destDir = path.join(home, '.local', 'share', 'icons',
+            'hicolor', `${size}x${size}`, 'apps');
+        try {
+            fs.mkdirSync(destDir, { recursive: true });
+            fs.copyFileSync(src, path.join(destDir, 'lala-desktop.png'));
+        } catch (_) { /* best-effort */ }
+    }
+
+    // Write .desktop override (especially needed for AppImage where no system .desktop exists)
+    const appsDir = path.join(home, '.local', 'share', 'applications');
+    try {
+        fs.mkdirSync(appsDir, { recursive: true });
+        const execPath = process.env.APPIMAGE || process.execPath;
+        fs.writeFileSync(path.join(appsDir, 'lala-desktop.desktop'),
+            `[Desktop Entry]\nName=Lala\nComment=Voice & Video Chat\nExec="${execPath}" %U\nIcon=lala-desktop\nType=Application\nCategories=Network;\nStartupWMClass=lala-desktop\nTerminal=false\n`);
+    } catch (_) { /* best-effort */ }
+
+    // Update icon cache (best-effort, commands may not be installed)
+    const iconDir = path.join(home, '.local', 'share', 'icons', 'hicolor');
+    execFile('gtk-update-icon-cache', ['-f', '-t', iconDir], () => {});
+    execFile('update-desktop-database', [appsDir], () => {});
 }
 
 // ─── Window Creation ─────────────────────────────────────────────────────────
@@ -645,26 +698,7 @@ function registerIpcHandlers() {
     ipcMain.handle(IPC.SET_APP_ICON, (_event, name) => {
         if (!ICON_VARIANTS.includes(name)) return false;
         saveIconPreference(name);
-        // Only update tray immediately — window/taskbar icon requires restart
-        // to avoid duplicate mixer entries and stale icon cache on Windows/Linux.
-        if (tray) {
-            const variantDir = getVariantIconPath(name);
-            const p16 = path.join(variantDir, 'tray-16.png');
-            const p32 = path.join(variantDir, 'tray-32.png');
-            const p48 = path.join(variantDir, 'tray-48.png');
-
-            if (IS_MAC) {
-                // macOS: use default tray template
-            } else if (process.platform === 'win32' && fs.existsSync(p16)) {
-                const img = nativeImage.createFromPath(p16);
-                if (fs.existsSync(p32)) img.addRepresentation({ scaleFactor: 2, filename: p32 });
-                tray.setImage(img);
-            } else if (fs.existsSync(p48)) {
-                tray.setImage(nativeImage.createFromPath(p48));
-            } else if (fs.existsSync(p32)) {
-                tray.setImage(nativeImage.createFromPath(p32));
-            }
-        }
+        applyIcon(name);
         return true;
     });
 

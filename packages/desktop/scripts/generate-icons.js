@@ -104,6 +104,49 @@ async function generateMain() {
     }
 }
 
+/**
+ * Build a Windows .ico file from multiple PNG buffers.
+ * ICO format: header + directory entries + PNG image data.
+ */
+function buildIco(pngBuffers) {
+    const count = pngBuffers.length;
+    const headerSize = 6;
+    const dirEntrySize = 16;
+    const dirSize = dirEntrySize * count;
+    let dataOffset = headerSize + dirSize;
+
+    // ICO header: reserved(2) + type(2, 1=icon) + count(2)
+    const header = Buffer.alloc(headerSize);
+    header.writeUInt16LE(0, 0);       // reserved
+    header.writeUInt16LE(1, 2);       // type = icon
+    header.writeUInt16LE(count, 4);   // image count
+
+    const dirEntries = [];
+    const imageData = [];
+
+    for (const png of pngBuffers) {
+        // Parse PNG header for dimensions (IHDR chunk at offset 16)
+        const w = png.readUInt32BE(16);
+        const h = png.readUInt32BE(20);
+
+        const entry = Buffer.alloc(dirEntrySize);
+        entry.writeUInt8(w >= 256 ? 0 : w, 0);   // width (0 = 256)
+        entry.writeUInt8(h >= 256 ? 0 : h, 1);    // height (0 = 256)
+        entry.writeUInt8(0, 2);                     // color palette
+        entry.writeUInt8(0, 3);                     // reserved
+        entry.writeUInt16LE(1, 4);                  // color planes
+        entry.writeUInt16LE(32, 6);                 // bits per pixel
+        entry.writeUInt32LE(png.length, 8);         // image data size
+        entry.writeUInt32LE(dataOffset, 12);        // offset to image data
+
+        dirEntries.push(entry);
+        imageData.push(png);
+        dataOffset += png.length;
+    }
+
+    return Buffer.concat([header, ...dirEntries, ...imageData]);
+}
+
 async function generateVariants() {
     if (!fs.existsSync(VARIANTS_DIR)) {
         console.log('\nNo icon-variants/ directory found, skipping variants.');
@@ -133,6 +176,19 @@ async function generateVariants() {
                 .toFile(path.join(outDir, `icon-${size}.png`));
             console.log(`  icon-variants/${name}/icon-${size}.png`);
         }
+
+        // Build .ico (multi-size) for Windows setAppDetails({ appIconPath })
+        const icoSizes = [16, 32, 48, 64, 256];
+        const pngBuffers = [];
+        for (const size of icoSizes) {
+            pngBuffers.push(await sharp(svg)
+                .resize(size, size)
+                .png({ compressionLevel: 9 })
+                .toBuffer());
+        }
+        const ico = buildIco(pngBuffers);
+        fs.writeFileSync(path.join(outDir, 'icon.ico'), ico);
+        console.log(`  icon-variants/${name}/icon.ico`);
 
         // Tray icons: resize directly (circles fill most of viewBox)
         for (const size of [16, 32, 48]) {

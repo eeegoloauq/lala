@@ -788,10 +788,13 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                 {(() => {
                   const [currentIcon, setCurrentIcon] = useState<string>('voice-wave');
                   const [initialIcon, setInitialIcon] = useState<string>('voice-wave');
+                  const [appInfo, setAppInfo] = useState<{ platform?: string }>({});
                   useEffect(() => {
                     window.electronAPI?.getAppIcon?.().then(v => { setCurrentIcon(v); setInitialIcon(v); });
+                    window.electronAPI?.getAppInfo?.().then(setAppInfo);
                   }, []);
-                  const needsRestart = currentIcon !== initialIcon;
+                  const isLinux = appInfo.platform === 'linux';
+                  const needsRestart = isLinux && currentIcon !== initialIcon;
                   return (
                     <>
                       <div className="settings-icon-picker">
