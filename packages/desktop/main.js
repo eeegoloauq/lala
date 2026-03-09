@@ -711,7 +711,7 @@ function setupScreenShareHandler() {
             const sourceId = pendingScreenShareSourceId;
             clearPendingScreenShare();
             console.log('[Lala] Screen share: using pre-selected source', sourceId);
-            callback({ video: { id: sourceId, name: sourceId }, audio: 'loopbackWithoutChrome' });
+            callback({ video: { id: sourceId, name: sourceId }, audio: 'loopback' });
         } else {
             // Source must be pre-selected by the React UI via IPC.
             // If we get here, it means the UI flow was bypassed — cancel gracefully.
