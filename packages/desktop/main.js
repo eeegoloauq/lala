@@ -310,7 +310,6 @@ function buildMultiSizeIcon(variantDir) {
 
 function applyIcon(variantName, { forceRedraw = false } = {}) {
     const variantDir = getVariantIconPath(variantName);
-    console.log(`[Lala] applyIcon: variant=${variantName} dir=${variantDir} forceRedraw=${forceRedraw}`);
 
     // Update tray icon
     if (tray) {
@@ -333,69 +332,114 @@ function applyIcon(variantName, { forceRedraw = false } = {}) {
         }
     }
 
-    // Update window icon (title bar + alt-tab + taskbar)
+    // Update window icon (title bar + alt-tab)
     if (mainWindow && !mainWindow.isDestroyed()) {
-        let icon = null;
-
-        if (process.platform === 'win32') {
-            // Build nativeImage from individual PNG buffers — createFromBuffer
-            // does NOT support ICO format, and createFromPath may cache by path.
-            // Reading PNGs into buffers guarantees a fresh image every time.
-            const sizes = [16, 32, 48, 64, 256];
-            for (const size of sizes) {
-                const pngPath = path.join(variantDir, `icon-${size}.png`);
-                if (!fs.existsSync(pngPath)) continue;
-                const buf = fs.readFileSync(pngPath);
-                if (!icon) {
-                    icon = nativeImage.createFromBuffer(buf, { width: size, height: size });
-                } else {
-                    icon.addRepresentation({ width: size, height: size, buffer: buf });
-                }
-            }
-            // Write .ico for next startup (getInitialWindowIcon uses createFromPath
-            // which does support ICO — only called once so no caching issue)
-            const srcIco = path.join(variantDir, 'icon.ico');
-            const fixedIco = path.join(app.getPath('userData'), 'app-icon.ico');
-            if (fs.existsSync(srcIco)) {
-                const srcSize = fs.statSync(srcIco).size;
-                try {
-                    fs.copyFileSync(srcIco, fixedIco);
-                    const dstSize = fs.statSync(fixedIco).size;
-                    console.log(`[Lala] .ico copied: ${srcSize}b → ${fixedIco} (${dstSize}b)`);
-                } catch (e) {
-                    console.error(`[Lala] .ico copy failed:`, e.message);
-                }
-            } else {
-                console.warn(`[Lala] No .ico found at ${srcIco}`);
-            }
-        }
-
-        if (!icon) {
-            icon = buildMultiSizeIcon(variantDir);
-        }
-
+        const icon = buildMultiSizeIcon(variantDir);
         if (icon) {
-            const iconSize = icon.getSize();
-            console.log(`[Lala] setIcon: ${iconSize.width}x${iconSize.height} empty=${icon.isEmpty()}`);
             mainWindow.setIcon(icon);
-            // Force Windows to redraw the cached taskbar icon by briefly
-            // removing and re-adding the window to the taskbar.
-            if (process.platform === 'win32' && forceRedraw) {
-                mainWindow.setSkipTaskbar(true);
-                setTimeout(() => {
-                    if (mainWindow && !mainWindow.isDestroyed()) {
-                        mainWindow.setSkipTaskbar(false);
-                    }
-                }, 200);
-            }
+        }
+    }
+
+    // Windows: copy .ico to userData and update all .lnk shortcuts.
+    // BrowserWindow.setIcon() does NOT change the taskbar icon in built apps —
+    // Windows reads it from .exe resources. The workaround is to update the
+    // .lnk shortcut files (Start Menu, Desktop) to point to our custom .ico,
+    // which makes Windows use that icon for the taskbar when launched via shortcut.
+    if (process.platform === 'win32') {
+        const srcIco = path.join(variantDir, 'icon.ico');
+        const fixedIco = path.join(app.getPath('userData'), 'app-icon.ico');
+        if (fs.existsSync(srcIco)) {
+            try {
+                fs.copyFileSync(srcIco, fixedIco);
+            } catch {}
+        }
+        if (forceRedraw) {
+            updateWindowsShortcutIcons(fixedIco);
         }
     }
 
     // Linux: install icons to ~/.local/share/icons/hicolor/ and update .desktop override.
-    // GNOME Wayland reads the dock icon from the .desktop file, not from the window.
-    // The change takes effect on next app launch (GNOME caches running app icons).
     if (IS_LINUX) {
         installLinuxDesktopIcon(variantDir);
+    }
+}
+
+/**
+ * Find all Lala .lnk shortcuts (Start Menu, Desktop) and update their icon
+ * to point to the given .ico path. Uses shell.readShortcutLink/writeShortcutLink
+ * which is Windows-only. After updating, the new icon appears on next launch
+ * (or immediately if Windows refreshes its icon cache).
+ */
+function updateWindowsShortcutIcons(icoPath) {
+    if (process.platform !== 'win32' || !fs.existsSync(icoPath)) return;
+
+    const shortcutDirs = [];
+
+    // Start Menu shortcuts (per-user + all-users)
+    const appData = process.env.APPDATA;
+    const programData = process.env.PROGRAMDATA || process.env.ALLUSERSPROFILE;
+    if (appData) {
+        shortcutDirs.push(path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'));
+    }
+    if (programData) {
+        shortcutDirs.push(path.join(programData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'));
+    }
+
+    // Desktop shortcuts (per-user + public)
+    const userProfile = process.env.USERPROFILE;
+    const publicDir = process.env.PUBLIC;
+    if (userProfile) {
+        shortcutDirs.push(path.join(userProfile, 'Desktop'));
+    }
+    if (publicDir) {
+        shortcutDirs.push(path.join(publicDir, 'Desktop'));
+    }
+
+    // Taskbar pinned shortcuts
+    if (appData) {
+        shortcutDirs.push(path.join(appData, 'Microsoft', 'Internet Explorer', 'Quick Launch', 'User Pinned', 'TaskBar'));
+    }
+
+    let updated = 0;
+    for (const dir of shortcutDirs) {
+        try {
+            if (!fs.existsSync(dir)) continue;
+            const files = fs.readdirSync(dir);
+            for (const file of files) {
+                if (!file.endsWith('.lnk')) continue;
+                // Match "Lala.lnk" or any .lnk whose target points to our exe
+                const lnkPath = path.join(dir, file);
+                try {
+                    const details = shell.readShortcutLink(lnkPath);
+                    const target = (details.target || '').toLowerCase();
+                    const isLala = file.toLowerCase().includes('lala') ||
+                        target.includes('lala') ||
+                        target === process.execPath.toLowerCase();
+                    if (!isLala) continue;
+
+                    shell.writeShortcutLink(lnkPath, 'update', {
+                        icon: icoPath,
+                        iconIndex: 0,
+                    });
+                    updated++;
+                } catch {}
+            }
+        } catch {}
+    }
+
+    if (updated > 0) {
+        // Notify Windows to refresh icon caches by broadcasting WM_SETTINGCHANGE.
+        // SHChangeNotify is the proper API but not available from Electron —
+        // touching the shortcuts is usually enough for Explorer to pick up the change.
+        // Force a taskbar redraw by toggling skipTaskbar.
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.setSkipTaskbar(true);
+            setTimeout(() => {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.setSkipTaskbar(false);
+                }
+            }, 200);
+        }
     }
 }
 

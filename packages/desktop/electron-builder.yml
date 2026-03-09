@@ -40,7 +40,7 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
-  createDesktopShortcut: ask
+  createDesktopShortcut: true
   createStartMenuShortcut: true
   allowElevation: true
   uninstallDisplayName: Lala
