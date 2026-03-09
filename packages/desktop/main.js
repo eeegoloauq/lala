@@ -427,20 +427,10 @@ function updateWindowsShortcutIcons(icoPath) {
         } catch {}
     }
 
-    if (updated > 0) {
-        // Notify Windows to refresh icon caches by broadcasting WM_SETTINGCHANGE.
-        // SHChangeNotify is the proper API but not available from Electron —
-        // touching the shortcuts is usually enough for Explorer to pick up the change.
-        // Force a taskbar redraw by toggling skipTaskbar.
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.setSkipTaskbar(true);
-            setTimeout(() => {
-                if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.setSkipTaskbar(false);
-                }
-            }, 200);
-        }
-    }
+    // Flush Windows icon cache so Explorer picks up the new shortcut icons.
+    // ie4uinit -show is the standard way to refresh icon cache without
+    // restarting Explorer. Works on Windows 10+.
+    execFile('ie4uinit.exe', ['-show'], () => {});
 }
 
 function installLinuxDesktopIcon(variantDir) {
@@ -706,16 +696,20 @@ function setupScreenShareHandler() {
         return;
     }
 
-    session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
         if (pendingScreenShareSourceId) {
             const sourceId = pendingScreenShareSourceId;
             clearPendingScreenShare();
-            console.log('[Lala] Screen share: using pre-selected source', sourceId);
-            callback({ video: { id: sourceId, name: sourceId }, audio: 'loopback' });
+            const response = { video: { id: sourceId, name: sourceId } };
+            // Only include audio when the renderer requested it.
+            // 'loopbackWithoutChrome' captures system audio excluding this app's
+            // own output — prevents echo where participants hear themselves back.
+            // If this value fails on some systems, screen share video still works.
+            if (request.audioRequested) {
+                response.audio = 'loopbackWithoutChrome';
+            }
+            callback(response);
         } else {
-            // Source must be pre-selected by the React UI via IPC.
-            // If we get here, it means the UI flow was bypassed — cancel gracefully.
-            console.warn('[Lala] Screen share: no source pre-selected, cancelling');
             callback({});
         }
     });
