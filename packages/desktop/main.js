@@ -337,14 +337,15 @@ function applyIcon(variantName, { forceRedraw = false } = {}) {
         let icon = null;
 
         if (process.platform === 'win32') {
-            // Write variant .ico to a fixed path in userData (like Ayugram/Telegram pattern).
-            // Windows caches HICONs aggressively — using a single stable path and the
-            // setSkipTaskbar trick forces a full redraw of the taskbar icon.
+            // Read .ico into a buffer and create nativeImage from it.
+            // createFromPath() can return a cached HICON when the file path hasn't
+            // changed — createFromBuffer() always produces a fresh image.
             const srcIco = path.join(variantDir, 'icon.ico');
             const fixedIco = path.join(app.getPath('userData'), 'app-icon.ico');
             if (fs.existsSync(srcIco)) {
-                try { fs.copyFileSync(srcIco, fixedIco); } catch {}
-                icon = nativeImage.createFromPath(fixedIco);
+                const buf = fs.readFileSync(srcIco);
+                try { fs.writeFileSync(fixedIco, buf); } catch {}
+                icon = nativeImage.createFromBuffer(buf);
             }
         }
 
@@ -362,7 +363,7 @@ function applyIcon(variantName, { forceRedraw = false } = {}) {
                     if (mainWindow && !mainWindow.isDestroyed()) {
                         mainWindow.setSkipTaskbar(false);
                     }
-                }, 100);
+                }, 200);
             }
         }
     }
