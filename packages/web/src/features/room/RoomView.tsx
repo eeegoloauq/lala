@@ -66,6 +66,8 @@ export function RoomView({ roomName, name, identity, myAvatarUrl, settings, onUp
         setToken(tokenStr);
         // Save session for crash recovery
         window.electronAPI?.saveSession?.({ serverUrl: window.location.origin, roomId: roomName });
+        // Activate power save blocker
+        window.electronAPI?.setInCall?.(true);
     };
 
     useEffect(() => {
@@ -129,7 +131,11 @@ export function RoomView({ roomName, name, identity, myAvatarUrl, settings, onUp
                     setErrorCode(code);
                 }
             });
-        return () => { mounted = false; };
+        return () => {
+            mounted = false;
+            // Release power save blocker on leave/unmount
+            window.electronAPI?.setInCall?.(false);
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomName, retryKey]);
 

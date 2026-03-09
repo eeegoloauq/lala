@@ -273,6 +273,7 @@
     "updateUpToDate": "У вас последняя версия!",
     "updateFound": "Версия {{version}} доступна — загрузка…",
     "updateDownloading": "Загрузка: {{percent}}%",
+    "updateInstalling": "Установка…",
     "updateReady": "Версия {{version}} готова к установке",
     "updateError": "Не удалось проверить обновления",
     "check": "Проверить",
