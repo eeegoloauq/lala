@@ -909,6 +909,19 @@ function registerIpcHandlers() {
         if (!ICON_VARIANTS.includes(name)) return false;
         saveIconPreference(name);
         applyIcon(name, { forceRedraw: true });
+
+        // On Windows, setIcon() cannot change the taskbar icon for packaged apps
+        // (known Electron limitation). Relaunch so the window is created with the
+        // new icon from getInitialWindowIcon(). Session is auto-saved — the app
+        // will reconnect to the same room after restart.
+        if (process.platform === 'win32') {
+            setTimeout(() => {
+                isQuitting = true;
+                app.relaunch({ args: process.argv.slice(1) });
+                app.exit(0);
+            }, 300);
+        }
+
         return true;
     });
 
