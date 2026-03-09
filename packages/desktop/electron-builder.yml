@@ -40,6 +40,10 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
+  createDesktopShortcut: ask
+  createStartMenuShortcut: true
+  allowElevation: true
+  uninstallDisplayName: Lala
 
 mac:
   icon: build/icon.png

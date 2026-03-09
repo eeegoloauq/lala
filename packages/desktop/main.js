@@ -310,6 +310,7 @@ function buildMultiSizeIcon(variantDir) {
 
 function applyIcon(variantName, { forceRedraw = false } = {}) {
     const variantDir = getVariantIconPath(variantName);
+    console.log(`[Lala] applyIcon: variant=${variantName} dir=${variantDir} forceRedraw=${forceRedraw}`);
 
     // Update tray icon
     if (tray) {
@@ -337,15 +338,35 @@ function applyIcon(variantName, { forceRedraw = false } = {}) {
         let icon = null;
 
         if (process.platform === 'win32') {
-            // Read .ico into a buffer and create nativeImage from it.
-            // createFromPath() can return a cached HICON when the file path hasn't
-            // changed — createFromBuffer() always produces a fresh image.
+            // Build nativeImage from individual PNG buffers — createFromBuffer
+            // does NOT support ICO format, and createFromPath may cache by path.
+            // Reading PNGs into buffers guarantees a fresh image every time.
+            const sizes = [16, 32, 48, 64, 256];
+            for (const size of sizes) {
+                const pngPath = path.join(variantDir, `icon-${size}.png`);
+                if (!fs.existsSync(pngPath)) continue;
+                const buf = fs.readFileSync(pngPath);
+                if (!icon) {
+                    icon = nativeImage.createFromBuffer(buf, { width: size, height: size });
+                } else {
+                    icon.addRepresentation({ width: size, height: size, buffer: buf });
+                }
+            }
+            // Write .ico for next startup (getInitialWindowIcon uses createFromPath
+            // which does support ICO — only called once so no caching issue)
             const srcIco = path.join(variantDir, 'icon.ico');
             const fixedIco = path.join(app.getPath('userData'), 'app-icon.ico');
             if (fs.existsSync(srcIco)) {
-                const buf = fs.readFileSync(srcIco);
-                try { fs.writeFileSync(fixedIco, buf); } catch {}
-                icon = nativeImage.createFromBuffer(buf);
+                const srcSize = fs.statSync(srcIco).size;
+                try {
+                    fs.copyFileSync(srcIco, fixedIco);
+                    const dstSize = fs.statSync(fixedIco).size;
+                    console.log(`[Lala] .ico copied: ${srcSize}b → ${fixedIco} (${dstSize}b)`);
+                } catch (e) {
+                    console.error(`[Lala] .ico copy failed:`, e.message);
+                }
+            } else {
+                console.warn(`[Lala] No .ico found at ${srcIco}`);
             }
         }
 
@@ -354,6 +375,8 @@ function applyIcon(variantName, { forceRedraw = false } = {}) {
         }
 
         if (icon) {
+            const iconSize = icon.getSize();
+            console.log(`[Lala] setIcon: ${iconSize.width}x${iconSize.height} empty=${icon.isEmpty()}`);
             mainWindow.setIcon(icon);
             // Force Windows to redraw the cached taskbar icon by briefly
             // removing and re-adding the window to the taskbar.
