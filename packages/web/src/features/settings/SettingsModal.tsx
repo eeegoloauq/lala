@@ -787,40 +787,25 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                 <div className="settings-row-desc" style={{ marginBottom: 12 }}>{t('settings.appIconHint')}</div>
                 {(() => {
                   const [currentIcon, setCurrentIcon] = useState<string>('voice-wave');
-                  const [initialIcon, setInitialIcon] = useState<string>('voice-wave');
-                  const [appInfo, setAppInfo] = useState<{ platform?: string }>({});
                   useEffect(() => {
-                    window.electronAPI?.getAppIcon?.().then(v => { setCurrentIcon(v); setInitialIcon(v); });
-                    window.electronAPI?.getAppInfo?.().then(setAppInfo);
+                    window.electronAPI?.getAppIcon?.().then(setCurrentIcon);
                   }, []);
-                  const isLinux = appInfo.platform === 'linux';
-                  const needsRestart = isLinux && currentIcon !== initialIcon;
                   return (
-                    <>
-                      <div className="settings-icon-picker">
-                        {ICON_VARIANTS.map(v => (
-                          <button
-                            key={v.id}
-                            className={`settings-icon-option${currentIcon === v.id ? ' settings-icon-option--active' : ''}`}
-                            onClick={async () => {
-                              const ok = await window.electronAPI?.setAppIcon?.(v.id);
-                              if (ok) setCurrentIcon(v.id);
-                            }}
-                          >
-                            <div className="settings-icon-preview">{v.svg}</div>
-                            <span className="settings-icon-label">{t(v.labelKey)}</span>
-                          </button>
-                        ))}
-                      </div>
-                      {needsRestart && (
+                    <div className="settings-icon-picker">
+                      {ICON_VARIANTS.map(v => (
                         <button
-                          className="settings-restart-btn"
-                          onClick={() => window.electronAPI?.relaunch?.()}
+                          key={v.id}
+                          className={`settings-icon-option${currentIcon === v.id ? ' settings-icon-option--active' : ''}`}
+                          onClick={async () => {
+                            const ok = await window.electronAPI?.setAppIcon?.(v.id);
+                            if (ok) setCurrentIcon(v.id);
+                          }}
                         >
-                          {t('settings.restartToApply')}
+                          <div className="settings-icon-preview">{v.svg}</div>
+                          <span className="settings-icon-label">{t(v.labelKey)}</span>
                         </button>
-                      )}
-                    </>
+                      ))}
+                    </div>
                   );
                 })()}
               </div>
@@ -843,7 +828,9 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                       case 'available': return t('settings.updateFound', { version: updateStatus.version });
                       case 'downloading': return t('settings.updateDownloading', { percent: updateStatus.percent ?? 0 });
                       case 'ready': return t('settings.updateReady', { version: updateStatus.version });
-                      case 'error': return t('settings.updateError');
+                      case 'error': return updateStatus.error
+                        ? `${t('settings.updateError')}\n${updateStatus.error}`
+                        : t('settings.updateError');
                       default: return null;
                     }
                   })();
@@ -873,7 +860,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                         </button>
                       </div>
                       {statusText && (
-                        <div className={`settings-update-status settings-update-status--${updateStatus!.status}`}>
+                        <div className={`settings-update-status settings-update-status--${updateStatus!.status}`} style={{ whiteSpace: 'pre-wrap' }}>
                           {statusText}
                           {updateStatus!.status === 'ready' && (
                             <button

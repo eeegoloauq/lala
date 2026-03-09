@@ -278,23 +278,27 @@ function applyIcon(variantName) {
         }
     }
 
-    // Update window icon (title bar + alt-tab)
+    // Update window icon (title bar + alt-tab + taskbar)
     if (mainWindow && !mainWindow.isDestroyed()) {
-        const icon = buildMultiSizeIcon(variantDir);
-        if (icon) {
-            mainWindow.setIcon(icon);
-        }
+        let icon = null;
 
-        // Update Windows taskbar icon via Shell property store.
-        // setIcon() changes window/alt-tab icon; setAppDetails() changes the taskbar button icon.
+        // On Windows, load directly from .ico — nativeImage parses all sizes from the
+        // ICO container, producing a proper multi-size HICON for WM_SETICON.
+        // Building from individual PNGs via addRepresentation() doesn't reliably
+        // update the taskbar icon (Windows caches HICON from the first setIcon call).
         if (process.platform === 'win32') {
             const icoPath = path.join(variantDir, 'icon.ico');
             if (fs.existsSync(icoPath)) {
-                mainWindow.setAppDetails({
-                    appId: 'app.lala.desktop',
-                    appIconPath: icoPath,
-                });
+                icon = nativeImage.createFromPath(icoPath);
             }
+        }
+
+        if (!icon) {
+            icon = buildMultiSizeIcon(variantDir);
+        }
+
+        if (icon) {
+            mainWindow.setIcon(icon);
         }
     }
 
@@ -764,9 +768,10 @@ function setupAutoUpdater() {
 
     autoUpdater.on('error', (err) => {
         console.error('[Lala] Auto-updater error:', err.message);
+        const detail = `${err.message}\n\nLala ${app.getVersion()} / ${process.platform} ${process.arch}`;
         sendToRenderer(IPC.UPDATE_STATUS, {
             status: 'error',
-            error: err.message,
+            error: detail,
         });
     });
 
