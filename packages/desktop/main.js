@@ -154,7 +154,7 @@ function sendToRenderer(channel, ...args) {
 
 function getTrayIcon() {
     // Platform-aware tray icon selection
-    const trayDir = path.join(__dirname, 'build', 'tray').replace('app.asar', 'app.asar.unpacked');
+    const trayDir = path.join(ICONS_DIR, 'tray');
 
     if (IS_MAC) {
         // macOS uses Template images (auto-adapts to dark/light menu bar)
@@ -209,6 +209,50 @@ function isUrlAllowed(url) {
     }
 }
 
+// ─── Icon Extraction ─────────────────────────────────────────────────────────
+// Extract icon files from asar to userData on startup. This avoids relying on
+// app.asar.unpacked which NSIS silent updates can fail to properly recreate.
+// Electron's patched fs reads from asar transparently; we write to real disk.
+
+const ICONS_DIR = path.join(app.getPath('userData'), 'icons');
+
+function ensureIconsExtracted() {
+    const versionFile = path.join(ICONS_DIR, '.version');
+    const currentVersion = app.getVersion();
+
+    try {
+        if (fs.existsSync(versionFile) &&
+            fs.readFileSync(versionFile, 'utf8') === currentVersion) {
+            return; // Already extracted for this version
+        }
+    } catch {}
+
+    // Extract variant icons
+    const asarBase = path.join(__dirname, 'build', 'icon-variants');
+    for (const variant of ICON_VARIANTS) {
+        const srcDir = path.join(asarBase, variant);
+        const destDir = path.join(ICONS_DIR, 'variants', variant);
+        try {
+            fs.mkdirSync(destDir, { recursive: true });
+            for (const file of fs.readdirSync(srcDir)) {
+                fs.writeFileSync(path.join(destDir, file), fs.readFileSync(path.join(srcDir, file)));
+            }
+        } catch {}
+    }
+
+    // Extract tray icons
+    const traySrc = path.join(__dirname, 'build', 'tray');
+    const trayDest = path.join(ICONS_DIR, 'tray');
+    try {
+        fs.mkdirSync(trayDest, { recursive: true });
+        for (const file of fs.readdirSync(traySrc)) {
+            fs.writeFileSync(path.join(trayDest, file), fs.readFileSync(path.join(traySrc, file)));
+        }
+    } catch {}
+
+    try { fs.writeFileSync(versionFile, currentVersion); } catch {}
+}
+
 // ─── Icon Preference ─────────────────────────────────────────────────────────
 
 function getIconPreference() {
@@ -228,10 +272,7 @@ function saveIconPreference(name) {
 }
 
 function getVariantIconPath(variantName) {
-    // Icon files are asarUnpacked — replace app.asar with app.asar.unpacked
-    // so native APIs (Windows Shell, nativeImage) can read them as real files.
-    const p = path.join(__dirname, 'build', 'icon-variants', variantName);
-    return p.replace('app.asar', 'app.asar.unpacked');
+    return path.join(ICONS_DIR, 'variants', variantName);
 }
 
 function buildMultiSizeIcon(variantDir) {
@@ -660,6 +701,32 @@ function registerIpcHandlers() {
 
     ipcMain.on(IPC.INSTALL_UPDATE, () => {
         isQuitting = true;
+
+        // On Linux RPM, electron-updater's quitAndInstall() runs dnf via spawnSync
+        // while the app is still alive — dnf fails because files are locked.
+        // Fix: quit first, then a detached script waits for exit and runs dnf.
+        if (IS_LINUX && autoUpdater.installerPath && autoUpdater.installerPath.endsWith('.rpm')) {
+            const installerPath = autoUpdater.installerPath;
+            const execPath = process.env.APPIMAGE || process.execPath;
+            const script = [
+                '#!/bin/bash',
+                `while kill -0 ${process.pid} 2>/dev/null; do sleep 0.5; done`,
+                `pkexec dnf install --nogpgcheck -y "${installerPath}" || pkexec rpm -U --force "${installerPath}"`,
+                `nohup "${execPath}" &>/dev/null &`,
+            ].join('\n');
+
+            const scriptPath = path.join(app.getPath('temp'), 'lala-update.sh');
+            fs.writeFileSync(scriptPath, script, { mode: 0o755 });
+
+            const child = require('child_process').spawn('/bin/bash', [scriptPath], {
+                detached: true,
+                stdio: 'ignore',
+            });
+            child.unref();
+            app.quit();
+            return;
+        }
+
         autoUpdater.quitAndInstall(true, true);
     });
 
@@ -868,6 +935,7 @@ function clearSession() {
 // ─── App Lifecycle ───────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
+    ensureIconsExtracted();
     setupCrashHandling();
     registerIpcHandlers();
     createWindow();

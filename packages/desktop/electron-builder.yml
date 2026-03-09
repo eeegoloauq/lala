@@ -11,12 +11,6 @@ files:
   - build/**/*
   - "!build/icon-variants/*.svg"
 
-asarUnpack:
-  - build/icon-variants/*/icon.ico
-  - build/icon-variants/*/icon-*.png
-  - build/icon-variants/*/tray-*.png
-  - build/tray/*
-
 afterPack: ./scripts/afterPack.js
 
 extraMetadata:
@@ -57,4 +51,4 @@ publish:
   provider: github
   owner: eeegoloauq
   repo: lala
-  releaseType: draft
+  releaseType: release

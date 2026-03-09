@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-windows:
-    name: Build (Windows)
+    name: Build & Publish (Windows)
     runs-on: windows-latest
     permissions:
       contents: write
@@ -16,6 +16,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./packages/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,7 +44,7 @@ jobs:
         run: npm run publish:win
 
   build-linux:
-    name: Build (Linux)
+    name: Build & Publish (Linux)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -47,6 +52,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./packages/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -69,24 +79,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run publish:linux
 
-  finalize-release:
-    name: Publish Release
-    needs: [build-windows, build-linux]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Extract version
-        id: version
-        run: echo "version=$(node -p "require('./packages/desktop/package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - name: Update description & publish
+      - name: Update release description
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="v${VERSION}"
@@ -109,4 +105,4 @@ jobs:
           **Linux (RPM)**: Install with \`sudo rpm -i lala-desktop-${VERSION}.x86_64.rpm\`
           EOF
           sed -i 's/^          //' /tmp/release-notes.md
-          gh release edit "$TAG" --draft=false --notes-file /tmp/release-notes.md
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md
