@@ -57,4 +57,4 @@ publish:
   provider: github
   owner: eeegoloauq
   repo: lala
-  releaseType: release
+  releaseType: draft
