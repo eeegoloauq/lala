@@ -332,19 +332,25 @@ function applyIcon(variantName, { forceRedraw = false } = {}) {
         }
     }
 
-    // Update window icon (title bar + alt-tab)
+    // Update window icon (title bar + alt-tab).
+    // On Windows, .ico files trigger the LoadImage Win32 API path which correctly
+    // extracts per-size HICONs. PNG-based buildMultiSizeIcon is ignored for HICON
+    // generation — addRepresentation doesn't affect GetHICON().
     if (mainWindow && !mainWindow.isDestroyed()) {
-        const icon = buildMultiSizeIcon(variantDir);
-        if (icon) {
-            mainWindow.setIcon(icon);
+        if (process.platform === 'win32') {
+            const icoPath = path.join(variantDir, 'icon.ico');
+            if (fs.existsSync(icoPath)) {
+                mainWindow.setIcon(nativeImage.createFromPath(icoPath));
+            }
+        } else {
+            const icon = buildMultiSizeIcon(variantDir);
+            if (icon) mainWindow.setIcon(icon);
         }
     }
 
-    // Windows: copy .ico to userData and update all .lnk shortcuts.
-    // BrowserWindow.setIcon() does NOT change the taskbar icon in built apps —
-    // Windows reads it from .exe resources. The workaround is to update the
-    // .lnk shortcut files (Start Menu, Desktop) to point to our custom .ico,
-    // which makes Windows use that icon for the taskbar when launched via shortcut.
+    // Windows: copy .ico to userData and update .lnk shortcuts + shell notify.
+    // Same approach as AyuGram: write .ico → update .lnk IconLocation →
+    // SHChangeNotify(SHCNE_ASSOCCHANGED) to force Explorer to refresh icon cache.
     if (process.platform === 'win32') {
         const srcIco = path.join(variantDir, 'icon.ico');
         const fixedIco = path.join(app.getPath('userData'), 'app-icon.ico');
@@ -427,10 +433,12 @@ function updateWindowsShortcutIcons(icoPath) {
         } catch {}
     }
 
-    // Flush Windows icon cache so Explorer picks up the new shortcut icons.
-    // ie4uinit -show is the standard way to refresh icon cache without
-    // restarting Explorer. Works on Windows 10+.
-    execFile('ie4uinit.exe', ['-show'], () => {});
+    // Notify Windows Shell to refresh icon cache (same approach as AyuGram).
+    // SHChangeNotify(SHCNE_ASSOCCHANGED) is the proper Win32 API for this.
+    // Called via PowerShell -EncodedCommand to avoid command-line escaping issues.
+    const psCmd = 'Add-Type \'using System;using System.Runtime.InteropServices;public class S{[DllImport("shell32.dll")]public static extern void SHChangeNotify(int w,uint u,IntPtr a,IntPtr b);}\';[S]::SHChangeNotify(0x08000000,0,[IntPtr]::Zero,[IntPtr]::Zero)';
+    const encoded = Buffer.from(psCmd, 'utf16le').toString('base64');
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], () => {});
 }
 
 function installLinuxDesktopIcon(variantDir) {
@@ -917,19 +925,6 @@ function registerIpcHandlers() {
         if (!ICON_VARIANTS.includes(name)) return false;
         saveIconPreference(name);
         applyIcon(name, { forceRedraw: true });
-
-        // On Windows, setIcon() cannot change the taskbar icon for packaged apps
-        // (known Electron limitation). Relaunch so the window is created with the
-        // new icon from getInitialWindowIcon(). Session is auto-saved — the app
-        // will reconnect to the same room after restart.
-        if (process.platform === 'win32') {
-            setTimeout(() => {
-                isQuitting = true;
-                app.relaunch({ args: process.argv.slice(1) });
-                app.exit(0);
-            }, 300);
-        }
-
         return true;
     });
 
