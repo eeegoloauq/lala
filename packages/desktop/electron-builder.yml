@@ -28,6 +28,9 @@ linux:
     Comment: Voice & Video Chat
     StartupWMClass: lala-desktop
 
+rpm:
+  afterRemove: scripts/afterRemove.sh
+
 win:
   icon: build/icons-win
   target:
