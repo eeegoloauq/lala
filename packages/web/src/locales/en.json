@@ -273,6 +273,7 @@
     "updateUpToDate": "You're up to date!",
     "updateFound": "Version {{version}} available — downloading…",
     "updateDownloading": "Downloading: {{percent}}%",
+    "updateInstalling": "Installing…",
     "updateReady": "Version {{version}} ready to install",
     "updateError": "Could not check for updates",
     "check": "Check",

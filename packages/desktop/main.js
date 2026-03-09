@@ -11,6 +11,7 @@ const {
     session,
     desktopCapturer,
     shell,
+    powerSaveBlocker,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -31,6 +32,7 @@ app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
 // in the Windows volume mixer (Chromium spawns a separate audio utility process
 // that gets its own mixer entry with the baked-in .exe icon).
 app.commandLine.appendSwitch('disable-features', 'AudioServiceOutOfProcess');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const IS_MAC = process.platform === 'darwin';
@@ -39,6 +41,7 @@ const IS_WAYLAND = IS_LINUX && (
     process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY
 );
 const IS_GNOME = IS_LINUX && (process.env.XDG_CURRENT_DESKTOP || '').toLowerCase().includes('gnome');
+const HAS_SYSTEM_TRAY = !IS_LINUX || (!IS_GNOME && !process.env.SWAYSOCK && !process.env.HYPRLAND_INSTANCE_SIGNATURE);
 
 const WINDOW_MIN_WIDTH = 800;
 const WINDOW_MIN_HEIGHT = 600;
@@ -68,6 +71,7 @@ const IPC = {
     GET_AUTO_LAUNCH: 'lala:get-auto-launch',
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
     SAVE_SESSION: 'lala:save-session',
+    SET_IN_CALL: 'lala:set-in-call',
     GET_APP_ICON: 'lala:get-app-icon',
     SET_APP_ICON: 'lala:set-app-icon',
     RELAUNCH: 'lala:relaunch',
@@ -98,6 +102,8 @@ let pendingScreenShareSourceId = null;
 let screenShareSourceTimer = null;
 
 let isQuitting = false;
+
+let powerSaveBlockerId = null;
 
 // ─── Window State Persistence ────────────────────────────────────────────────
 
@@ -215,6 +221,7 @@ function isUrlAllowed(url) {
 // Electron's patched fs reads from asar transparently; we write to real disk.
 
 const ICONS_DIR = path.join(app.getPath('userData'), 'icons');
+let cachedIconPref = null;
 
 function ensureIconsExtracted() {
     const versionFile = path.join(ICONS_DIR, '.version');
@@ -256,16 +263,22 @@ function ensureIconsExtracted() {
 // ─── Icon Preference ─────────────────────────────────────────────────────────
 
 function getIconPreference() {
+    if (cachedIconPref) return cachedIconPref;
     try {
         if (fs.existsSync(ICON_PREF_FILE)) {
             const { icon } = JSON.parse(fs.readFileSync(ICON_PREF_FILE, 'utf8'));
-            if (ICON_VARIANTS.includes(icon)) return icon;
+            if (ICON_VARIANTS.includes(icon)) {
+                cachedIconPref = icon;
+                return icon;
+            }
         }
     } catch { /* ignore */ }
+    cachedIconPref = 'voice-wave';
     return 'voice-wave';
 }
 
 function saveIconPreference(name) {
+    cachedIconPref = name;
     try {
         fs.writeFileSync(ICON_PREF_FILE, JSON.stringify({ icon: name }));
     } catch { /* ignore */ }
@@ -295,7 +308,7 @@ function buildMultiSizeIcon(variantDir) {
     return img;
 }
 
-function applyIcon(variantName) {
+function applyIcon(variantName, { forceRedraw = false } = {}) {
     const variantDir = getVariantIconPath(variantName);
 
     // Update tray icon
@@ -323,14 +336,15 @@ function applyIcon(variantName) {
     if (mainWindow && !mainWindow.isDestroyed()) {
         let icon = null;
 
-        // On Windows, load directly from .ico — nativeImage parses all sizes from the
-        // ICO container, producing a proper multi-size HICON for WM_SETICON.
-        // Building from individual PNGs via addRepresentation() doesn't reliably
-        // update the taskbar icon (Windows caches HICON from the first setIcon call).
         if (process.platform === 'win32') {
-            const icoPath = path.join(variantDir, 'icon.ico');
-            if (fs.existsSync(icoPath)) {
-                icon = nativeImage.createFromPath(icoPath);
+            // Write variant .ico to a fixed path in userData (like Ayugram/Telegram pattern).
+            // Windows caches HICONs aggressively — using a single stable path and the
+            // setSkipTaskbar trick forces a full redraw of the taskbar icon.
+            const srcIco = path.join(variantDir, 'icon.ico');
+            const fixedIco = path.join(app.getPath('userData'), 'app-icon.ico');
+            if (fs.existsSync(srcIco)) {
+                try { fs.copyFileSync(srcIco, fixedIco); } catch {}
+                icon = nativeImage.createFromPath(fixedIco);
             }
         }
 
@@ -340,6 +354,16 @@ function applyIcon(variantName) {
 
         if (icon) {
             mainWindow.setIcon(icon);
+            // Force Windows to redraw the cached taskbar icon by briefly
+            // removing and re-adding the window to the taskbar.
+            if (process.platform === 'win32' && forceRedraw) {
+                mainWindow.setSkipTaskbar(true);
+                setTimeout(() => {
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.setSkipTaskbar(false);
+                    }
+                }, 100);
+            }
         }
     }
 
@@ -389,10 +413,25 @@ function getInitialWindowIcon() {
     // Use saved icon variant for window creation (avoids flash of default icon)
     const variant = getIconPreference();
     const variantDir = getVariantIconPath(variant);
+
+    // On Windows, prefer the fixed .ico in userData (written by applyIcon on previous run)
+    if (process.platform === 'win32') {
+        const fixedIco = path.join(app.getPath('userData'), 'app-icon.ico');
+        if (fs.existsSync(fixedIco)) {
+            return nativeImage.createFromPath(fixedIco);
+        }
+        const variantIco = path.join(variantDir, 'icon.ico');
+        if (fs.existsSync(variantIco)) {
+            return nativeImage.createFromPath(variantIco);
+        }
+    }
+
     const icon = buildMultiSizeIcon(variantDir);
     if (icon) return icon;
     // Fallback to default build icon
-    return path.join(__dirname, 'build', 'icon.png');
+    const fallbackPath = path.join(__dirname, 'build', 'icon.png');
+    if (fs.existsSync(fallbackPath)) return nativeImage.createFromPath(fallbackPath);
+    return undefined;
 }
 
 function createWindow() {
@@ -419,6 +458,8 @@ function createWindow() {
             sandbox: true,
             webSecurity: true,
             spellcheck: false,
+            backgroundThrottling: false,
+            autoplayPolicy: 'no-user-gesture-required',
         },
     };
 
@@ -434,9 +475,9 @@ function createWindow() {
         mainWindow.show();
     });
 
-    // F12 opens DevTools (Ctrl+Shift+I also works)
+    // F12 opens DevTools (dev builds only)
     mainWindow.webContents.on('before-input-event', (_event, input) => {
-        if (input.key === 'F12' && input.type === 'keyDown') {
+        if (!app.isPackaged && input.key === 'F12' && input.type === 'keyDown') {
             mainWindow.webContents.toggleDevTools();
         }
     });
@@ -481,7 +522,7 @@ function createWindow() {
     // GNOME 3.26+ removed the system tray — hiding the window leaves users stranded.
     // On GNOME, just quit normally.
     mainWindow.on('close', (event) => {
-        if (!isQuitting && !IS_GNOME) {
+        if (!isQuitting && HAS_SYSTEM_TRAY) {
             event.preventDefault();
             mainWindow.hide();
         }
@@ -612,6 +653,29 @@ function setupScreenShareHandler() {
     });
 }
 
+// ─── Helpers: RPM Install ─────────────────────────────────────────────────────
+
+function detectCommand(commands) {
+    const { execFileSync } = require('child_process');
+    for (const cmd of commands) {
+        try {
+            execFileSync('which', [cmd], { stdio: 'ignore' });
+            return cmd;
+        } catch {}
+    }
+    return commands[0]; // fallback to first
+}
+
+function buildRpmInstallArgs(installerPath) {
+    const pm = detectCommand(['dnf', 'zypper', 'yum', 'rpm']);
+    switch (pm) {
+        case 'dnf': return ['dnf', 'install', '--nogpgcheck', '-y', installerPath];
+        case 'zypper': return ['zypper', '--non-interactive', '--no-refresh', 'install', '--allow-unsigned-rpm', '-f', installerPath];
+        case 'yum': return ['yum', 'install', '--nogpgcheck', '-y', installerPath];
+        default: return ['rpm', '-Uvh', '--replacepkgs', '--replacefiles', '--nodeps', installerPath];
+    }
+}
+
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
 
 function registerIpcHandlers() {
@@ -682,7 +746,8 @@ function registerIpcHandlers() {
     // Update window title
     ipcMain.on(IPC.SET_TITLE_SUFFIX, (_event, suffix) => {
         if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.setTitle(suffix ? `Lala — ${suffix}` : 'Lala');
+            const safe = typeof suffix === 'string' ? suffix.slice(0, 200) : '';
+            mainWindow.setTitle(safe ? `Lala — ${safe}` : 'Lala');
         }
     });
 
@@ -700,38 +765,40 @@ function registerIpcHandlers() {
     });
 
     ipcMain.on(IPC.INSTALL_UPDATE, () => {
-        isQuitting = true;
+        const installerPath = autoUpdater.installerPath;
 
-        // On Linux RPM, electron-updater's quitAndInstall() runs dnf via spawnSync
-        // while the app is still alive — dnf fails because files are locked.
-        // Fix: quit first, then a detached script waits for exit and runs dnf.
-        if (IS_LINUX && autoUpdater.installerPath && autoUpdater.installerPath.endsWith('.rpm')) {
-            const installerPath = autoUpdater.installerPath;
-            const execPath = process.env.APPIMAGE || process.execPath;
-            const script = [
-                '#!/bin/bash',
-                `while kill -0 ${process.pid} 2>/dev/null; do sleep 0.5; done`,
-                `pkexec dnf install --nogpgcheck -y "${installerPath}" || pkexec rpm -U --force "${installerPath}"`,
-                `nohup "${execPath}" &>/dev/null &`,
-            ].join('\n');
+        // On Linux RPM: run pkexec async (non-blocking) while the app stays alive.
+        // electron-updater's built-in quitAndInstall() uses spawnSync which freezes the
+        // event loop while pkexec shows its password dialog. Using async execFile keeps
+        // the app responsive. Linux allows replacing files in use (Unix inode semantics),
+        // so dnf can install while the app is running — then we relaunch.
+        if (IS_LINUX && installerPath && installerPath.endsWith('.rpm')) {
+            sendToRenderer(IPC.UPDATE_STATUS, { status: 'installing' });
+            const sudo = detectCommand(['pkexec', 'kdesudo', 'gksudo', 'sudo']);
+            const args = buildRpmInstallArgs(installerPath);
 
-            const scriptPath = path.join(app.getPath('temp'), 'lala-update.sh');
-            fs.writeFileSync(scriptPath, script, { mode: 0o755 });
-
-            const child = require('child_process').spawn('/bin/bash', [scriptPath], {
-                detached: true,
-                stdio: 'ignore',
+            execFile(sudo, args, (error) => {
+                if (error) {
+                    sendToRenderer(IPC.UPDATE_STATUS, {
+                        status: 'error',
+                        error: `${error.message}\n\nLala ${app.getVersion()} / ${process.platform} ${process.arch}`,
+                    });
+                    return;
+                }
+                app.relaunch();
+                app.exit(0);
             });
-            child.unref();
-            app.quit();
             return;
         }
 
+        isQuitting = true;
         autoUpdater.quitAndInstall(true, true);
     });
 
     // Badge count for unread messages
     ipcMain.on(IPC.SET_BADGE_COUNT, (_event, count) => {
+        if (typeof count !== 'number' || !Number.isFinite(count)) return;
+        count = Math.max(0, Math.floor(count));
         if (!mainWindow || mainWindow.isDestroyed()) return;
 
         // Flash taskbar on Windows when there are unread messages
@@ -773,7 +840,7 @@ function registerIpcHandlers() {
     ipcMain.handle(IPC.SET_APP_ICON, (_event, name) => {
         if (!ICON_VARIANTS.includes(name)) return false;
         saveIconPreference(name);
-        applyIcon(name);
+        applyIcon(name, { forceRedraw: true });
         return true;
     });
 
@@ -792,6 +859,16 @@ function registerIpcHandlers() {
         if (data) saveSession(data);
         else clearSession();
     });
+
+    // Power save blocker for active calls
+    ipcMain.on(IPC.SET_IN_CALL, (_event, inCall) => {
+        if (inCall && powerSaveBlockerId === null) {
+            powerSaveBlockerId = powerSaveBlocker.start('prevent-display-sleep');
+        } else if (!inCall && powerSaveBlockerId !== null) {
+            powerSaveBlocker.stop(powerSaveBlockerId);
+            powerSaveBlockerId = null;
+        }
+    });
 }
 
 // ─── Auto-Updater ───────────────────────────────────────────────────────────
@@ -799,6 +876,7 @@ function registerIpcHandlers() {
 function setupAutoUpdater() {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.disableWebInstaller = true;
 
     autoUpdater.on('checking-for-update', () => {
         sendToRenderer(IPC.UPDATE_STATUS, { status: 'checking' });
@@ -838,7 +916,7 @@ function setupAutoUpdater() {
 
         // 404 means the release is still building (latest.yml not uploaded yet)
         // or the current version's tag was just pushed. Show a friendly message.
-        if (err.message && err.message.includes('404')) {
+        if (err.statusCode === 404 || (err.message && err.message.includes('404'))) {
             sendToRenderer(IPC.UPDATE_STATUS, { status: 'not-available' });
             return;
         }
@@ -902,6 +980,23 @@ function setupCrashHandling() {
         } catch { /* ignore write errors */ }
         console.error('[Lala] Render process gone:', details.reason);
     });
+
+    cleanupOldCrashLogs();
+}
+
+function cleanupOldCrashLogs() {
+    try {
+        const files = fs.readdirSync(CRASH_LOG_DIR);
+        const now = Date.now();
+        const MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+        for (const file of files) {
+            const filePath = path.join(CRASH_LOG_DIR, file);
+            try {
+                const stat = fs.statSync(filePath);
+                if (now - stat.mtimeMs > MAX_AGE) fs.unlinkSync(filePath);
+            } catch {}
+        }
+    } catch {}
 }
 
 function cleanupRunningLock() {
@@ -940,14 +1035,19 @@ app.whenReady().then(() => {
     registerIpcHandlers();
     createWindow();
     setupScreenShareHandler();
+
+    // Restrict permissions — only allow what a voice/video chat app needs
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+        const allowed = ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'display-capture'];
+        callback(allowed.includes(permission));
+    });
+
     createTray();
     setupAutoUpdater();
 
-    // Apply saved icon preference
+    // Apply saved icon preference (also writes the fixed .ico on Windows for next launch)
     const savedIcon = getIconPreference();
-    if (savedIcon !== 'voice-wave') {
-        applyIcon(savedIcon);
-    }
+    applyIcon(savedIcon);
 
     // Clear badge on focus
     if (mainWindow) {

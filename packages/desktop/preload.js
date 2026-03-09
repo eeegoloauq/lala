@@ -16,6 +16,7 @@ const IPC = {
     GET_AUTO_LAUNCH: 'lala:get-auto-launch',
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
     SAVE_SESSION: 'lala:save-session',
+    SET_IN_CALL: 'lala:set-in-call',
     GET_APP_ICON: 'lala:get-app-icon',
     SET_APP_ICON: 'lala:set-app-icon',
     RELAUNCH: 'lala:relaunch',
@@ -84,6 +85,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** Save session state for crash recovery */
     saveSession: (data) => ipcRenderer.send(IPC.SAVE_SESSION, data),
+
+    /** Notify main process about call state (for power save blocker) */
+    setInCall: (inCall) => ipcRenderer.send(IPC.SET_IN_CALL, !!inCall),
 
     /** Get current app icon variant name */
     getAppIcon: () => ipcRenderer.invoke(IPC.GET_APP_ICON),

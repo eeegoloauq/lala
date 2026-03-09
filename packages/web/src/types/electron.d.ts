@@ -15,7 +15,7 @@ export interface AppInfo {
 }
 
 export interface UpdateStatus {
-    status: 'checking' | 'available' | 'not-available' | 'downloading' | 'ready' | 'error';
+    status: 'checking' | 'available' | 'not-available' | 'downloading' | 'installing' | 'ready' | 'error';
     version?: string;
     percent?: number;
     error?: string;
@@ -77,6 +77,9 @@ export interface ElectronAPI {
 
     /** Save session state for crash recovery */
     saveSession: (data: SessionState | null) => void;
+
+    /** Notify main process about call state (for power save blocker) */
+    setInCall: (inCall: boolean) => void;
 
     /** Get current app icon variant name */
     getAppIcon: () => Promise<IconVariant>;

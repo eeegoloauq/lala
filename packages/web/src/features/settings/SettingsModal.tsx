@@ -827,6 +827,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                       case 'not-available': return t('settings.updateUpToDate');
                       case 'available': return t('settings.updateFound', { version: updateStatus.version });
                       case 'downloading': return t('settings.updateDownloading', { percent: updateStatus.percent ?? 0 });
+                      case 'installing': return t('settings.updateInstalling');
                       case 'ready': return t('settings.updateReady', { version: updateStatus.version });
                       case 'error': return updateStatus.error
                         ? `${t('settings.updateError')}\n${updateStatus.error}`
@@ -837,6 +838,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
 
                   const isChecking = updateStatus?.status === 'checking';
                   const isDownloading = updateStatus?.status === 'downloading';
+                  const isInstalling = updateStatus?.status === 'installing';
 
                   return (
                     <>
@@ -850,7 +852,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                         </div>
                         <button
                           className="btn"
-                          disabled={isChecking || isDownloading}
+                          disabled={isChecking || isDownloading || isInstalling}
                           onClick={async () => {
                             setUpdateStatus({ status: 'checking' });
                             try { await window.electronAPI?.checkForUpdate?.(); } catch { /* ignore */ }
