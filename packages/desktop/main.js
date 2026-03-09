@@ -154,7 +154,7 @@ function sendToRenderer(channel, ...args) {
 
 function getTrayIcon() {
     // Platform-aware tray icon selection
-    const trayDir = path.join(__dirname, 'build', 'tray');
+    const trayDir = path.join(__dirname, 'build', 'tray').replace('app.asar', 'app.asar.unpacked');
 
     if (IS_MAC) {
         // macOS uses Template images (auto-adapts to dark/light menu bar)
@@ -228,7 +228,10 @@ function saveIconPreference(name) {
 }
 
 function getVariantIconPath(variantName) {
-    return path.join(__dirname, 'build', 'icon-variants', variantName);
+    // Icon files are asarUnpacked — replace app.asar with app.asar.unpacked
+    // so native APIs (Windows Shell, nativeImage) can read them as real files.
+    const p = path.join(__dirname, 'build', 'icon-variants', variantName);
+    return p.replace('app.asar', 'app.asar.unpacked');
 }
 
 function buildMultiSizeIcon(variantDir) {
@@ -652,7 +655,8 @@ function registerIpcHandlers() {
     });
 
     ipcMain.on(IPC.INSTALL_UPDATE, () => {
-        autoUpdater.quitAndInstall(true, true);
+        isQuitting = true;
+        autoUpdater.quitAndInstall(false, true);
     });
 
     // Badge count for unread messages
