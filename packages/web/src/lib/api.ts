@@ -49,6 +49,10 @@ async function adminPost(roomId: string, action: string, body: object): Promise<
         body: JSON.stringify(body),
     });
     if (!res.ok) {
+        if (res.status === 429) {
+            const retryAfter = parseInt(res.headers.get('Retry-After') ?? '15', 10);
+            throw new ApiError('rate_limited', 429, isNaN(retryAfter) ? 15 : retryAfter);
+        }
         const data = await res.json().catch(() => ({ error: 'server_error' }));
         throw new ApiError(data.error ?? 'server_error', res.status);
     }

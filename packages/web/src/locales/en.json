@@ -91,7 +91,8 @@
     "kicked": "{{by}} kicked {{target}}",
     "banned": "{{by}} banned {{target}}",
     "muted": "{{by}} muted {{target}}",
-    "unmuted": "{{by}} unmuted {{target}}"
+    "unmuted": "{{by}} unmuted {{target}}",
+    "rateLimited": "Too many actions — wait a moment"
   },
   "theme": {
     "dark": "Dark",

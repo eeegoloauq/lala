@@ -24,6 +24,7 @@ import type { ScreenShareQuality } from './hooks/useScreenShare';
 import { playJoinSound, playChatSound } from '../../lib/sounds';
 import { speak } from '../../lib/tts';
 import { kickParticipant, banParticipant, muteParticipant } from '../../lib/api';
+import { ApiError } from '../../lib/types';
 import { useAvatarSync } from '../../hooks/useAvatarSync';
 import { getCachedAvatar, setCachedAvatar, clearCachedAvatar } from '../../lib/avatarUtils';
 import type { AppSettings } from '../settings/types';
@@ -268,22 +269,31 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room]);
 
+    const handleAdminError = useCallback((err: unknown) => {
+        if (err instanceof ApiError && err.code === 'rate_limited') {
+            addSystem(t('admin.rateLimited'), `admin-ratelimit-${Date.now()}`);
+        }
+    }, [t]);
+
     const adminProps = useMemo(() => adminSecret ? {
         adminSecret,
         roomId: room.name,
         onKick: async (identity: string) => {
             broadcastAdminAction('kicked', identity);
-            await kickParticipant(room.name, identity, adminSecret);
+            try { await kickParticipant(room.name, identity, adminSecret); }
+            catch (e) { handleAdminError(e); }
         },
         onBan: async (identity: string) => {
             broadcastAdminAction('banned', identity);
-            await banParticipant(room.name, identity, adminSecret);
+            try { await banParticipant(room.name, identity, adminSecret); }
+            catch (e) { handleAdminError(e); }
         },
         onToggleMute: async (identity: string, serverMuted: boolean) => {
             broadcastAdminAction(serverMuted ? 'unmuted' : 'muted', identity);
-            await muteParticipant(room.name, identity, adminSecret, !serverMuted);
+            try { await muteParticipant(room.name, identity, adminSecret, !serverMuted); }
+            catch (e) { handleAdminError(e); }
         },
-    } : undefined, [adminSecret, room.name, broadcastAdminAction]);
+    } : undefined, [adminSecret, room.name, broadcastAdminAction, handleAdminError]);
     usePushToTalk(settings.pushToTalk, settings.pushToTalkKey);
     useAudioProcessor({ noiseSuppressionMode: settings.noiseSuppressionMode, silenceGate: settings.silenceGate });
 

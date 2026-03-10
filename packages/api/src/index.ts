@@ -49,7 +49,7 @@ app.get('/api/health', (_req, res) => {
 // Routes — limits per 15s window (≈ same requests/min as before)
 app.use('/api/token', limiter(25), createTokenRouter());   // ~100/min (password pool can send up to 20 in burst)
 app.use('/api/rooms', limiter(30), createRoomsRouter());   // 120/min
-app.use('/api/rooms/:id/admin', limiter(5), createAdminRouter()); // 20/min
+app.use('/api/rooms/:id/admin', limiter(20), createAdminRouter()); // 80/min — admin actions are authed, need headroom for mute toggling
 app.use('/api/events', limiter(5), createEventsRouter());
 
 // 404 handler — don't leak Express default page
