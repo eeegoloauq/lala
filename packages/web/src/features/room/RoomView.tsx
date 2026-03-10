@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { LIVEKIT_URL } from '../../lib/constants';
 import { getToken } from '../../lib/api';
 import { ApiError } from '../../lib/types';
-import { getPassPool, saveToPool } from '../../lib/passwords';
+import { getPassPool, saveToPool, saveRoomPassword } from '../../lib/passwords';
 import type { AppSettings } from '../settings/types';
 import { RoomShell } from './RoomShell';
 import './RoomView.css';
@@ -15,6 +15,7 @@ interface RoomViewProps {
     roomName: string;  // opaque room ID
     name: string;      // display name
     identity: string;  // stable device UUID — server derives LiveKit identity via HMAC
+    hashPassword?: string | null;  // password from URL hash fragment (#pw=...)
     myAvatarUrl?: string | null;
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
@@ -30,7 +31,7 @@ interface RoomViewProps {
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomView({ roomName, name, identity, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onAvatarReceived, onSpeakersChange, onMutedChange, onDeafenedChange, onLiveParticipantsChange, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
+export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onAvatarReceived, onSpeakersChange, onMutedChange, onDeafenedChange, onLiveParticipantsChange, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
     const [token, setToken] = useState<string | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -63,6 +64,8 @@ export function RoomView({ roomName, name, identity, myAvatarUrl, settings, onUp
             const worker = new Worker('/lala-e2ee-worker.js', { type: 'module' });
             setE2eeSetup({ keyProvider, worker });
         }
+        // Remember working password for this room (for invite links)
+        if (pw) saveRoomPassword(roomName, pw);
         setToken(tokenStr);
         // Save session for crash recovery
         window.electronAPI?.saveSession?.({ serverUrl: window.location.origin, roomId: roomName });
@@ -80,7 +83,10 @@ export function RoomView({ roomName, name, identity, myAvatarUrl, settings, onUp
         setE2eeSetup(null);
 
         const tryPool = async () => {
-            const pool = getPassPool();
+            // Try hash password first (from invite link #pw=...), then saved pool
+            const pool = hashPassword
+                ? [hashPassword, ...getPassPool().filter(p => p !== hashPassword)]
+                : getPassPool();
             for (const pw of pool) {
                 try {
                     const data = await fetchToken(pw);

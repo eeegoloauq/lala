@@ -37,6 +37,7 @@
     "voiceChannels": "Голосовые каналы",
     "createChannel": "Создать канал",
     "noChannels": "Каналов пока нет",
+    "connectionError": "Не удалось подключиться к серверу",
     "removeBookmark": "Убрать из закладок",
     "addBookmark": "В закладки",
     "copyLink": "Скопировать ссылку",
@@ -68,7 +69,8 @@
     "banned": "Доступ закрыт",
     "bannedDesc": "Ты заблокирован в этом канале",
     "errorCode": "Ошибка: {{code}}",
-    "connecting": "Подключение..."
+    "connecting": "Подключение...",
+    "reconnecting": "Переподключение..."
   },
   "ctx": {
     "unmute": "Включить звук",
@@ -137,6 +139,7 @@
   "tile": {
     "screenSharing": "Демонстрация экрана",
     "micOff": "Микрофон выключен",
+    "serverMuted": "Заглушен администратором",
     "soundOff": "Звук выключен",
     "flipCamera": "Отразить",
     "qualityExcellent": "Отлично",

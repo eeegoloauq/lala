@@ -31,3 +31,26 @@
     color: var(--text-muted);
     margin-left: auto;
 }
+
+/* ─── Reconnecting Banner ─── */
+.reconnecting-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 30;
+    flex-shrink: 0;
+}
+
+@keyframes reconnecting-spin {
+    to { transform: rotate(360deg); }
+}
+
+.reconnecting-spinner {
+    animation: reconnecting-spin 1s linear infinite;
+}

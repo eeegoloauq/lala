@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import i18next from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { useTracks, RoomAudioRenderer, useLocalParticipant, useRoomContext, useParticipants } from '@livekit/components-react';
+import { useTracks, RoomAudioRenderer, useLocalParticipant, useRoomContext, useParticipants, useConnectionState } from '@livekit/components-react';
 import { isTrackReference } from '@livekit/components-react';
-import { Track, RoomEvent, RemoteParticipant } from 'livekit-client';
+import { Track, RoomEvent, RemoteParticipant, ConnectionState } from 'livekit-client';
 import type { Participant, RemoteAudioTrack, RemoteTrackPublication } from 'livekit-client';
 import { VideoGrid } from './VideoGrid/VideoGrid';
 import { FocusLayout } from './FocusLayout/FocusLayout';
@@ -86,6 +86,7 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
     const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
     const participants = useParticipants();
     const room = useRoomContext();
+    const connectionState = useConnectionState();
 
     // Keep LiveKit display name in sync with app display name
     useEffect(() => {
@@ -547,9 +548,28 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
 
     const volumeProps = useMemo(() => ({ volumes, onVolumeChange, screenVolumes, onScreenVolumeChange: handleScreenVolumeChange }), [volumes, onVolumeChange, screenVolumes, handleScreenVolumeChange]);
 
+    // Debounce reconnecting banner — don't flash for sub-second hiccups
+    const [showReconnecting, setShowReconnecting] = useState(false);
+    useEffect(() => {
+        if (connectionState === ConnectionState.Reconnecting) {
+            const id = setTimeout(() => setShowReconnecting(true), 1500);
+            return () => clearTimeout(id);
+        }
+        setShowReconnecting(false);
+    }, [connectionState]);
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
             <RoomAudioRenderer muted={audioMuted} />
+
+            {showReconnecting && (
+                <div className="reconnecting-banner">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="reconnecting-spinner">
+                        <path d="M21 12a9 9 0 1 1-6.22-8.56" />
+                    </svg>
+                    {t('room.reconnecting')}
+                </div>
+            )}
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
                 {isScreenSharing || focusedIdentity
