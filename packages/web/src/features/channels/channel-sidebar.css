@@ -229,6 +229,11 @@
     opacity: 0.75;
 }
 
+.channel-user-indicator.server-muted {
+    color: var(--color-danger, #ef4444);
+    opacity: 1;
+}
+
 .channel-user-indicator svg {
     width: 11px;
     height: 11px;

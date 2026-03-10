@@ -11,6 +11,7 @@ export interface RoomInfo {
     screenSharingParticipants?: string[];  // identities currently screen sharing
     mutedParticipants?: string[];         // identities with mic muted
     deafenedParticipants?: string[];      // identities who are deafened (from participant metadata)
+    serverMutedParticipants?: string[];   // identities server-muted by admin (canPublish === false)
     adminSecret?: string;            // only present in POST /api/rooms response — store and don't share
 }
 

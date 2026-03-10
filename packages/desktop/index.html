@@ -188,11 +188,40 @@
             color: #4b5563;
             margin-top: 24px;
         }
+
+        /* Splash screen */
+        .splash {
+            text-align: center;
+        }
+
+        .splash-status {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 12px;
+        }
+
+        .splash-cancel {
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .splash-cancel:hover {
+            background: var(--surface-hover) !important;
+        }
+
+        @keyframes splash-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .splash-status {
+            animation: splash-pulse 1.5s ease-in-out infinite;
+        }
     </style>
 </head>
 
 <body>
-    <div class="container">
+    <div class="container" id="mainContainer" style="display:none">
         <img class="logo" src="build/icons/64x64.png" alt="Lala" />
         <h1>Lala</h1>
         <p class="subtitle" id="subtitleText"></p>
@@ -215,6 +244,14 @@
         </div>
 
         <div class="version" id="versionInfo"></div>
+    </div>
+
+    <!-- Splash screen shown during auto-connect -->
+    <div class="splash" id="splashScreen" style="display:none">
+        <img class="logo" src="build/icons/64x64.png" alt="Lala" />
+        <h1>Lala</h1>
+        <div class="splash-status" id="splashStatus"></div>
+        <button type="button" class="btn-connect splash-cancel" id="splashCancelBtn" style="background:transparent; border:1px solid var(--border); font-size:13px; padding:8px 24px; margin-top:16px; -webkit-app-region:no-drag;"></button>
     </div>
 
     <script>
@@ -352,9 +389,8 @@
                 if (autoConnecting) {
                     // Auto-connect failed — fall back to connection page
                     autoConnecting = false;
-                    const autoDiv = document.getElementById('autoConnectDiv');
-                    if (autoDiv) autoDiv.remove();
-                    form.style.display = '';
+                    document.getElementById('splashScreen').style.display = 'none';
+                    document.getElementById('mainContainer').style.display = '';
                     renderRecent();
                 }
                 errorMsg.textContent = error.message || t('connectionFailed');
@@ -371,26 +407,22 @@
 
         function showAutoConnect(url) {
             autoConnecting = true;
-            const host = (() => { try { return new URL(url).host; } catch { return url; } })();
-            form.style.display = 'none';
-            recentSection.style.display = 'none';
+            const host = (() => { try { return new URL(url).host; } catch { return url.replace(/[<>&"']/g, ''); } })();
 
-            const autoDiv = document.createElement('div');
-            autoDiv.id = 'autoConnectDiv';
-            autoDiv.style.textAlign = 'center';
-            autoDiv.innerHTML = `
-                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">${t('connectingTo').replace('%s', host)}</p>
-                <button type="button" class="btn-connect" id="cancelAutoBtn" style="background: transparent; border: 1px solid var(--border); font-size: 13px; padding: 8px 20px;">${t('cancel')}</button>
-            `;
-            form.parentNode.insertBefore(autoDiv, form.nextSibling);
-
-            document.getElementById('cancelAutoBtn').addEventListener('click', () => {
+            // Show splash screen, hide main container
+            document.getElementById('mainContainer').style.display = 'none';
+            const splash = document.getElementById('splashScreen');
+            splash.style.display = '';
+            document.getElementById('splashStatus').innerHTML = t('connectingTo').replace('%s', host);
+            const cancelBtn = document.getElementById('splashCancelBtn');
+            cancelBtn.textContent = t('cancel');
+            cancelBtn.onclick = () => {
                 autoConnectCancelled = true;
                 autoConnecting = false;
-                autoDiv.remove();
-                form.style.display = '';
+                splash.style.display = 'none';
+                document.getElementById('mainContainer').style.display = '';
                 renderRecent();
-            });
+            };
 
             saveRecentServer(url);
             connectBtn.disabled = true;
@@ -429,6 +461,9 @@
         const noAutoConnect = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
         if (recent.length > 0 && !noAutoConnect) {
             showAutoConnect(recent[0]);
+        } else {
+            // Show main container (was hidden to prevent flash during auto-connect)
+            document.getElementById('mainContainer').style.display = '';
         }
 
         // Show version

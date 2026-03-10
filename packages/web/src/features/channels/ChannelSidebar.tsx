@@ -7,6 +7,7 @@ import { Avatar } from '../room/VideoGrid/Avatar';
 import { AvatarBadge } from '../../ui/AvatarBadge';
 import { getCachedAvatar } from '../../lib/avatarUtils';
 import { getBookmarks, addBookmark, removeBookmark, isBookmarked } from '../../lib/bookmarks';
+import { getRoomPassword } from '../../lib/passwords';
 import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { kickParticipant, banParticipant, muteParticipant } from '../../lib/api';
@@ -21,6 +22,7 @@ const THEMES: Theme[] = ['dark', 'light', 'amoled', 'discord', 'retro', 'winxp']
 
 interface ChannelSidebarProps {
     rooms: RoomInfo[];
+    roomsError?: string | null;
     activeRoom: string | null;
     identity: string;       // HMAC identity (or device UUID before room join) — for self-detection and admin ops
     displayName: string;    // display name shown in footer
@@ -61,6 +63,7 @@ function LockIcon({ title }: { title?: string }) {
 
 export function ChannelSidebar({
     rooms,
+    roomsError,
     activeRoom,
     identity,
     displayName,
@@ -135,9 +138,15 @@ export function ChannelSidebar({
         setRenaming(false);
     };
 
-    const handleCopyInvite = useCallback((e: React.MouseEvent, roomId: string) => {
+    const handleCopyInvite = useCallback((e: React.MouseEvent, roomId: string, hasPassword?: boolean) => {
         e.stopPropagation();
-        const url = `${window.location.origin}/room/${roomId}`;
+        let url = `${window.location.origin}/room/${roomId}`;
+        // Include password in hash fragment for password-protected rooms
+        // Hash is never sent to the server (HTTP spec), so this is safe
+        if (hasPassword) {
+            const pw = getRoomPassword(roomId);
+            if (pw) url += `#pw=${encodeURIComponent(pw)}`;
+        }
         navigator.clipboard.writeText(url).then(() => {
             setCopiedRoom(roomId);
             setTimeout(() => setCopiedRoom(null), 1500);
@@ -174,13 +183,15 @@ export function ChannelSidebar({
     const getAdminProps = (roomId: string, identity: string) => {
         const secret = localStorage.getItem(`lala_admin_${roomId}`);
         if (!secret) return undefined;
+        const room = rooms.find(r => r.id === roomId);
+        const serverMuted = room?.serverMutedParticipants?.includes(identity) ?? false;
         return {
             adminSecret: secret,
             roomId,
-            serverMuted: false, // sidebar has no LiveKit context to read permissions from
+            serverMuted,
             onKick: () => kickParticipant(roomId, identity, secret),
             onBan: () => banParticipant(roomId, identity, secret),
-            onToggleMute: () => muteParticipant(roomId, identity, secret, true),
+            onToggleMute: () => muteParticipant(roomId, identity, secret, !serverMuted),
         };
     };
 
@@ -216,7 +227,12 @@ export function ChannelSidebar({
                 </div>
 
                 {rooms.length === 0 && offlineBookmarks.length === 0 && (
-                    <div className="sidebar-empty">{t('sidebar.noChannels')}</div>
+                    <div className="sidebar-empty">
+                        {roomsError
+                            ? <span style={{ color: 'var(--color-danger)' }}>{t('sidebar.connectionError')}</span>
+                            : t('sidebar.noChannels')
+                        }
+                    </div>
                 )}
 
                 {rooms.map((room) => (
@@ -249,7 +265,7 @@ export function ChannelSidebar({
                             </button>
                             <button
                                 className={`channel-copy-btn${copiedRoom === room.id ? ' copied' : ''}`}
-                                onClick={(e) => handleCopyInvite(e, room.id)}
+                                onClick={(e) => handleCopyInvite(e, room.id, room.hasPassword)}
                                 title={t('sidebar.copyLink')}
                             >
                                 {copiedRoom === room.id ? (
@@ -304,12 +320,15 @@ export function ChannelSidebar({
                                                     <span className="channel-user-you">{t('sidebar.you')}</span>
                                                 )}
                                                 <span className="channel-user-indicators">
-                                                    {(room.id === activeRoom && mutedInRoom
-                                                        ? mutedInRoom.has(p.identity)
-                                                        : room.mutedParticipants?.includes(p.identity)
-                                                    ) && (
-                                                            <span className="channel-user-indicator" title={t('sidebar.micOff')}><MicOffIcon /></span>
-                                                        )}
+                                                    {(() => {
+                                                        const isServerMuted = room.serverMutedParticipants?.includes(p.identity);
+                                                        const isMuted = room.id === activeRoom && mutedInRoom
+                                                            ? mutedInRoom.has(p.identity)
+                                                            : room.mutedParticipants?.includes(p.identity);
+                                                        return (isMuted || isServerMuted) ? (
+                                                            <span className={`channel-user-indicator${isServerMuted ? ' server-muted' : ''}`} title={isServerMuted ? t('tile.serverMuted') : t('sidebar.micOff')}><MicOffIcon /></span>
+                                                        ) : null;
+                                                    })()}
                                                     {(room.id === activeRoom && deafenedInRoom
                                                         ? deafenedInRoom.has(p.identity)
                                                         : room.deafenedParticipants?.includes(p.identity)

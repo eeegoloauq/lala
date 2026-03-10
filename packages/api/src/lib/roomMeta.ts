@@ -14,9 +14,9 @@ export interface RoomMeta {
     bannedIdentities?: string[]; // permanently banned from this room
 }
 
-/** Generate a short opaque room ID (10 hex chars = 40 bits entropy) */
+/** Generate a short opaque room ID (16 hex chars = 64 bits entropy) */
 export function generateRoomId(): string {
-    return randomBytes(5).toString('hex');
+    return randomBytes(8).toString('hex');
 }
 
 export function parseRoomMeta(metadata: string | undefined): RoomMeta | null {

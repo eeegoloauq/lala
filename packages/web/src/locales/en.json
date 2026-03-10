@@ -37,6 +37,7 @@
     "voiceChannels": "Voice Channels",
     "createChannel": "Create channel",
     "noChannels": "No channels yet",
+    "connectionError": "Could not connect to server",
     "removeBookmark": "Remove bookmark",
     "addBookmark": "Add bookmark",
     "copyLink": "Copy invite link",
@@ -68,7 +69,8 @@
     "banned": "Access denied",
     "bannedDesc": "You are banned from this channel",
     "errorCode": "Error: {{code}}",
-    "connecting": "Connecting..."
+    "connecting": "Connecting...",
+    "reconnecting": "Reconnecting..."
   },
   "ctx": {
     "unmute": "Unmute",
@@ -137,6 +139,7 @@
   "tile": {
     "screenSharing": "Sharing screen",
     "micOff": "Microphone off",
+    "serverMuted": "Muted by admin",
     "soundOff": "Sound off",
     "flipCamera": "Flip camera",
     "qualityExcellent": "Excellent",

@@ -30,6 +30,9 @@ export function createRoomsRouter(): Router {
                             try { return !!JSON.parse(p.metadata || '{}').deafened; } catch { return false; }
                         })
                         .map(p => p.identity);
+                    const serverMutedParticipants = participants
+                        .filter(p => p.permission && p.permission.canPublish === false)
+                        .map(p => p.identity);
                     return {
                         id: room.name,
                         displayName: meta?.displayName ?? room.name,
@@ -42,6 +45,7 @@ export function createRoomsRouter(): Router {
                         screenSharingParticipants,
                         mutedParticipants,
                         deafenedParticipants,
+                        serverMutedParticipants,
                     };
                 }),
             );
@@ -122,8 +126,18 @@ export function createRoomsRouter(): Router {
                 creatorIdentity: identity?.trim() || undefined,
             };
 
-            const roomId = generateRoomId();
             const roomService = getRoomService();
+            // Generate unique room ID with collision check
+            let roomId = generateRoomId();
+            for (let attempt = 0; attempt < 5; attempt++) {
+                const existing = await roomService.listRooms([roomId]);
+                if (existing.length === 0) break;
+                if (attempt === 4) {
+                    res.status(500).json({ error: 'Failed to generate unique room ID' });
+                    return;
+                }
+                roomId = generateRoomId();
+            }
             const room = await roomService.createRoom({
                 name: roomId,
                 emptyTimeout: 300,

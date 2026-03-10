@@ -25,3 +25,18 @@ export function removeFromPool(idx: number): string[] {
 export function clearPool(): void {
     localStorage.removeItem(PASS_POOL_KEY);
 }
+
+/** Save the working password for a specific room (for invite links). */
+export function saveRoomPassword(roomId: string, pw: string): void {
+    localStorage.setItem(`lala_room_pw_${roomId}`, pw);
+}
+
+/** Get the known password for a specific room. */
+export function getRoomPassword(roomId: string): string | null {
+    return localStorage.getItem(`lala_room_pw_${roomId}`);
+}
+
+/** Remove the saved password for a specific room. */
+export function removeRoomPassword(roomId: string): void {
+    localStorage.removeItem(`lala_room_pw_${roomId}`);
+}

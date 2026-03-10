@@ -78,6 +78,11 @@
     box-shadow: 0 0 0 1px #22c55e, 0 0 16px rgba(34, 197, 94, 0.2);
 }
 
+/* Server-muted by admin: red mic icon */
+.p-tile-status-icon.server-muted {
+    color: var(--color-danger, #ef4444);
+}
+
 .p-tile video {
     width: 100%;
     height: 100%;

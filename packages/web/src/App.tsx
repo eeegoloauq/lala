@@ -13,13 +13,14 @@ import { getOrCreateIdentity, getCachedHmacIdentity, saveCachedHmacIdentity } fr
 import type { CreateRoomRequest } from './lib/types';
 import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
+import { saveRoomPassword } from './lib/passwords';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
 
 export default function App() {
     const { t } = useTranslation();
-    const { rooms, addRoom } = useRooms();
+    const { rooms, error: roomsError, addRoom } = useRooms();
     const { displayName, setDisplayName } = useDisplayName();
     const [identity] = useState(getOrCreateIdentity);
     const { settings, updateSettings } = useSettings();
@@ -102,6 +103,9 @@ export default function App() {
         if (room.adminSecret) {
             localStorage.setItem(`lala_admin_${room.id}`, room.adminSecret);
         }
+        if (req.password) {
+            saveRoomPassword(room.id, req.password);
+        }
         route.navigate('/room/' + room.id);
         setSidebarOpen(false);
     };
@@ -150,6 +154,7 @@ export default function App() {
             <div className={`sidebar-wrapper${sidebarOpen ? ' sidebar-mobile-open' : ''}`}>
                 <ChannelSidebar
                     rooms={rooms}
+                    roomsError={roomsError}
                     activeRoom={activeRoom}
                     identity={liveIdentity || identity}
                     avatarCache={liveAvatarCache}
@@ -187,6 +192,7 @@ export default function App() {
                         roomName={activeRoom}
                         name={displayName}
                         identity={identity}
+                        hashPassword={route.hashPassword}
                         myAvatarUrl={myAvatar}
                         settings={settings}
                         onUpdateSettings={updateSettings}

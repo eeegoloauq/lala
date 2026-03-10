@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Lala
 
-Self-hosted voice/video chat app in the style of Mumble/Discord, built on LiveKit (WebRTC SFU). Monorepo with two packages: an Express API for token/room management and a Vite+React SPA frontend. No database — chat is ephemeral (LiveKit data channels), room state lives in LiveKit+Redis, user prefs in localStorage.
+Self-hosted voice/video chat app in the style of Mumble/Discord, built on LiveKit (WebRTC SFU). Monorepo with three packages: an Express API for token/room management (`packages/api`), a Vite+React SPA frontend (`packages/web`), and an Electron desktop client (`packages/desktop`). No database — chat is ephemeral (LiveKit data channels), room state lives in LiveKit+Redis, user prefs in localStorage.
 
 ## Build & Run
 
@@ -41,18 +41,26 @@ Browser → Nginx (:80 → :3000)
          → LiveKit (:7880 WS, :50000/udp media, :7881/tcp fallback, :3478/udp TURN)
 ```
 
-- **API** — endpoints: `POST /api/token`, `GET/POST /api/rooms`, `DELETE /api/rooms/:id`, `GET /api/rooms/:id`, admin actions (`kick`, `ban`, `mute`, `unban`), `GET /api/events` (SSE). Uses `livekit-server-sdk` v2.
+- **API** — endpoints: `GET /api/health`, `POST /api/token`, `GET/POST /api/rooms`, `DELETE /api/rooms/:id`, `GET /api/rooms/:id`, admin actions (`kick`, `ban`, `mute`, `unban`), `GET /api/events` (SSE). Uses `livekit-server-sdk` v2.
 - **Web** — `@livekit/components-react` v2 + `livekit-client` v2. Custom UI, NOT using `<VideoConference />`.
 - Internal Docker: API→LiveKit via `lala-livekit:7880`. Browser→LiveKit via the `LIVEKIT_URL` env var (e.g. `wss://rtc.example.com`).
 - **LIVEKIT_URL** passed as `VITE_LIVEKIT_URL` build arg in docker-compose.
 - **CORS** — `ALLOWED_ORIGINS` env var (comma-separated), defaults to `http://localhost:3000`.
 - **CSP** — dynamic via envsubst at container start. `CSP_CONNECT_SRC` env var controls `connect-src` directive in nginx. Default `wss: ws:` (any WebSocket); tighten to your LiveKit domain for production.
 
+## Internationalization (i18n)
+
+- `react-i18next` with `i18next-browser-languagedetector`
+- Two locales: `en` and `ru` (JSON files in `src/locales/`)
+- Detection order: localStorage (`lala_language`) → browser navigator
+- Setup in `src/lib/i18n.ts`, imported at app entry
+- All UI strings use `t()` / `useTranslation()` from `react-i18next`
+
 ## Security Architecture
 
 ### Identity
 - **HMAC-derived stable identity**: `POST /api/token` receives `deviceId` (stable device UUID from `getOrCreateIdentity()`), computes `hmac(sha256, apiSecret, deviceId).hex.slice(0,36)` as LiveKit identity. Same device → same identity → LiveKit replaces old connection (no duplicate participants on refresh). Clients cannot forge other identities without knowing `apiSecret`.
-- **Device identity** (`getOrCreateIdentity()`): stable UUID in localStorage (`lala_identity`). Sent as `deviceId` in token requests.
+- **Device identity** (`getOrCreateIdentity()`): stable UUID in localStorage (`lala-identity`). Sent as `deviceId` in token requests.
 - **LiveKit identity**: HMAC of device UUID. Stable per device across sessions. `RoomView` calls `onIdentityAssigned(data.identity)` immediately on token response — so the footer/sidebar show the correct color even before the LiveKit room is joined.
 - **HMAC cache**: `getCachedHmacIdentity(deviceId)` / `saveCachedHmacIdentity(deviceId, identity)` in `identity.ts`. Stores the HMAC alongside the device UUID so the cache is invalidated automatically if the device UUID changes (localStorage cleared).
 
@@ -60,6 +68,7 @@ Browser → Nginx (:80 → :3000)
 - Stored as **scrypt hash** in LiveKit room metadata (`passwordHash: "salt:hash"`). Plain text never stored.
 - **Password pool** (Mumble-style): `localStorage['lala_passwords']` = `string[]` (max 20). On join, saved passwords tried automatically. Only shows UI prompt if none match.
 - `lib/passwords.ts` has `saveToPool(pw)` / `getPassPool()` helpers.
+- **Invite links**: password embedded in URL hash fragment (`#pw=...`); ChannelSidebar copies link with password from `lala_room_pw_<roomId>`; `useRoute` parses `hashPassword` from fragment and clears it from URL after reading.
 - Admin secret bypasses password check (creator rejoin).
 
 ### E2EE
@@ -100,15 +109,15 @@ Browser → Nginx (:80 → :3000)
 - `LICENSE` — MIT, "Lala Contributors"
 
 ### API
-- `src/index.ts` — Express app setup: CORS, rate limiters, webhook (raw body), JSON parsing, routes, custom 404/error handlers, Redis init
+- `src/index.ts` — Express app setup: CORS, rate limiters, webhook (raw body), JSON parsing, routes, `GET /api/health` endpoint (`{ status: 'ok', service: 'lala-api' }`), custom 404/error handlers, Redis init
 - `src/routes/token.ts` — receives `deviceId`, derives HMAC-stable LiveKit identity; verifies password/ban; reads adminSecret from Redis for admin bypass; returns `{ token, identity }`
 - `src/routes/rooms.ts` — create/list/delete rooms (DELETE requires adminSecret); room name sanitized (null bytes, RTL, control chars stripped); `maxParticipants` validated as integer 1-100
 - `src/routes/admin.ts` — kick/ban/mute/unban actions; require `adminSecret` in body; strips adminSecret before writing metadata back to LiveKit
 - `src/routes/events.ts` — SSE endpoint for real-time room updates
 - `src/routes/webhook.ts` — LiveKit webhook receiver (signature-verified); broadcasts SSE on room events; evicts Redis cache on `room_finished`
-- `src/lib/roomMeta.ts` — `RoomMeta` interface; `hashPassword`/`verifyPassword` (scrypt); `generateRoomId()`
+- `src/lib/roomMeta.ts` — `RoomMeta` interface; `hashPassword`/`verifyPassword` (scrypt); `generateRoomId()` (16 hex chars = 64-bit entropy, with collision check loop up to 5 attempts)
 - `src/lib/auth.ts` — `verifyAdminSecret()` (timingSafeEqual), `getAuthedRoom()` (reads adminSecret from Redis, restores LK metadata from cache on loss)
-- `src/lib/livekit.ts` — `getRoomService()` lazy singleton for `RoomServiceClient`; uses `LIVEKIT_HOST` for internal Docker networking, falls back to `LIVEKIT_URL`
+- `src/lib/livekit.ts` — `getRoomService()` lazy singleton for `RoomServiceClient`; uses `LIVEKIT_HOST` for internal Docker networking, falls back to `localhost:7880`
 - `src/lib/roomStore.ts` — Redis-backed room metadata cache: `connectRedis()`, `cacheRoomMeta()`, `getCachedMeta()`, `evictRoomMeta()`. Key pattern `lala:room:<roomId>`, TTL 24h. Graceful fallback if Redis down.
 
 ### Web — core
@@ -118,7 +127,7 @@ Browser → Nginx (:80 → :3000)
 - `src/lib/iconVariants.tsx` — app icon variant definitions (id, labelKey, SVG preview) for Electron icon picker in settings
 - `src/globals.css` — all global styles + CSS vars; **6 themes**: dark, light, amoled, discord, retro, winxp; base `input[type="range"]` slider styles
 - `src/lib/constants.ts` — `LIVEKIT_URL`, `SCREEN_SHARE_FPS_STEPS`, `SCREEN_SHARE_BITRATE_STEPS`, `screenShareBitrateLabel()`
-- `src/lib/passwords.ts` — password pool functions: `getPassPool()`, `saveToPool()`, `removeFromPool()`, `clearPool()`. Consolidated from RoomView + SettingsModal
+- `src/lib/passwords.ts` — password pool functions: `getPassPool()`, `saveToPool()`, `removeFromPool()`, `clearPool()`; per-room password: `saveRoomPassword(roomId, pw)`, `getRoomPassword(roomId)` (stored as `lala_room_pw_<roomId>`)
 - `src/lib/utils.ts` — `safeJsonParse<T>()` utility with fallback value
 - `src/lib/api.ts` — API client: `getToken()`, `getRooms()`, `createRoom()`, `kickParticipant()`, `banParticipant()`, `muteParticipant()`; handles 429 with `retryAfter`
 - `src/lib/sounds.ts` — Web Audio API synthesized tones: join/leave, chat, mute/unmute, screen share start/stop, talking-while-muted beep
@@ -127,9 +136,11 @@ Browser → Nginx (:80 → :3000)
 - `src/lib/audioProcessor.ts` — `LalaAudioProcessor` implementing LiveKit `TrackProcessor`
 - `src/lib/avatarUtils.ts` — `compressAvatar()` (128×128 JPEG, Canvas); `getMyAvatar/saveMyAvatar`; `getCachedAvatar(identity, name?)` (tries `lala_av_<identity>`, then `lala_avn_<name>` fallback); `setCachedAvatarByName(name, dataUrl)`; `clearCachedAvatar(identity)`; `clearCachedAvatarByName(name)`
 - `src/lib/identity.ts` — `getOrCreateIdentity()` stable device UUID; `getCachedHmacIdentity(deviceId)` / `saveCachedHmacIdentity(deviceId, identity)` HMAC cache with device-UUID validation
+- `src/lib/i18n.ts` — i18next setup: `LanguageDetector` + `initReactI18next`, en/ru locales, localStorage key `lala_language`
 - `src/lib/types.ts` — `RoomInfo`, `CreateRoomRequest`, `TokenRequest`, `TokenResponse`, `ApiErrorCode` (snake_case codes), `ApiError { code, status, retryAfter? }`
 
 ### Web — hooks
+- `src/hooks/useRoute.ts` — URL routing: parses `roomId` from path, `hashPassword` from `#pw=` fragment; `navigate()`/`replace()` helpers
 - `src/hooks/useDisplayName.ts` — localStorage-persisted display name
 - `src/hooks/usePersistedVolumes.ts` — `Map<identity, volume>` with localStorage, 30-day TTL, 400ms debounce
 - `src/hooks/useAvatarSync.ts` — broadcasts own avatar on connect, unicasts to new joiners, re-broadcasts on avatar change mid-session; handles `dataUrl: null` to propagate avatar deletion; `onAvatarReceived(identity, dataUrl: string | null)`
@@ -140,10 +151,10 @@ Browser → Nginx (:80 → :3000)
 - `hooks/useJoinLeaveSound.ts` — `useJoinLeaveSound(enabled)`, `useScreenShareSound(enabled)`
 
 ### Web — features/room
-- `RoomView.tsx` — token fetch (with password pool auto-try) + E2EE setup + `<LiveKitRoom>`; calls `onIdentityAssigned(data.identity)` immediately on token success; rate limit countdown ring with auto-retry; `tryPool` properly handles `rate_limited` errors (stops iteration, shows countdown instead of false password prompt)
-- `RoomShell.tsx` — orchestrates everything; `ScreenShareModal` lazy-loaded via `React.lazy` + `Suspense`; `addSystem(text, id)` helper for chat system entries; uses `useMicSound`, `useTalkingWhileMuted`, `useScreenShareSound`, `useJoinLeaveSound`; `useRoomKeyboard` with dynamic key bindings; Electron: syncs unread badge count, saves session on join
+- `RoomView.tsx` — token fetch (with password pool auto-try) + E2EE setup + `<LiveKitRoom>`; calls `onIdentityAssigned(data.identity)` immediately on token success; rate limit countdown ring with auto-retry; `tryPool` properly handles `rate_limited` errors (stops iteration, shows countdown instead of false password prompt); supports `hashPassword` prop from invite link `#pw=` fragment (tried first before pool)
+- `RoomShell.tsx` — orchestrates everything; `ScreenShareModal` lazy-loaded via `React.lazy` + `Suspense`; `addSystem(text, id)` helper for chat system entries; uses `useMicSound`, `useTalkingWhileMuted`, `useScreenShareSound`, `useJoinLeaveSound`; `useRoomKeyboard` with dynamic key bindings; reconnecting banner (shown when `ConnectionState.Reconnecting`); Electron: syncs unread badge count, saves session on join
 - `VideoGrid/VideoGrid.tsx` — grid; right-click context menu; screen share hide/show toggle (both video + audio tracks); stable `handleTileClick` useCallback — clicking tile auto-subscribes to unsubscribed screen share
-- `VideoGrid/ParticipantTile.tsx` — video tile wrapped in `React.memo`: avatar, speaking ring, quality bars, screen share badge, flip button; `onClick: (identity: string) => void`; `useIsScreenSharing` subscribes only to relevant events per participant type (Remote→TrackPublished, Local→LocalTrackPublished)
+- `VideoGrid/ParticipantTile.tsx` — video tile wrapped in `React.memo`: avatar, speaking ring, quality bars, screen share badge, flip button, admin-mute indicator (`useIsServerMuted` detects `canPublish === false`); `onClick: (identity: string) => void`; `useIsScreenSharing` subscribes only to relevant events per participant type (Remote→TrackPublished, Local→LocalTrackPublished)
 - `VideoGrid/ParticipantContextMenu.tsx` — right-click menu; volume sliders, screen share hide/show, admin actions
 - `VideoGrid/Avatar.tsx` — initials avatar OR photo (`avatarUrl` prop); `size` prop (default 36)
 - `FocusLayout/FocusLayout.tsx` — screen share / focused view; screen share hide toggle (both tracks)
@@ -164,7 +175,7 @@ Browser → Nginx (:80 → :3000)
 - `ThemeProvider.tsx` — theme context; `data-theme` on `<html>`
 
 ### Web — features/channels
-- `ChannelSidebar.tsx` — room list + participant mini-cards; theme cycle toggle; room bookmarks (star icon per room, offline bookmarks shown greyed out); when in active room uses `liveParticipants` Map for live participant data; filters self from API participant list to prevent ghost entries on leave; `getCachedAvatar(p.identity, displayName)` with name fallback; `identity` prop = HMAC identity (or device UUID before room join)
+- `ChannelSidebar.tsx` — room list + participant mini-cards; theme cycle toggle; room bookmarks (star icon per room, offline bookmarks shown greyed out); when in active room uses `liveParticipants` Map for live participant data; filters self from API participant list to prevent ghost entries on leave; `getCachedAvatar(p.identity, displayName)` with name fallback; `identity` prop = HMAC identity (or device UUID before room join); `roomsError` prop shows API connection error in red when room fetch fails
 
 ### Web — nginx
 - `default.conf.template` — nginx config template processed by envsubst at container start; `CSP_CONNECT_SRC` env var interpolated into CSP `connect-src`; security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy); CSP with `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`; `X-Forwarded-For` set to `$remote_addr` (prevents spoofing); hashed assets cached 1 year; rate limiting zone for API; SSE-specific proxy config for `/api/events`
@@ -216,10 +227,10 @@ Right-click any participant with screen share → "Скрыть демку" / "�
 | Key | Contents |
 |-----|----------|
 | `lala-settings` | AppSettings JSON |
-| `lala_identity` | device UUID (stable, NOT the LiveKit identity) |
+| `lala-identity` | device UUID (stable, NOT the LiveKit identity) |
 | `lala_cached_hmac_identity` | HMAC identity cached for instant display before room join |
 | `lala_cached_hmac_device` | device UUID paired with cached HMAC (for cache invalidation) |
-| `lala_display_name` | display name |
+| `lala-display-name` | display name |
 | `lala_my_avatar` | own avatar data URL |
 | `lala_av_<identity>` | cached avatar for participant (keyed by LiveKit HMAC identity) |
 | `lala_avn_<name>` | cached avatar keyed by display name (secondary fallback) |
@@ -227,7 +238,9 @@ Right-click any participant with screen share → "Скрыть демку" / "�
 | `lala_screen_volumes` | screen share volumes Map JSON |
 | `lala_passwords` | password pool `string[]` (max 20, Mumble-style) |
 | `lala_admin_<roomId>` | admin secret for room (only creator has this) |
-| `lala_bookmarks` | room bookmarks `Array<{serverUrl, roomId, roomName}>` (max 50) |
+| `lala_bookmarks` | room bookmarks `Array<{roomId, name, hasPassword?}>` (max 50) |
+| `lala_room_pw_<roomId>` | saved working password for a specific room (for invite links) |
+| `lala_language` | i18next language preference (e.g. `en`, `ru`) |
 | `lala_no_auto_connect` | `'true'` to disable Electron auto-connect on launch |
 | `lala_recent_servers` | recent server URLs for Electron connection page (max 5) |
 
@@ -276,9 +289,9 @@ All in `lala-settings`:
 ## Electron Desktop (`packages/desktop`)
 
 ### Key Files
-- `main.js` — main process: window management, IPC handlers, auto-updater (`quitAndInstall(true, true)` for silent updates), crash recovery, tray, badges, auto-launch, icon switching. `app.setAppUserModelId('app.lala.desktop')` set before ready for correct Windows taskbar association
+- `main.js` — main process: window management, IPC handlers, auto-updater (`quitAndInstall(true, true)` for silent updates), crash recovery, tray, badges, auto-launch, icon switching, single instance lock, power save blocker. `app.setAppUserModelId('app.lala.desktop')` set before ready for correct Windows taskbar association
 - `preload.js` — contextBridge exposing `electronAPI` to renderer
-- `index.html` — connection page (server URL input, auto-connect, recent servers)
+- `index.html` — connection page (server URL input, auto-connect, recent servers) with splash screen during auto-connect (pulsing status, cancel button)
 - `electron-builder.yml` — build config (Win NSIS x64, Linux AppImage/rpm/tar.gz, macOS dmg); `publish.releaseType: release`; GitHub Releases provider
 - `scripts/generate-icons.js` — SVG → per-size PNGs (Linux `build/icons/`, Windows `build/icons-win/`, tray, macOS template) + variant PNGs (16/32/48/64/256 per variant) from `build/icon-variants/*.svg`
 - `build/icon-variants/` — 4 icon variant SVGs + generated PNGs: `voice-wave` (default, 5 bars), `dark-sphere`, `single-wave`, `double-wave`
@@ -292,7 +305,7 @@ All in `lala-settings`:
 6. User picks source, sets quality/fps/audio, clicks "Начать"
 7. `handleScreenShareModalConfirm(quality, sourceId, audio)` → `await electronAPI.setScreenShareSource(sourceId)` FIRST
 8. Then `localParticipant.setScreenShareEnabled(true, {audio, ...})` triggers `getDisplayMedia`
-9. `main.js` `setDisplayMediaRequestHandler` sees `pendingScreenShareSourceId`, returns it with `audio: 'loopback'`
+9. `main.js` `setDisplayMediaRequestHandler` sees `pendingScreenShareSourceId`, returns it with `audio: 'loopbackWithoutChrome'`
 10. DTX and RED disabled for screen share audio tracks (preserves music/app audio quality)
 11. 30s timeout auto-clears stale sourceId
 
@@ -300,7 +313,7 @@ All in `lala-settings`:
 When navigating from `file://index.html` to `https://server` via `loadURL()`, the preload script's `contextBridge.exposeInMainWorld()` may complete after page scripts execute. Fix: `did-finish-load` listener checks `!!window.electronAPI` via `executeJavaScript`, reloads once if missing. Flag prevents infinite loop.
 
 ### Screen Share Audio
-- Electron uses `audio: 'loopback'` = system-wide WASAPI loopback on Windows only
+- Electron uses `audio: 'loopbackWithoutChrome'` = system-wide WASAPI loopback excluding app's own audio on Windows only
 - macOS/Linux silently get no system audio (OS limitation)
 - Per-window audio capture is NOT possible via Electron APIs — would require native C++ addon using Windows WASAPI Application Loopback API (Win10 Build 20348+)
 - Audio toggle in modal controls whether to request audio at all (`systemAudio: 'include'|'exclude'`)
@@ -328,6 +341,20 @@ When navigating from `file://index.html` to `https://server` via `loadURL()`, th
 - Crash logs: `userData/crash-logs/`
 - Session: `userData/session.json` = `{ serverUrl, roomId, timestamp }`
 
+### Single Instance Lock
+- `app.requestSingleInstanceLock()` — prevents multiple Electron instances; second instance focuses the existing window
+
+### Power Save Blocker
+- IPC: `setInCall(inCall)` — renderer notifies main process of call state
+- `powerSaveBlocker.start('prevent-display-sleep')` when in call, stopped on leave
+- Prevents OS from sleeping display during active calls
+
+### Wayland Support
+- `WebRTCPipeWireCapturer` feature flag enabled before app ready — enables PipeWire-based screen capture
+- `IS_WAYLAND` detection via `XDG_SESSION_TYPE` / `WAYLAND_DISPLAY` env vars
+- On Wayland, screen share uses XDG desktop portal (native picker) instead of Electron's `desktopCapturer` source picker
+- No system audio capture on Wayland (OS limitation)
+
 ### Build & Release
 ```bash
 cd packages/desktop
@@ -349,4 +376,4 @@ CI: `.github/workflows/electron.yml` — triggers on push tags `v*` + `workflow_
 - `dtx: true` in publishDefaults applies globally to voice tracks; screen share explicitly sets `dtx: false, red: false` to preserve audio quality
 - Ban by identity persists per device (HMAC identity is stable), but only within the room's lifetime
 - `@livekit/components-react` v2 — always check `.d.ts` in node_modules for API changes
-- Electron screen share `audio: 'loopback'` only works on Windows — macOS/Linux silently get no system audio
+- Electron screen share `audio: 'loopbackWithoutChrome'` only works on Windows — macOS/Linux silently get no system audio
