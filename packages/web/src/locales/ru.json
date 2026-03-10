@@ -91,7 +91,8 @@
     "kicked": "{{by}} кикнул {{target}}",
     "banned": "{{by}} забанил {{target}}",
     "muted": "{{by}} заглушил {{target}}",
-    "unmuted": "{{by}} снял мут с {{target}}"
+    "unmuted": "{{by}} снял мут с {{target}}",
+    "rateLimited": "Слишком много действий — подождите"
   },
   "theme": {
     "dark": "Тёмная",
