@@ -6,7 +6,7 @@ import { colorForName } from '../../lib/participantColor';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { AvatarBadge } from '../../ui/AvatarBadge';
 import { getCachedAvatar } from '../../lib/avatarUtils';
-import { getBookmarks, addBookmark, removeBookmark, isBookmarked } from '../../lib/bookmarks';
+import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { getRoomPassword } from '../../lib/passwords';
 import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
@@ -94,14 +94,15 @@ export function ChannelSidebar({
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const renameInputRef = useRef<HTMLInputElement>(null);
-    const [bookmarkVersion, setBookmarkVersion] = useState(0);
+    const [templateVersion, setTemplateVersion] = useState(0);
+    const [templateError, setTemplateError] = useState<string | null>(null);
 
-    const bookmarks = useMemo(() => getBookmarks(), [bookmarkVersion]);
-    const liveRoomIds = useMemo(() => new Set(rooms.map(r => r.id)), [rooms]);
-    const offlineBookmarks = useMemo(
-        () => bookmarks.filter(b => !liveRoomIds.has(b.roomId)),
-        [bookmarks, liveRoomIds],
-    );
+    const visibleTemplates = useMemo(() => {
+        const templates = getTemplates();
+        const liveNames = new Set(rooms.map(r => r.displayName.toLowerCase()));
+        return templates.filter(t => !liveNames.has(t.name.toLowerCase()));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rooms, templateVersion]);
 
     const roomParticipants = useMemo(() => {
         const map = new Map<string, Array<{ identity: string; name: string }>>();
@@ -113,15 +114,6 @@ export function ChannelSidebar({
         }
         return map;
     }, [rooms, activeRoom, liveParticipants, identity]);
-
-    const toggleBookmark = useCallback((roomId: string, name: string, hasPassword?: boolean) => {
-        if (isBookmarked(roomId)) {
-            removeBookmark(roomId);
-        } else {
-            addBookmark({ roomId, name, hasPassword });
-        }
-        setBookmarkVersion(v => v + 1);
-    }, []);
 
     useEffect(() => {
         if (renaming) renameInputRef.current?.focus();
@@ -226,12 +218,19 @@ export function ChannelSidebar({
                     </button>
                 </div>
 
-                {rooms.length === 0 && offlineBookmarks.length === 0 && (
-                    <div className="sidebar-empty">
-                        {roomsError
-                            ? <span style={{ color: 'var(--color-danger)' }}>{t('sidebar.connectionError')}</span>
-                            : t('sidebar.noChannels')
-                        }
+                {rooms.length === 0 && visibleTemplates.length === 0 && (
+                    roomsError
+                        ? <div className="sidebar-reconnecting">
+                            <div className="sidebar-reconnecting-spinner" />
+                            <span>{t('sidebar.reconnecting')}</span>
+                        </div>
+                        : <div className="sidebar-empty">{t('sidebar.noChannels')}</div>
+                )}
+
+                {roomsError && rooms.length > 0 && (
+                    <div className="sidebar-reconnecting sidebar-reconnecting-banner">
+                        <div className="sidebar-reconnecting-spinner" />
+                        <span>{t('sidebar.reconnecting')}</span>
                     </div>
                 )}
 
@@ -254,15 +253,6 @@ export function ChannelSidebar({
                                     {room.maxParticipants > 0 ? `/${room.maxParticipants}` : ''}
                                 </span>
                             )}
-                            <button
-                                className={`channel-copy-btn${isBookmarked(room.id) ? ' bookmarked' : ''}`}
-                                onClick={(e) => { e.stopPropagation(); toggleBookmark(room.id, room.displayName, room.hasPassword); }}
-                                title={isBookmarked(room.id) ? t('sidebar.removeBookmark') : t('sidebar.addBookmark')}
-                            >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill={isBookmarked(room.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                                </svg>
-                            </button>
                             <button
                                 className={`channel-copy-btn${copiedRoom === room.id ? ' copied' : ''}`}
                                 onClick={(e) => handleCopyInvite(e, room.id, room.hasPassword)}
@@ -350,36 +340,47 @@ export function ChannelSidebar({
                     </div>
                 ))}
 
-                {offlineBookmarks.length > 0 && (
-                    <>
-                        <div className="sidebar-section-header" style={{ marginTop: 12 }}>
-                            <span className="sidebar-section-title" style={{ opacity: 0.5 }}>{t('sidebar.bookmarksOffline')}</span>
-                        </div>
-                        {offlineBookmarks.map(b => (
-                            <div key={b.roomId}>
-                                <div
-                                    className="channel-item channel-item-offline"
-                                    onClick={() => onJoinRoom(b.roomId)}
-                                >
-                                    <svg className="channel-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
-                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                {visibleTemplates.length > 0 && (
+                    <div className="channel-templates">
+                        {visibleTemplates.map(template => (
+                            <div
+                                key={template.name}
+                                className={`channel-item channel-item-template${templateError === template.name ? ' channel-item-error' : ''}`}
+                                onClick={async () => {
+                                    try {
+                                        setTemplateError(null);
+                                        await onCreateRoom({ name: template.name, password: template.password, maxParticipants: template.maxParticipants });
+                                    } catch {
+                                        setTemplateError(template.name);
+                                        setTimeout(() => setTemplateError(null), 3000);
+                                    }
+                                }}
+                                title={t('sidebar.recreateRoom')}
+                            >
+                                <svg className="channel-template-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="1 4 1 10 7 10" />
+                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                                </svg>
+                                <span className="channel-name">{template.name}</span>
+                                {template.password && (
+                                    <svg className="channel-lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                                     </svg>
-                                    <span className="channel-name" style={{ opacity: 0.5 }}>{b.name}</span>
-                                    {b.hasPassword && <LockIcon title={t('sidebar.passwordProtected')} />}
-                                    <button
-                                        className="channel-copy-btn"
-                                        onClick={(e) => { e.stopPropagation(); removeBookmark(b.roomId); setBookmarkVersion(v => v + 1); }}
-                                        title={t('sidebar.removeBookmark')}
-                                    >
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                                        </svg>
-                                    </button>
-                                </div>
+                                )}
+                                <button
+                                    className="channel-template-remove"
+                                    onClick={(e) => { e.stopPropagation(); removeTemplate(template.name); setTemplateVersion(v => v + 1); }}
+                                    title={t('sidebar.removeTemplate')}
+                                >
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18" />
+                                        <line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
+                                </button>
                             </div>
                         ))}
-                    </>
+                    </div>
                 )}
             </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import './lib/i18n';
 import { ChannelSidebar } from './features/channels';
@@ -13,7 +13,8 @@ import { getOrCreateIdentity, getCachedHmacIdentity, saveCachedHmacIdentity } fr
 import type { CreateRoomRequest } from './lib/types';
 import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
-import { saveRoomPassword } from './lib/passwords';
+import { saveRoomPassword, getRoomPassword } from './lib/passwords';
+import { saveTemplate } from './lib/roomTemplates';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
@@ -82,6 +83,26 @@ export default function App() {
 
     const activeRoom = route.roomId;
 
+    // Keep a ref to rooms so the auto-save timer can read latest data
+    const roomsRef = useRef(rooms);
+    roomsRef.current = rooms;
+
+    // Auto-save room as template after 30s of being in the room
+    useEffect(() => {
+        if (!activeRoom) return;
+        const timer = setTimeout(() => {
+            const room = roomsRef.current.find(r => r.id === activeRoom);
+            if (!room) return;
+            const password = getRoomPassword(room.id) || undefined;
+            saveTemplate({
+                name: room.displayName,
+                password,
+                maxParticipants: room.maxParticipants || undefined,
+            });
+        }, 30_000);
+        return () => clearTimeout(timer);
+    }, [activeRoom]);
+
     const handleJoinRoom = (id: string) => {
         route.navigate('/room/' + id);
         setSidebarOpen(false);
@@ -106,6 +127,11 @@ export default function App() {
         if (req.password) {
             saveRoomPassword(room.id, req.password);
         }
+        saveTemplate({
+            name: req.name,
+            password: req.password || undefined,
+            maxParticipants: req.maxParticipants || undefined,
+        });
         route.navigate('/room/' + room.id);
         setSidebarOpen(false);
     };

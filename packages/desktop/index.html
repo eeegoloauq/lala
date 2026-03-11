@@ -292,6 +292,9 @@
             return (TRANSLATIONS[lang] || TRANSLATIONS.en)[key] || TRANSLATIONS.en[key] || key;
         }
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnedFromError = urlParams.get('error') === '1';
+
         const STORAGE_KEY = 'lala_recent_servers';
         const MAX_RECENT = 5;
 
@@ -459,7 +462,10 @@
 
         // Auto-connect to last server unless disabled
         const noAutoConnect = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
-        if (recent.length > 0 && !noAutoConnect) {
+        if (returnedFromError) {
+            // Don't auto-connect, user needs to manually retry
+            document.getElementById('mainContainer').style.display = '';
+        } else if (recent.length > 0 && !noAutoConnect) {
             showAutoConnect(recent[0]);
         } else {
             // Show main container (was hidden to prevent flash during auto-connect)
