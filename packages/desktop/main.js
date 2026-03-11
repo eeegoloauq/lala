@@ -76,8 +76,9 @@ const IPC = {
     SET_APP_ICON: 'lala:set-app-icon',
     RELAUNCH: 'lala:relaunch',
 
-    // Main → Renderer
+    // Bidirectional
     NAVIGATE_BACK: 'lala:navigate-back',
+    // Main → Renderer
     LOAD_URL_ERROR: 'lala:load-url-error',
     UPDATE_STATUS: 'lala:update-status',
 };
@@ -567,6 +568,7 @@ function createWindow() {
                 // Reset flag on successful load so future navigations can also retry
                 if (hasAPI) {
                     hasReloadedForPreload = false;
+                    if (!mainWindow.isVisible()) mainWindow.show();
                 }
             })
             .catch(() => {});
@@ -586,6 +588,7 @@ function createWindow() {
         // Send error after index.html loads and sets up IPC listeners
         mainWindow.webContents.once('did-finish-load', () => {
             sendToRenderer(IPC.LOAD_URL_ERROR, { message: errorDescription || 'Connection failed' });
+            mainWindow.show();
         });
     });
 
@@ -600,7 +603,11 @@ function createWindow() {
             mainWindow.loadFile('index.html', { query: { error: '1' } });
             mainWindow.webContents.once('did-finish-load', () => {
                 sendToRenderer(IPC.LOAD_URL_ERROR, { message: `Server error: ${httpResponseCode}` });
+                mainWindow.show();
             });
+        } else {
+            // Success — show window
+            mainWindow.show();
         }
     });
 
@@ -664,6 +671,19 @@ function createTray() {
     const isRu = locale.startsWith('ru');
 
     const contextMenu = Menu.buildFromTemplate([
+        {
+            label: isRu ? 'Сменить сервер' : 'Change server',
+            click: () => {
+                if (!mainWindow || mainWindow.isDestroyed()) return;
+                if (powerSaveBlockerId !== null) {
+                    powerSaveBlocker.stop(powerSaveBlockerId);
+                    powerSaveBlockerId = null;
+                }
+                mainWindow.loadFile('index.html');
+                mainWindow.show();
+            },
+        },
+        { type: 'separator' },
         {
             label: isRu ? 'Выход' : 'Quit',
             click: () => {
@@ -788,10 +808,17 @@ function registerIpcHandlers() {
             sendToRenderer(IPC.LOAD_URL_ERROR, { message: 'Invalid URL protocol. Only HTTP(S) is allowed.' });
             return;
         }
+        mainWindow.hide();  // Hide to prevent 502 flash
         mainWindow.loadURL(url).catch(err => {
             console.error('[Lala] Failed to load URL:', err.message);
             // Error recovery handled by did-fail-load event
         });
+        // Safety: ensure window shows after 15s max
+        setTimeout(() => {
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+                mainWindow.show();
+            }
+        }, 15000);
     });
 
     // Get desktop sources for screen share picker
@@ -974,6 +1001,17 @@ function registerIpcHandlers() {
     ipcMain.on(IPC.SAVE_SESSION, (_event, data) => {
         if (data) saveSession(data);
         else clearSession();
+    });
+
+    // Navigate back to connection page (server switching)
+    ipcMain.on(IPC.NAVIGATE_BACK, () => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        // Stop power save blocker if active
+        if (powerSaveBlockerId !== null) {
+            powerSaveBlocker.stop(powerSaveBlockerId);
+            powerSaveBlockerId = null;
+        }
+        mainWindow.loadFile('index.html');
     });
 
     // Power save blocker for active calls

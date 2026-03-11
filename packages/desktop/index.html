@@ -21,6 +21,66 @@
             --danger: #ef4444;
         }
 
+        [data-theme="light"] {
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --surface-hover: #e5e7eb;
+            --text: #111827;
+            --text-muted: #6b7280;
+            --border: #d1d5db;
+            --primary: #7c3aed;
+            --primary-hover: #6d28d9;
+            --danger: #ef4444;
+        }
+
+        [data-theme="amoled"] {
+            --bg: #000000;
+            --surface: #0a0a0a;
+            --surface-hover: #141414;
+            --text: #ffffff;
+            --text-muted: #737373;
+            --border: #1f1f1f;
+            --primary: #7c3aed;
+            --primary-hover: #6d28d9;
+            --danger: #ef4444;
+        }
+
+        [data-theme="discord"] {
+            --bg: #313338;
+            --surface: #2b2d31;
+            --surface-hover: #35373c;
+            --text: #f2f3f5;
+            --text-muted: #b5bac1;
+            --border: #3f4147;
+            --primary: #5865f2;
+            --primary-hover: #4752c4;
+            --danger: #ed4245;
+        }
+
+        [data-theme="retro"] {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --surface-hover: #1a2745;
+            --text: #00ff41;
+            --text-muted: #008f11;
+            --border: #0f3460;
+            --primary: #e94560;
+            --primary-hover: #c23152;
+            --danger: #ff6b6b;
+        }
+
+        [data-theme="winxp"] {
+            --bg: #3a6ea5;
+            --surface: #ece9d8;
+            --surface-hover: #d6d2c2;
+            --text: #000000;
+            --text-muted: #545454;
+            --border: #aca899;
+            --primary: #316ac5;
+            --primary-hover: #1e4e8c;
+            --danger: #cc0000;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
@@ -43,6 +103,7 @@
             width: 100%;
             max-width: 420px;
             box-shadow: 0 16px 48px -8px rgba(0, 0, 0, 0.6);
+            position: relative;
         }
 
         .logo {
@@ -51,6 +112,15 @@
             margin: 0 auto 16px;
             display: block;
             border-radius: 16px;
+        }
+
+        .logo--connecting {
+            animation: logo-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes logo-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.7; }
         }
 
         h1 {
@@ -93,10 +163,10 @@
 
         input:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
         }
 
-        input::placeholder { color: #4b5563; }
+        input::placeholder { color: var(--text-muted); }
 
         .btn-connect {
             background: var(--primary);
@@ -115,10 +185,10 @@
         .btn-connect:active { transform: scale(0.98); }
         .btn-connect:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-        /* Recent servers */
-        .recent { margin-top: 20px; }
+        /* Saved servers */
+        .servers { margin-bottom: 24px; }
 
-        .recent-header {
+        .servers-header {
             font-size: 11px;
             font-weight: 600;
             color: var(--text-muted);
@@ -127,53 +197,126 @@
             margin-bottom: 8px;
         }
 
-        .recent-list {
+        .server-list {
             display: flex;
             flex-direction: column;
             gap: 4px;
             -webkit-app-region: no-drag;
+            max-height: 210px;
+            overflow-y: auto;
         }
 
-        .recent-item {
+        .server-card {
             display: flex;
             align-items: center;
             gap: 10px;
             padding: 10px 12px;
             border-radius: 8px;
-            background: transparent;
-            border: none;
+            background: var(--bg);
+            border: 1px solid var(--border);
             color: var(--text);
-            font-size: 13px;
             font-family: inherit;
             cursor: pointer;
             text-align: left;
-            transition: background 0.15s;
+            transition: background 0.15s, border-color 0.15s;
             width: 100%;
         }
 
-        .recent-item:hover { background: var(--surface-hover); }
+        .server-card:hover {
+            background: var(--surface-hover);
+            border-color: var(--primary);
+        }
 
-        .recent-item-url {
+        .server-card-info {
             flex: 1;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .server-card-label {
+            font-size: 14px;
+            font-weight: 600;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .recent-item-remove {
+        .server-card-label-edit {
+            background: var(--bg);
+            border: 1px solid var(--primary);
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            border-radius: 4px;
+            padding: 1px 4px;
+            outline: none;
+            width: 100%;
+        }
+
+        .server-card-url {
+            font-size: 12px;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .server-card-actions {
+            display: flex;
+            align-items: center;
+            gap: 2px;
             opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .server-card:hover .server-card-actions { opacity: 1; }
+
+        .server-card-btn {
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
-            padding: 0 4px;
-            transition: opacity 0.15s, color 0.15s;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: color 0.15s, background 0.15s;
             -webkit-app-region: no-drag;
+            line-height: 1;
         }
 
-        .recent-item:hover .recent-item-remove { opacity: 1; }
-        .recent-item-remove:hover { color: var(--danger); }
+        .server-card-btn:hover {
+            color: var(--text);
+            background: var(--surface-hover);
+        }
+
+        .server-card-btn--danger:hover {
+            color: var(--danger);
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0 16px;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .divider-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
 
         .error-msg {
             color: var(--danger);
@@ -185,8 +328,94 @@
         .version {
             text-align: center;
             font-size: 11px;
-            color: #4b5563;
+            color: var(--text-muted);
             margin-top: 24px;
+        }
+
+        /* Settings toggle */
+        .settings-toggle {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            transition: color 0.15s, background 0.15s;
+            -webkit-app-region: no-drag;
+            line-height: 0;
+        }
+
+        .settings-toggle:hover {
+            color: var(--text);
+            background: var(--surface-hover);
+        }
+
+        .settings-toggle svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 44px;
+            right: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            z-index: 10;
+            min-width: 200px;
+            box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+            -webkit-app-region: no-drag;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .settings-row + .settings-row {
+            margin-top: 10px;
+        }
+
+        .settings-row label {
+            font-size: 13px;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        .settings-row select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+            min-width: 100px;
+        }
+
+        .settings-row select:focus {
+            border-color: var(--primary);
+        }
+
+        /* Auto-connect toggle */
+        .auto-connect-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            -webkit-app-region: no-drag;
         }
 
         /* Splash screen */
@@ -222,9 +451,45 @@
 
 <body>
     <div class="container" id="mainContainer" style="display:none">
-        <img class="logo" src="build/icons/64x64.png" alt="Lala" />
+        <button class="settings-toggle" id="settingsToggleBtn" title="Settings" aria-label="Settings" onclick="toggleSettings()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+        </button>
+        <div class="settings-panel" id="settingsPanel" style="display:none">
+            <div class="settings-row">
+                <label id="settingsLangLabel"></label>
+                <select id="langSelect" onchange="changeLanguage(this.value)">
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label id="settingsThemeLabel"></label>
+                <select id="themeSelect" onchange="changeTheme(this.value)">
+                </select>
+            </div>
+        </div>
+
+        <img class="logo" id="mainLogo" src="build/icons/64x64.png" alt="Lala" />
         <h1>Lala</h1>
         <p class="subtitle" id="subtitleText"></p>
+
+        <!-- Saved servers section (shown above input when servers exist) -->
+        <div class="servers" id="serversSection" style="display:none">
+            <div class="servers-header" id="serversHeader"></div>
+            <div class="server-list" id="serverList"></div>
+            <label class="auto-connect-toggle" id="autoConnectToggle">
+                <input type="checkbox" id="noAutoConnectCheckbox" />
+                <span id="noAutoConnectLabel"></span>
+            </label>
+        </div>
+
+        <!-- Divider (shown when servers exist) -->
+        <div class="divider" id="addServerDivider" style="display:none">
+            <span class="divider-text" id="addServerDividerText"></span>
+        </div>
 
         <form id="connectForm">
             <div class="input-group">
@@ -234,21 +499,12 @@
             <div class="error-msg" id="errorMsg"></div>
         </form>
 
-        <div class="recent" id="recentSection" style="display:none">
-            <div class="recent-header" id="recentHeader"></div>
-            <div class="recent-list" id="recentList"></div>
-            <label id="autoConnectToggle" style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:12px; color:var(--text-muted); cursor:pointer; -webkit-app-region:no-drag;">
-                <input type="checkbox" id="noAutoConnectCheckbox" />
-                <span id="noAutoConnectLabel"></span>
-            </label>
-        </div>
-
         <div class="version" id="versionInfo"></div>
     </div>
 
     <!-- Splash screen shown during auto-connect -->
     <div class="splash" id="splashScreen" style="display:none">
-        <img class="logo" src="build/icons/64x64.png" alt="Lala" />
+        <img class="logo logo--connecting" id="splashLogo" src="build/icons/64x64.png" alt="Lala" />
         <h1>Lala</h1>
         <div class="splash-status" id="splashStatus"></div>
         <button type="button" class="btn-connect splash-cancel" id="splashCancelBtn" style="background:transparent; border:1px solid var(--border); font-size:13px; padding:8px 24px; margin-top:16px; -webkit-app-region:no-drag;"></button>
@@ -259,26 +515,55 @@
             en: {
                 subtitle: 'Connect to server',
                 connect: 'Connect',
-                recentServers: 'Recent servers',
+                savedServers: 'Saved servers',
+                addNewServer: 'Add new server',
                 noAutoConnect: "Don't auto-connect",
                 connecting: 'Connecting...',
                 remove: 'Remove',
+                editLabel: 'Edit label',
                 connectionFailed: 'Failed to connect',
                 connectingTo: 'Connecting to <strong style="color: var(--text)">%s</strong>...',
                 cancel: 'Cancel',
+                theme: 'Theme',
+                language: 'Language',
+                themeDark: 'Dark',
+                themeLight: 'Light',
+                themeAmoled: 'AMOLED',
+                themeDiscord: 'Discord',
+                themeRetro: 'Retro',
+                themeWinxp: 'Windows XP',
             },
             ru: {
                 subtitle: 'Подключиться к серверу',
                 connect: 'Подключиться',
-                recentServers: 'Недавние серверы',
+                savedServers: 'Сохранённые серверы',
+                addNewServer: 'Новый сервер',
                 noAutoConnect: 'Не подключаться автоматически',
                 connecting: 'Подключение...',
                 remove: 'Удалить',
+                editLabel: 'Изменить название',
                 connectionFailed: 'Не удалось подключиться',
                 connectingTo: 'Подключение к <strong style="color: var(--text)">%s</strong>...',
                 cancel: 'Отмена',
+                theme: 'Тема',
+                language: 'Язык',
+                themeDark: 'Тёмная',
+                themeLight: 'Светлая',
+                themeAmoled: 'AMOLED',
+                themeDiscord: 'Discord',
+                themeRetro: 'Ретро',
+                themeWinxp: 'Windows XP',
             }
         };
+
+        const THEME_OPTIONS = [
+            { value: 'dark', key: 'themeDark' },
+            { value: 'light', key: 'themeLight' },
+            { value: 'amoled', key: 'themeAmoled' },
+            { value: 'discord', key: 'themeDiscord' },
+            { value: 'retro', key: 'themeRetro' },
+            { value: 'winxp', key: 'themeWinxp' },
+        ];
 
         function detectLanguage() {
             const saved = localStorage.getItem('lala_language');
@@ -295,89 +580,251 @@
         const urlParams = new URLSearchParams(window.location.search);
         const returnedFromError = urlParams.get('error') === '1';
 
-        const STORAGE_KEY = 'lala_recent_servers';
-        const MAX_RECENT = 5;
+        const SAVED_KEY = 'lala_saved_servers';
+        const LEGACY_KEY = 'lala_recent_servers';
+        const MAX_SAVED = 10;
 
         const form = document.getElementById('connectForm');
         const input = document.getElementById('urlInput');
         const errorMsg = document.getElementById('errorMsg');
         const connectBtn = document.getElementById('connectBtn');
-        const recentSection = document.getElementById('recentSection');
-        const recentList = document.getElementById('recentList');
+        const serversSection = document.getElementById('serversSection');
+        const serverList = document.getElementById('serverList');
         const versionInfo = document.getElementById('versionInfo');
+        const mainLogo = document.getElementById('mainLogo');
 
-        // ─── Recent servers ─────────────────────────────────────────
-
-        function getRecentServers() {
+        // ─── Migration from lala_recent_servers ────────────────────
+        function migrateRecentServers() {
+            if (localStorage.getItem(SAVED_KEY)) return;
+            const legacy = localStorage.getItem(LEGACY_KEY);
+            if (!legacy) return;
             try {
-                return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                const urls = JSON.parse(legacy);
+                if (!Array.isArray(urls) || urls.length === 0) return;
+                const now = Date.now();
+                const migrated = urls.map((url, i) => {
+                    let label;
+                    try { label = new URL(url).hostname; } catch { label = url; }
+                    return { url, label, lastConnected: now - i * 1000 };
+                });
+                localStorage.setItem(SAVED_KEY, JSON.stringify(migrated));
+                localStorage.removeItem(LEGACY_KEY);
+            } catch {}
+        }
+        migrateRecentServers();
+
+        // ─── Saved servers ────────────────────────────────────────
+        function getSavedServers() {
+            try {
+                const arr = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+                arr.sort((a, b) => b.lastConnected - a.lastConnected);
+                return arr;
             } catch { return []; }
         }
 
-        function saveRecentServer(url) {
-            const recent = getRecentServers().filter(u => u !== url);
-            recent.unshift(url);
-            if (recent.length > MAX_RECENT) recent.length = MAX_RECENT;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(recent));
+        function saveServer(url) {
+            const servers = getSavedServers();
+            const idx = servers.findIndex(s => s.url === url);
+            if (idx >= 0) {
+                servers[idx].lastConnected = Date.now();
+            } else {
+                let label;
+                try { label = new URL(url).hostname; } catch { label = url; }
+                servers.push({ url, label, lastConnected: Date.now() });
+            }
+            servers.sort((a, b) => b.lastConnected - a.lastConnected);
+            if (servers.length > MAX_SAVED) servers.length = MAX_SAVED;
+            localStorage.setItem(SAVED_KEY, JSON.stringify(servers));
         }
 
-        function removeRecentServer(url) {
-            const recent = getRecentServers().filter(u => u !== url);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(recent));
-            renderRecent();
+        function removeServer(url) {
+            const servers = getSavedServers().filter(s => s.url !== url);
+            localStorage.setItem(SAVED_KEY, JSON.stringify(servers));
+            renderServers();
+        }
+
+        function updateServerLabel(url, label) {
+            const servers = getSavedServers();
+            const server = servers.find(s => s.url === url);
+            if (server) {
+                server.label = label.trim() || server.label;
+                localStorage.setItem(SAVED_KEY, JSON.stringify(servers));
+            }
         }
 
         function connectTo(url) {
-            saveRecentServer(url);
+            saveServer(url);
             connectBtn.disabled = true;
             connectBtn.textContent = t('connecting');
+            mainLogo.classList.add('logo--connecting');
             errorMsg.textContent = '';
             window.electronAPI.loadUrl(url);
         }
 
-        function renderRecent() {
-            const servers = getRecentServers();
+        let isEditingLabel = false;
+
+        function startEditLabel(url, labelEl) {
+            const servers = getSavedServers();
+            const server = servers.find(s => s.url === url);
+            if (!server) return;
+
+            isEditingLabel = true;
+            const currentLabel = server.label;
+            const editInput = document.createElement('input');
+            editInput.type = 'text';
+            editInput.className = 'server-card-label-edit';
+            editInput.value = currentLabel;
+
+            labelEl.replaceWith(editInput);
+            editInput.focus();
+            editInput.select();
+
+            function commit() {
+                const newLabel = editInput.value.trim() || currentLabel;
+                updateServerLabel(url, newLabel);
+                isEditingLabel = false;
+                renderServers();
+            }
+
+            editInput.addEventListener('blur', commit);
+            editInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); editInput.blur(); }
+                if (e.key === 'Escape') { editInput.value = currentLabel; editInput.blur(); }
+            });
+        }
+
+        function renderServers() {
+            const servers = getSavedServers();
+            const divider = document.getElementById('addServerDivider');
+
             if (servers.length === 0) {
-                recentSection.style.display = 'none';
+                serversSection.style.display = 'none';
+                divider.style.display = 'none';
                 return;
             }
-            recentSection.style.display = 'block';
-            recentList.innerHTML = '';
-            servers.forEach(url => {
-                const item = document.createElement('button');
-                item.className = 'recent-item';
-                item.type = 'button';
 
-                const urlSpan = document.createElement('span');
-                urlSpan.className = 'recent-item-url';
+            serversSection.style.display = 'block';
+            divider.style.display = 'flex';
+            serverList.innerHTML = '';
+
+            servers.forEach(server => {
+                const card = document.createElement('div');
+                card.className = 'server-card';
+
+                const info = document.createElement('div');
+                info.className = 'server-card-info';
+
+                const labelEl = document.createElement('div');
+                labelEl.className = 'server-card-label';
+                labelEl.textContent = server.label;
+
+                const urlEl = document.createElement('div');
+                urlEl.className = 'server-card-url';
                 try {
-                    urlSpan.textContent = new URL(url).host;
+                    urlEl.textContent = new URL(server.url).host;
                 } catch {
-                    urlSpan.textContent = url;
+                    urlEl.textContent = server.url;
                 }
 
+                info.appendChild(labelEl);
+                info.appendChild(urlEl);
+
+                const actions = document.createElement('div');
+                actions.className = 'server-card-actions';
+
+                // Edit button (pencil icon)
+                const editBtn = document.createElement('button');
+                editBtn.className = 'server-card-btn';
+                editBtn.type = 'button';
+                editBtn.innerHTML = '&#9998;';
+                editBtn.title = t('editLabel');
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    startEditLabel(server.url, labelEl);
+                });
+
+                // Remove button
                 const removeBtn = document.createElement('button');
-                removeBtn.className = 'recent-item-remove';
+                removeBtn.className = 'server-card-btn server-card-btn--danger';
                 removeBtn.type = 'button';
                 removeBtn.textContent = '\u00D7';
                 removeBtn.title = t('remove');
                 removeBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    removeRecentServer(url);
+                    removeServer(server.url);
                 });
 
-                item.appendChild(urlSpan);
-                item.appendChild(removeBtn);
-                item.addEventListener('click', () => {
-                    input.value = url;
-                    connectTo(url);
+                actions.appendChild(editBtn);
+                actions.appendChild(removeBtn);
+
+                card.appendChild(info);
+                card.appendChild(actions);
+                card.addEventListener('click', () => {
+                    if (isEditingLabel) return;
+                    input.value = server.url;
+                    connectTo(server.url);
                 });
-                recentList.appendChild(item);
+                serverList.appendChild(card);
             });
         }
 
-        // ─── Form submit ────────────────────────────────────────────
+        // ─── Settings panel ───────────────────────────────────────
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.style.display = panel.style.display === 'none' ? '' : 'none';
+        }
 
+        // Close settings panel when clicking outside
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('settingsPanel');
+            const toggle = document.getElementById('settingsToggleBtn');
+            if (panel.style.display !== 'none' && !panel.contains(e.target) && !toggle.contains(e.target)) {
+                panel.style.display = 'none';
+            }
+        });
+
+        function getStoredTheme() {
+            try {
+                const settings = JSON.parse(localStorage.getItem('lala-settings') || '{}');
+                return settings.theme || 'dark';
+            } catch { return 'dark'; }
+        }
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        }
+
+        function changeTheme(theme) {
+            applyTheme(theme);
+            try {
+                const settings = JSON.parse(localStorage.getItem('lala-settings') || '{}');
+                settings.theme = theme;
+                localStorage.setItem('lala-settings', JSON.stringify(settings));
+            } catch {}
+        }
+
+        function changeLanguage(lang) {
+            localStorage.setItem('lala_language', lang);
+            applyTranslations();
+        }
+
+        function populateThemeSelect() {
+            const sel = document.getElementById('themeSelect');
+            sel.innerHTML = '';
+            THEME_OPTIONS.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = t(opt.key);
+                sel.appendChild(o);
+            });
+            sel.value = getStoredTheme();
+        }
+
+        // ─── Form submit ────────────────────────────────────────────
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             const url = input.value.trim();
@@ -386,24 +833,22 @@
         });
 
         // ─── Error handling ─────────────────────────────────────────
-
         if (window.electronAPI?.onLoadUrlError) {
             window.electronAPI.onLoadUrlError((error) => {
                 if (autoConnecting) {
-                    // Auto-connect failed — fall back to connection page
                     autoConnecting = false;
                     document.getElementById('splashScreen').style.display = 'none';
                     document.getElementById('mainContainer').style.display = '';
-                    renderRecent();
+                    renderServers();
                 }
                 errorMsg.textContent = error.message || t('connectionFailed');
                 connectBtn.disabled = false;
                 connectBtn.textContent = t('connect');
+                mainLogo.classList.remove('logo--connecting');
             });
         }
 
         // ─── Auto-connect ────────────────────────────────────────────
-
         let autoConnecting = false;
         let autoConnectCancelled = false;
         const AUTO_CONNECT_KEY = 'lala_no_auto_connect';
@@ -412,7 +857,6 @@
             autoConnecting = true;
             const host = (() => { try { return new URL(url).host; } catch { return url.replace(/[<>&"']/g, ''); } })();
 
-            // Show splash screen, hide main container
             document.getElementById('mainContainer').style.display = 'none';
             const splash = document.getElementById('splashScreen');
             splash.style.display = '';
@@ -424,24 +868,33 @@
                 autoConnecting = false;
                 splash.style.display = 'none';
                 document.getElementById('mainContainer').style.display = '';
-                renderRecent();
+                renderServers();
             };
 
-            saveRecentServer(url);
+            saveServer(url);
             connectBtn.disabled = true;
             window.electronAPI.loadUrl(url);
         }
 
+        // ─── Apply translations ──────────────────────────────────────
+        function applyTranslations() {
+            document.documentElement.lang = detectLanguage();
+            document.getElementById('subtitleText').textContent = t('subtitle');
+            connectBtn.textContent = t('connect');
+            document.getElementById('serversHeader').textContent = t('savedServers');
+            document.getElementById('addServerDividerText').textContent = t('addNewServer');
+            document.getElementById('noAutoConnectLabel').textContent = t('noAutoConnect');
+            document.getElementById('settingsLangLabel').textContent = t('language');
+            document.getElementById('settingsThemeLabel').textContent = t('theme');
+            document.getElementById('langSelect').value = detectLanguage();
+            populateThemeSelect();
+            renderServers();
+        }
+
         // ─── Init ───────────────────────────────────────────────────
-
-        // Apply translations to static elements
-        document.documentElement.lang = detectLanguage();
-        document.getElementById('subtitleText').textContent = t('subtitle');
-        connectBtn.textContent = t('connect');
-        document.getElementById('recentHeader').textContent = t('recentServers');
-        document.getElementById('noAutoConnectLabel').textContent = t('noAutoConnect');
-
-        renderRecent();
+        applyTheme(getStoredTheme());
+        applyTranslations();
+        renderServers();
 
         // Auto-connect toggle
         const noAutoCheckbox = document.getElementById('noAutoConnectCheckbox');
@@ -455,20 +908,18 @@
         });
 
         // Pre-fill from most recent
-        const recent = getRecentServers();
-        if (recent.length > 0) {
-            input.value = recent[0];
+        const saved = getSavedServers();
+        if (saved.length > 0) {
+            input.value = saved[0].url;
         }
 
         // Auto-connect to last server unless disabled
         const noAutoConnect = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
         if (returnedFromError) {
-            // Don't auto-connect, user needs to manually retry
             document.getElementById('mainContainer').style.display = '';
-        } else if (recent.length > 0 && !noAutoConnect) {
-            showAutoConnect(recent[0]);
+        } else if (saved.length > 0 && !noAutoConnect) {
+            showAutoConnect(saved[0].url);
         } else {
-            // Show main container (was hidden to prevent flash during auto-connect)
             document.getElementById('mainContainer').style.display = '';
         }
 

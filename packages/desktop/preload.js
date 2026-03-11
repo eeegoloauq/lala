@@ -95,6 +95,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     /** Set app icon variant (saves preference, updates tray) */
     setAppIcon: (name) => ipcRenderer.invoke(IPC.SET_APP_ICON, name),
 
+    /** Navigate back to the connection page (server switching) */
+    navigateBack: () => ipcRenderer.send(IPC.NAVIGATE_BACK),
+
     /** Relaunch the app (used after icon change to apply window icon) */
     relaunch: () => ipcRenderer.send(IPC.RELAUNCH),
 

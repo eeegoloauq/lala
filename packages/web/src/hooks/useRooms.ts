@@ -36,7 +36,16 @@ export function useRooms() {
         es.addEventListener('rooms_updated', () => fetchRooms());
 
         // Re-fetch when SSE reconnects (may have missed events while disconnected)
+        // Server sends custom 'connected' event on each new SSE connection
         es.addEventListener('connected', () => fetchRooms());
+
+        // Set error state when SSE connection fails (API down)
+        // EventSource auto-reconnects, so this fires on each failed attempt
+        es.addEventListener('error', () => {
+            if (es.readyState === EventSource.CLOSED || es.readyState === EventSource.CONNECTING) {
+                setError('server_unavailable');
+            }
+        });
 
         return () => es.close();
     }, [fetchRooms]);

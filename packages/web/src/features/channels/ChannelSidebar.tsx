@@ -227,7 +227,7 @@ export function ChannelSidebar({
                         : <div className="sidebar-empty">{t('sidebar.noChannels')}</div>
                 )}
 
-                {roomsError && rooms.length > 0 && (
+                {roomsError && (rooms.length > 0 || visibleTemplates.length > 0) && (
                     <div className="sidebar-reconnecting sidebar-reconnecting-banner">
                         <div className="sidebar-reconnecting-spinner" />
                         <span>{t('sidebar.reconnecting')}</span>
