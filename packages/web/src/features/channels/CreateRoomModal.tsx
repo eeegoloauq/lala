@@ -33,8 +33,8 @@ export function CreateRoomModal({ onConfirm, onClose }: Props) {
                 maxParticipants: maxParticipants || undefined,
             });
             onClose();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : t('createRoom.createFailed'));
+        } catch {
+            setError(t('createRoom.createFailed'));
         } finally {
             setLoading(false);
         }

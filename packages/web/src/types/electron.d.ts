@@ -87,6 +87,9 @@ export interface ElectronAPI {
     /** Set app icon variant (saves preference, updates tray) */
     setAppIcon: (name: IconVariant) => Promise<boolean>;
 
+    /** Navigate back to the connection page (server switching) */
+    navigateBack: () => void;
+
     /** Relaunch the app */
     relaunch: () => void;
 

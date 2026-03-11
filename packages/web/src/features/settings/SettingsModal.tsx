@@ -752,6 +752,18 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
             {isElectron && (<>
               <h2 className="settings-header" ref={setSectionRef('desktop')}>{t('settings.desktop')}</h2>
               <div className="settings-section">
+                <div className="settings-section-title">{t('settings.server')}</div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">{window.location.host}</div>
+                    <div className="settings-row-desc">{t('settings.connectedTo')}</div>
+                  </div>
+                  <button className="accent-reset-btn" style={{ color: 'var(--color-danger, #e74c3c)', fontSize: '13px' }} onClick={() => window.electronAPI?.navigateBack()}>
+                    {t('settings.disconnect')}
+                  </button>
+                </div>
+              </div>
+              <div className="settings-section">
                 <div className="settings-section-title">{t('settings.startup')}</div>
                 {(() => {
                   const [autoLaunch, setAutoLaunch] = useState<boolean | null>(null);

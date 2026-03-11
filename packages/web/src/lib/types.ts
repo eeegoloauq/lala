@@ -46,7 +46,8 @@ export type ApiErrorCode =
     | 'room_full'
     | 'banned'
     | 'rate_limited'
-    | 'server_error';
+    | 'server_error'
+    | 'server_unavailable';
 
 /** Typed API error */
 export class ApiError extends Error {

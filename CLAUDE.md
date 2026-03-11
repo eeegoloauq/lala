@@ -86,14 +86,14 @@ Browser → Nginx (:80 → :3000)
 - Redis key evicted on room delete and on `room_finished` webhook. TTL 24h as fallback.
 
 ### Rate Limiting
-- **Server**: `express-rate-limit` with 15s windows (token: 25, rooms: 30, admin: 5, SSE: 5). Nginx defense-in-depth: `limit_req` 10r/s with burst=20.
+- **Server**: `express-rate-limit` with 15s windows (token: 25, rooms: 30, admin: 20, SSE: 5). Nginx defense-in-depth: `limit_req` 10r/s with burst=20.
 - **Client chat**: sliding window 5 messages / 3 seconds with 2s cooldown. Shows "Слишком быстро" warning.
 - `X-Forwarded-For` overwritten by nginx with `$remote_addr` — prevents rate limit bypass via header spoofing.
 - Frontend shows countdown ring + auto-retries when countdown hits 0.
 
 ### Security Hardening
 - **CSP**: `script-src 'self' 'unsafe-inline'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`. `connect-src` configurable via `CSP_CONNECT_SRC` env var.
-- **Error handling**: global Express error handler catches `entity.parse.failed` (400), `entity.too.large` (413). Custom 404 handler. No stack traces leaked. API error responses use snake_case codes (e.g. `server_error`, `invalid_input`, `room_required`, `wrong_password`, `rate_limited`).
+- **Error handling**: global Express error handler catches `entity.parse.failed` (400), `entity.too.large` (413). Custom 404 handler. No stack traces leaked. API error responses use snake_case codes (e.g. `server_error`, `server_unavailable`, `invalid_input`, `room_required`, `wrong_password`, `rate_limited`). Client-side `api.ts` wraps network errors (fetch failures) as `ApiError('server_unavailable', 0)`.
 - **Input sanitization**: room names stripped of null bytes, RTL/LTR overrides, control chars. `maxParticipants` validated as integer. Empty `deviceId` treated as absent (random UUID).
 - **Headers**: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, HSTS (via outer proxy). `X-Powered-By` stripped. `server_tokens off`.
 - **Cache**: hashed assets served with `expires 1y` + `Cache-Control: immutable`.
@@ -121,15 +121,15 @@ Browser → Nginx (:80 → :3000)
 - `src/lib/roomStore.ts` — Redis-backed room metadata cache: `connectRedis()`, `cacheRoomMeta()`, `getCachedMeta()`, `evictRoomMeta()`. Key pattern `lala:room:<roomId>`, TTL 24h. Graceful fallback if Redis down.
 
 ### Web — core
-- `src/App.tsx` — root: sidebar + room; holds `volumes`, `myAvatar`, `liveIdentity` state; `liveIdentity` pre-loaded from HMAC cache, updated via `handleIdentityAssigned` (saves to cache + sets state); passed to ChannelSidebar as `identity`; retains `liveIdentity` on room leave (prevents color change); `SettingsModal` lazy-loaded via `React.lazy` + `Suspense`
-- `src/lib/bookmarks.ts` — room bookmarks: `getBookmarks()`, `addBookmark()`, `removeBookmark()`, `isBookmarked()`; max 50, stored in `lala_bookmarks`
-- `src/types/electron.d.ts` — ElectronAPI interface: screen share, update, badge, auto-launch, session, icon IPC methods; `IconVariant` type
+- `src/App.tsx` — root: sidebar + room; holds `volumes`, `myAvatar`, `liveIdentity` state; `liveIdentity` pre-loaded from HMAC cache, updated via `handleIdentityAssigned` (saves to cache + sets state); passed to ChannelSidebar as `identity`; retains `liveIdentity` on room leave (prevents color change); `SettingsModal` lazy-loaded via `React.lazy` + `Suspense`; auto-saves room as template after 30s via `roomsRef` pattern (no timer restart on SSE updates)
+- `src/lib/roomTemplates.ts` — room template functions: `getTemplates()`, `saveTemplate()`, `removeTemplate()`, `clearTemplates()`; max 3, stored in `lala_room_templates`; deduped by name (case-insensitive); replaces old bookmarks system
+- `src/types/electron.d.ts` — ElectronAPI interface: screen share, update, badge, auto-launch, session, icon, `navigateBack()` IPC methods; `IconVariant` type
 - `src/lib/iconVariants.tsx` — app icon variant definitions (id, labelKey, SVG preview) for Electron icon picker in settings
 - `src/globals.css` — all global styles + CSS vars; **6 themes**: dark, light, amoled, discord, retro, winxp; base `input[type="range"]` slider styles
 - `src/lib/constants.ts` — `LIVEKIT_URL`, `SCREEN_SHARE_FPS_STEPS`, `SCREEN_SHARE_BITRATE_STEPS`, `screenShareBitrateLabel()`
 - `src/lib/passwords.ts` — password pool functions: `getPassPool()`, `saveToPool()`, `removeFromPool()`, `clearPool()`; per-room password: `saveRoomPassword(roomId, pw)`, `getRoomPassword(roomId)` (stored as `lala_room_pw_<roomId>`)
 - `src/lib/utils.ts` — `safeJsonParse<T>()` utility with fallback value
-- `src/lib/api.ts` — API client: `getToken()`, `getRooms()`, `createRoom()`, `kickParticipant()`, `banParticipant()`, `muteParticipant()`; handles 429 with `retryAfter`
+- `src/lib/api.ts` — API client: `getToken()`, `getRooms()`, `createRoom()`, `kickParticipant()`, `banParticipant()`, `muteParticipant()`; handles 429 with `retryAfter`; wraps network errors as `ApiError('server_unavailable', 0)`
 - `src/lib/sounds.ts` — Web Audio API synthesized tones: join/leave, chat, mute/unmute, screen share start/stop, talking-while-muted beep
 - `src/lib/participantColor.ts` — deterministic 8-color palette via `colorForName(identity)`
 - `src/lib/tts.ts` — `speak(text, opts)` via `speechSynthesis`
@@ -137,10 +137,10 @@ Browser → Nginx (:80 → :3000)
 - `src/lib/avatarUtils.ts` — `compressAvatar()` (128×128 JPEG, Canvas); `getMyAvatar/saveMyAvatar`; `getCachedAvatar(identity, name?)` (tries `lala_av_<identity>`, then `lala_avn_<name>` fallback); `setCachedAvatarByName(name, dataUrl)`; `clearCachedAvatar(identity)`; `clearCachedAvatarByName(name)`
 - `src/lib/identity.ts` — `getOrCreateIdentity()` stable device UUID; `getCachedHmacIdentity(deviceId)` / `saveCachedHmacIdentity(deviceId, identity)` HMAC cache with device-UUID validation
 - `src/lib/i18n.ts` — i18next setup: `LanguageDetector` + `initReactI18next`, en/ru locales, localStorage key `lala_language`
-- `src/lib/types.ts` — `RoomInfo`, `CreateRoomRequest`, `TokenRequest`, `TokenResponse`, `ApiErrorCode` (snake_case codes), `ApiError { code, status, retryAfter? }`
+- `src/lib/types.ts` — `RoomInfo` (includes `serverMutedParticipants?: string[]`), `CreateRoomRequest`, `TokenRequest`, `TokenResponse`, `ApiErrorCode` (snake_case codes incl. `server_unavailable`), `ApiError { code, status, retryAfter? }`
 
 ### Web — hooks
-- `src/hooks/useRoute.ts` — URL routing: parses `roomId` from path, `hashPassword` from `#pw=` fragment; `navigate()`/`replace()` helpers
+- `src/hooks/useRoute.ts` — URL routing: parses `roomId` from path, `hashPassword` from `#pw=` fragment (stripped via `useLayoutEffect` before first paint, cleared on room leave); `navigate()`/`replace()` helpers
 - `src/hooks/useDisplayName.ts` — localStorage-persisted display name
 - `src/hooks/usePersistedVolumes.ts` — `Map<identity, volume>` with localStorage, 30-day TTL, 400ms debounce
 - `src/hooks/useAvatarSync.ts` — broadcasts own avatar on connect, unicasts to new joiners, re-broadcasts on avatar change mid-session; handles `dataUrl: null` to propagate avatar deletion; `onAvatarReceived(identity, dataUrl: string | null)`
@@ -151,7 +151,7 @@ Browser → Nginx (:80 → :3000)
 - `hooks/useJoinLeaveSound.ts` — `useJoinLeaveSound(enabled)`, `useScreenShareSound(enabled)`
 
 ### Web — features/room
-- `RoomView.tsx` — token fetch (with password pool auto-try) + E2EE setup + `<LiveKitRoom>`; calls `onIdentityAssigned(data.identity)` immediately on token success; rate limit countdown ring with auto-retry; `tryPool` properly handles `rate_limited` errors (stops iteration, shows countdown instead of false password prompt); supports `hashPassword` prop from invite link `#pw=` fragment (tried first before pool)
+- `RoomView.tsx` — token fetch (with password pool auto-try) + E2EE setup + `<LiveKitRoom>`; calls `onIdentityAssigned(data.identity)` immediately on token success; rate limit countdown ring with auto-retry; `tryPool` properly handles `rate_limited` errors (stops iteration, shows countdown instead of false password prompt); supports `hashPassword` prop from invite link `#pw=` fragment (tried first before pool); saves working password per-room via `saveRoomPassword()`
 - `RoomShell.tsx` — orchestrates everything; `ScreenShareModal` lazy-loaded via `React.lazy` + `Suspense`; `addSystem(text, id)` helper for chat system entries; uses `useMicSound`, `useTalkingWhileMuted`, `useScreenShareSound`, `useJoinLeaveSound`; `useRoomKeyboard` with dynamic key bindings; reconnecting banner (shown when `ConnectionState.Reconnecting`); Electron: syncs unread badge count, saves session on join
 - `VideoGrid/VideoGrid.tsx` — grid; right-click context menu; screen share hide/show toggle (both video + audio tracks); stable `handleTileClick` useCallback — clicking tile auto-subscribes to unsubscribed screen share
 - `VideoGrid/ParticipantTile.tsx` — video tile wrapped in `React.memo`: avatar, speaking ring, quality bars, screen share badge, flip button, admin-mute indicator (`useIsServerMuted` detects `canPublish === false`); `onClick: (identity: string) => void`; `useIsScreenSharing` subscribes only to relevant events per participant type (Remote→TrackPublished, Local→LocalTrackPublished)
@@ -169,13 +169,13 @@ Browser → Nginx (:80 → :3000)
   - Tab order: Окна first (default), Экраны second
 
 ### Web — features/settings
-- `SettingsModal.tsx` — sections: Profile / Security / Devices / Audio / Video / Appearance / Screen Share / Chat / Sounds / Keybinds / Desktop (Electron-only: auto-launch toggle, update status UI with version display/checking/available/downloading/ready/error states). About section at bottom (GitHub link, BTC donate)
+- `SettingsModal.tsx` — sections: Profile / Security / Devices / Audio / Video / Appearance / Screen Share / Chat / Sounds / Keybinds / Desktop (Electron-only: Server disconnect button, auto-launch toggle, app icon picker, update status UI). About section at bottom (GitHub link, BTC donate)
 - `MicTester.tsx` — RMS level meter + silence gate + monitor toggle
 - `useSettings.ts` — `AppSettings` with localStorage persistence
 - `ThemeProvider.tsx` — theme context; `data-theme` on `<html>`
 
 ### Web — features/channels
-- `ChannelSidebar.tsx` — room list + participant mini-cards; theme cycle toggle; room bookmarks (star icon per room, offline bookmarks shown greyed out); when in active room uses `liveParticipants` Map for live participant data; filters self from API participant list to prevent ghost entries on leave; `getCachedAvatar(p.identity, displayName)` with name fallback; `identity` prop = HMAC identity (or device UUID before room join); `roomsError` prop shows API connection error in red when room fetch fails
+- `ChannelSidebar.tsx` — room list + participant mini-cards; theme cycle toggle; room templates (quick-recreate offline rooms with one click, replaces old bookmarks); reconnecting spinner when API is down (banner above room list or empty-state spinner); admin mute/unmute from sidebar via `serverMutedParticipants`; when in active room uses `liveParticipants` Map for live participant data; filters self from API participant list to prevent ghost entries on leave; `getCachedAvatar(p.identity, displayName)` with name fallback; `identity` prop = HMAC identity (or device UUID before room join)
 
 ### Web — nginx
 - `default.conf.template` — nginx config template processed by envsubst at container start; `CSP_CONNECT_SRC` env var interpolated into CSP `connect-src`; security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy); CSP with `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`; `X-Forwarded-For` set to `$remote_addr` (prevents spoofing); hashed assets cached 1 year; rate limiting zone for API; SSE-specific proxy config for `/api/events`
@@ -238,11 +238,11 @@ Right-click any participant with screen share → "Скрыть демку" / "�
 | `lala_screen_volumes` | screen share volumes Map JSON |
 | `lala_passwords` | password pool `string[]` (max 20, Mumble-style) |
 | `lala_admin_<roomId>` | admin secret for room (only creator has this) |
-| `lala_bookmarks` | room bookmarks `Array<{roomId, name, hasPassword?}>` (max 50) |
+| `lala_room_templates` | room templates `Array<{name, password?, maxParticipants?, lastVisited}>` (max 3, replaces old bookmarks) |
 | `lala_room_pw_<roomId>` | saved working password for a specific room (for invite links) |
 | `lala_language` | i18next language preference (e.g. `en`, `ru`) |
 | `lala_no_auto_connect` | `'true'` to disable Electron auto-connect on launch |
-| `lala_recent_servers` | recent server URLs for Electron connection page (max 5) |
+| `lala_saved_servers` | saved servers `Array<{url, label, lastConnected}>` for Electron connection page (max 10, migrated from old `lala_recent_servers`) |
 
 ## AppSettings
 
@@ -289,9 +289,9 @@ All in `lala-settings`:
 ## Electron Desktop (`packages/desktop`)
 
 ### Key Files
-- `main.js` — main process: window management, IPC handlers, auto-updater (`quitAndInstall(true, true)` for silent updates), crash recovery, tray, badges, auto-launch, icon switching, single instance lock, power save blocker. `app.setAppUserModelId('app.lala.desktop')` set before ready for correct Windows taskbar association
-- `preload.js` — contextBridge exposing `electronAPI` to renderer
-- `index.html` — connection page (server URL input, auto-connect, recent servers) with splash screen during auto-connect (pulsing status, cancel button)
+- `main.js` — main process: window management, IPC handlers, auto-updater (`quitAndInstall(true, true)` for silent updates), crash recovery, tray (with "Change server" item), badges, auto-launch, icon switching, single instance lock, power save blocker, `navigateBack` IPC for server switching, `did-fail-load`/`did-navigate` error recovery (502 flash fix via hide/show window). `app.setAppUserModelId('app.lala.desktop')` set before ready for correct Windows taskbar association
+- `preload.js` — contextBridge exposing `electronAPI` to renderer (incl. `navigateBack()`, `loadUrl()`, `onLoadUrlError()`)
+- `index.html` — connection page: saved servers with editable labels (cards UI), auto-connect with splash screen, mini settings panel (theme + language via gear icon), 6 theme support, pulsing logo animation during connection, `?error=1` query prevents auto-connect loop on server error. Migrates `lala_recent_servers` → `lala_saved_servers` on first load
 - `electron-builder.yml` — build config (Win NSIS x64, Linux AppImage/rpm/tar.gz, macOS dmg); `publish.releaseType: release`; GitHub Releases provider
 - `scripts/generate-icons.js` — SVG → per-size PNGs (Linux `build/icons/`, Windows `build/icons-win/`, tray, macOS template) + variant PNGs (16/32/48/64/256 per variant) from `build/icon-variants/*.svg`
 - `build/icon-variants/` — 4 icon variant SVGs + generated PNGs: `voice-wave` (default, 5 bars), `dark-sphere`, `single-wave`, `double-wave`
@@ -311,6 +311,17 @@ All in `lala-settings`:
 
 ### Preload Race Condition Fix
 When navigating from `file://index.html` to `https://server` via `loadURL()`, the preload script's `contextBridge.exposeInMainWorld()` may complete after page scripts execute. Fix: `did-finish-load` listener checks `!!window.electronAPI` via `executeJavaScript`, reloads once if missing. Flag prevents infinite loop.
+
+### Error Recovery (502 / Connection Failures)
+- **502 flash fix**: Window is hidden (`mainWindow.hide()`) before `loadURL()`. Shown only after successful load or after error recovery page loads. 15s safety timeout ensures window always becomes visible.
+- **`did-fail-load`**: Catches DNS failures, connection refused, timeouts, cert errors. Navigates back to `index.html?error=1`. Skips `file://` URLs and aborted loads (errorCode -3).
+- **`did-navigate` with 5xx**: Catches HTTP 502/503/etc. Same recovery flow — back to connection page with error.
+- **Anti-loop**: `?error=1` query param disables auto-connect on the connection page, preventing reconnect loops.
+
+### Server Switching
+- `navigateBack()` IPC (bidirectional): renderer sends to request disconnect, main process loads `index.html` and stops power save blocker.
+- Tray menu: "Change server" / "Сменить сервер" item — loads connection page, stops power save blocker, shows window.
+- SettingsModal Desktop section: "Server" subsection with current host display + "Disconnect" button calling `navigateBack()`.
 
 ### Screen Share Audio
 - Electron uses `audio: 'loopbackWithoutChrome'` = system-wide WASAPI loopback excluding app's own audio on Windows only
@@ -367,6 +378,24 @@ npm run publish:linux    # build + publish to GitHub Releases
 Release workflow: `./release.sh patch|minor|major|x.y.z` — bumps version, commits, tags `vX.Y.Z`, pushes. CI triggers on tag push.
 
 CI: `.github/workflows/electron.yml` — triggers on push tags `v*` + `workflow_dispatch`. Two parallel jobs (`build-windows` on `windows-latest`, `build-linux` on `ubuntu-latest`). Uses `npm run publish:win`/`publish:linux` (`electron-builder --publish always`). Linux job updates release description with download table.
+
+## SSE Real-time Updates
+
+- `useRooms` hook opens `EventSource('/api/events')` on mount — keeps one TCP connection alive for room list updates
+- Server sends custom `event: connected` on SSE connect and `event: rooms_updated` on room changes
+- `error` event listener sets `server_unavailable` error state → sidebar shows reconnecting spinner
+- EventSource auto-reconnects (browser built-in, ~3s backoff). On reconnect, `connected` event fires → `fetchRooms()` → error cleared
+- Zero polling — data only flows when rooms change. Negligible overhead for 2-20 users
+
+## Room Templates (replacing bookmarks)
+
+- Auto-saved after 30s in a room (via `setTimeout` with `roomsRef` pattern — timer doesn't restart on SSE updates)
+- Room creator's template saved immediately on creation (includes password)
+- Up to 3 templates, deduped by name (case-insensitive), sorted by `lastVisited`
+- Sidebar shows offline templates with rotate icon — one click recreates room with same name/password/maxParticipants
+- If room with same name is already live → template hidden (no duplicate)
+- `templateVersion` state counter triggers re-render on template removal
+- Passwords stored same as existing `lala_passwords` pool — no new security surface
 
 ## Known Issues / Caveats
 

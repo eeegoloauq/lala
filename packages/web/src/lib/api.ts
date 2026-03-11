@@ -4,11 +4,16 @@ import { ApiError } from './types';
 const API_BASE = '/api';
 
 export async function getToken(request: TokenRequest): Promise<TokenResponse> {
-    const res = await fetch(`${API_BASE}/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-    });
+    let res: Response;
+    try {
+        res = await fetch(`${API_BASE}/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+    } catch {
+        throw new ApiError('server_unavailable', 0);
+    }
 
     if (!res.ok) {
         if (res.status === 429) {
@@ -23,18 +28,28 @@ export async function getToken(request: TokenRequest): Promise<TokenResponse> {
 }
 
 export async function getRooms(): Promise<RoomInfo[]> {
-    const res = await fetch(`${API_BASE}/rooms`);
+    let res: Response;
+    try {
+        res = await fetch(`${API_BASE}/rooms`);
+    } catch {
+        throw new ApiError('server_unavailable', 0);
+    }
     if (!res.ok) throw new ApiError('server_error', res.status);
     const data = await res.json();
     return data.rooms;
 }
 
 export async function createRoom(request: CreateRoomRequest): Promise<RoomInfo> {
-    const res = await fetch(`${API_BASE}/rooms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-    });
+    let res: Response;
+    try {
+        res = await fetch(`${API_BASE}/rooms`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+    } catch {
+        throw new ApiError('server_unavailable', 0);
+    }
     if (!res.ok) {
         const body = await res.json().catch(() => ({ error: 'server_error' }));
         throw new ApiError(body.error ?? 'server_error', res.status);
@@ -43,11 +58,16 @@ export async function createRoom(request: CreateRoomRequest): Promise<RoomInfo> 
 }
 
 async function adminPost(roomId: string, action: string, body: object): Promise<void> {
-    const res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(roomId)}/admin/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+        res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(roomId)}/admin/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    } catch {
+        throw new ApiError('server_unavailable', 0);
+    }
     if (!res.ok) {
         if (res.status === 429) {
             const retryAfter = parseInt(res.headers.get('Retry-After') ?? '15', 10);

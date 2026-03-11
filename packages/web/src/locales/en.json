@@ -295,7 +295,10 @@
     "noMicAccess": "No mic access",
     "inputLevel": "Input level",
     "monitor": "Monitor",
-    "stop": "Stop"
+    "stop": "Stop",
+    "server": "Server",
+    "connectedTo": "Connected server",
+    "disconnect": "Disconnect"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",
