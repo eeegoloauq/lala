@@ -87,6 +87,9 @@ export interface ElectronAPI {
     /** Set app icon variant (saves preference, updates tray) */
     setAppIcon: (name: IconVariant) => Promise<boolean>;
 
+    /** Ping a server (health check via Node.js, bypasses CORS) */
+    pingServer: (url: string) => Promise<number | null>;
+
     /** Navigate back to the connection page (server switching) */
     navigateBack: () => void;
 
