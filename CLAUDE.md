@@ -290,8 +290,8 @@ All in `lala-settings`:
 
 ### Key Files
 - `main.js` — main process: window management, IPC handlers, auto-updater (`quitAndInstall(true, true)` for silent updates), crash recovery, tray (with "Change server" item), badges, auto-launch, icon switching, single instance lock, power save blocker, `navigateBack` IPC for server switching, `did-fail-load`/`did-navigate` error recovery (502 flash fix via hide/show window). `app.setAppUserModelId('app.lala.desktop')` set before ready for correct Windows taskbar association
-- `preload.js` — contextBridge exposing `electronAPI` to renderer (incl. `navigateBack()`, `loadUrl()`, `onLoadUrlError()`)
-- `index.html` — connection page: saved servers with editable labels (cards UI), auto-connect with splash screen, mini settings panel (theme + language via gear icon), 6 theme support, pulsing logo animation during connection, `?error=1` query prevents auto-connect loop on server error. Migrates `lala_recent_servers` → `lala_saved_servers` on first load
+- `preload.js` — contextBridge exposing `electronAPI` to renderer (incl. `navigateBack()`, `loadUrl()`, `onLoadUrlError()`, `pingServer()`)
+- `index.html` — connection page: saved servers with editable labels (cards UI), auto-connect with splash screen, pulsing logo animation during connection, `?error=1` query prevents auto-connect loop on server error. Always dark theme (no theme switching). Health check (`/api/health`) via IPC before `loadUrl()` — prevents 502 flash entirely. Ping status dots (green/red) + latency on server cards with 15s cache. Migrates `lala_recent_servers` → `lala_saved_servers` on first load
 - `electron-builder.yml` — build config (Win NSIS x64, Linux AppImage/rpm/tar.gz, macOS dmg); `publish.releaseType: release`; GitHub Releases provider
 - `scripts/generate-icons.js` — SVG → per-size PNGs (Linux `build/icons/`, Windows `build/icons-win/`, tray, macOS template) + variant PNGs (16/32/48/64/256 per variant) from `build/icon-variants/*.svg`
 - `build/icon-variants/` — 4 icon variant SVGs + generated PNGs: `voice-wave` (default, 5 bars), `dark-sphere`, `single-wave`, `double-wave`

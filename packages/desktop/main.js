@@ -76,6 +76,7 @@ const IPC = {
     SET_APP_ICON: 'lala:set-app-icon',
     RELAUNCH: 'lala:relaunch',
 
+    PING_SERVER: 'lala:ping-server',
     // Bidirectional
     NAVIGATE_BACK: 'lala:navigate-back',
     // Main → Renderer
@@ -801,6 +802,22 @@ function buildRpmInstallArgs(installerPath) {
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
 
 function registerIpcHandlers() {
+    // Ping a server (health check from connection page, bypasses CORS)
+    ipcMain.handle(IPC.PING_SERVER, async (_event, url) => {
+        if (!isUrlAllowed(url)) return null;
+        const endpoint = url.replace(/\/+$/, '') + '/api/health';
+        const mod = endpoint.startsWith('https') ? require('https') : require('http');
+        const start = Date.now();
+        return new Promise(resolve => {
+            const req = mod.get(endpoint, { timeout: 5000 }, (res) => {
+                res.resume(); // drain response
+                resolve(res.statusCode >= 200 && res.statusCode < 300 ? Date.now() - start : null);
+            });
+            req.on('error', () => resolve(null));
+            req.on('timeout', () => { req.destroy(); resolve(null); });
+        });
+    });
+
     // Load a server URL (from connection page)
     ipcMain.on(IPC.LOAD_URL, (event, url) => {
         if (!mainWindow) return;

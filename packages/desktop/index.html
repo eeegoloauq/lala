@@ -21,66 +21,6 @@
             --danger: #ef4444;
         }
 
-        [data-theme="light"] {
-            --bg: #f3f4f6;
-            --surface: #ffffff;
-            --surface-hover: #e5e7eb;
-            --text: #111827;
-            --text-muted: #6b7280;
-            --border: #d1d5db;
-            --primary: #7c3aed;
-            --primary-hover: #6d28d9;
-            --danger: #ef4444;
-        }
-
-        [data-theme="amoled"] {
-            --bg: #000000;
-            --surface: #0a0a0a;
-            --surface-hover: #141414;
-            --text: #ffffff;
-            --text-muted: #737373;
-            --border: #1f1f1f;
-            --primary: #7c3aed;
-            --primary-hover: #6d28d9;
-            --danger: #ef4444;
-        }
-
-        [data-theme="discord"] {
-            --bg: #313338;
-            --surface: #2b2d31;
-            --surface-hover: #35373c;
-            --text: #f2f3f5;
-            --text-muted: #b5bac1;
-            --border: #3f4147;
-            --primary: #5865f2;
-            --primary-hover: #4752c4;
-            --danger: #ed4245;
-        }
-
-        [data-theme="retro"] {
-            --bg: #1a1a2e;
-            --surface: #16213e;
-            --surface-hover: #1a2745;
-            --text: #00ff41;
-            --text-muted: #008f11;
-            --border: #0f3460;
-            --primary: #e94560;
-            --primary-hover: #c23152;
-            --danger: #ff6b6b;
-        }
-
-        [data-theme="winxp"] {
-            --bg: #3a6ea5;
-            --surface: #ece9d8;
-            --surface-hover: #d6d2c2;
-            --text: #000000;
-            --text-muted: #545454;
-            --border: #aca899;
-            --primary: #316ac5;
-            --primary-hover: #1e4e8c;
-            --danger: #cc0000;
-        }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
@@ -262,6 +202,31 @@
             white-space: nowrap;
         }
 
+        .server-card-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .server-card-ping {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .server-card-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+
+        .server-card-dot--online { background: #22c55e; }
+        .server-card-dot--offline { background: var(--danger); }
+
         .server-card-actions {
             display: flex;
             align-items: center;
@@ -332,80 +297,6 @@
             margin-top: 24px;
         }
 
-        /* Settings toggle */
-        .settings-toggle {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 6px;
-            border-radius: 8px;
-            transition: color 0.15s, background 0.15s;
-            -webkit-app-region: no-drag;
-            line-height: 0;
-        }
-
-        .settings-toggle:hover {
-            color: var(--text);
-            background: var(--surface-hover);
-        }
-
-        .settings-toggle svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        .settings-panel {
-            position: absolute;
-            top: 44px;
-            right: 12px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px;
-            z-index: 10;
-            min-width: 200px;
-            box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
-            -webkit-app-region: no-drag;
-        }
-
-        .settings-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .settings-row + .settings-row {
-            margin-top: 10px;
-        }
-
-        .settings-row label {
-            font-size: 13px;
-            color: var(--text);
-            white-space: nowrap;
-        }
-
-        .settings-row select {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 5px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-family: inherit;
-            cursor: pointer;
-            outline: none;
-            min-width: 100px;
-        }
-
-        .settings-row select:focus {
-            border-color: var(--primary);
-        }
-
         /* Auto-connect toggle */
         .auto-connect-toggle {
             display: flex;
@@ -451,27 +342,6 @@
 
 <body>
     <div class="container" id="mainContainer" style="display:none">
-        <button class="settings-toggle" id="settingsToggleBtn" title="Settings" aria-label="Settings" onclick="toggleSettings()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-        </button>
-        <div class="settings-panel" id="settingsPanel" style="display:none">
-            <div class="settings-row">
-                <label id="settingsLangLabel"></label>
-                <select id="langSelect" onchange="changeLanguage(this.value)">
-                    <option value="en">English</option>
-                    <option value="ru">Русский</option>
-                </select>
-            </div>
-            <div class="settings-row">
-                <label id="settingsThemeLabel"></label>
-                <select id="themeSelect" onchange="changeTheme(this.value)">
-                </select>
-            </div>
-        </div>
-
         <img class="logo" id="mainLogo" src="build/icons/64x64.png" alt="Lala" />
         <h1>Lala</h1>
         <p class="subtitle" id="subtitleText"></p>
@@ -521,17 +391,9 @@
                 connecting: 'Connecting...',
                 remove: 'Remove',
                 editLabel: 'Edit label',
-                connectionFailed: 'Failed to connect',
+                connectionFailed: 'Server is unavailable',
                 connectingTo: 'Connecting to <strong style="color: var(--text)">%s</strong>...',
                 cancel: 'Cancel',
-                theme: 'Theme',
-                language: 'Language',
-                themeDark: 'Dark',
-                themeLight: 'Light',
-                themeAmoled: 'AMOLED',
-                themeDiscord: 'Discord',
-                themeRetro: 'Retro',
-                themeWinxp: 'Windows XP',
             },
             ru: {
                 subtitle: 'Подключиться к серверу',
@@ -542,28 +404,11 @@
                 connecting: 'Подключение...',
                 remove: 'Удалить',
                 editLabel: 'Изменить название',
-                connectionFailed: 'Не удалось подключиться',
+                connectionFailed: 'Сервер недоступен',
                 connectingTo: 'Подключение к <strong style="color: var(--text)">%s</strong>...',
                 cancel: 'Отмена',
-                theme: 'Тема',
-                language: 'Язык',
-                themeDark: 'Тёмная',
-                themeLight: 'Светлая',
-                themeAmoled: 'AMOLED',
-                themeDiscord: 'Discord',
-                themeRetro: 'Ретро',
-                themeWinxp: 'Windows XP',
             }
         };
-
-        const THEME_OPTIONS = [
-            { value: 'dark', key: 'themeDark' },
-            { value: 'light', key: 'themeLight' },
-            { value: 'amoled', key: 'themeAmoled' },
-            { value: 'discord', key: 'themeDiscord' },
-            { value: 'retro', key: 'themeRetro' },
-            { value: 'winxp', key: 'themeWinxp' },
-        ];
 
         function detectLanguage() {
             const saved = localStorage.getItem('lala_language');
@@ -652,12 +497,41 @@
             }
         }
 
-        function connectTo(url) {
-            saveServer(url);
+        // ─── Health check (via IPC to bypass CORS) ─────────────
+        const pingCache = new Map(); // url → { ms: number|null, time: number }
+        const PING_CACHE_TTL = 15000; // 15s
+
+        async function pingServer(url, useCache = false) {
+            if (useCache) {
+                const cached = pingCache.get(url);
+                if (cached && Date.now() - cached.time < PING_CACHE_TTL) return cached.ms;
+            }
+            try {
+                const ms = await window.electronAPI.pingServer(url);
+                pingCache.set(url, { ms, time: Date.now() });
+                return ms;
+            } catch {
+                pingCache.set(url, { ms: null, time: Date.now() });
+                return null;
+            }
+        }
+
+        async function connectTo(url) {
             connectBtn.disabled = true;
             connectBtn.textContent = t('connecting');
             mainLogo.classList.add('logo--connecting');
             errorMsg.textContent = '';
+
+            const ping = await pingServer(url);
+            if (ping === null) {
+                errorMsg.textContent = t('connectionFailed');
+                connectBtn.disabled = false;
+                connectBtn.textContent = t('connect');
+                mainLogo.classList.remove('logo--connecting');
+                return;
+            }
+
+            saveServer(url);
             window.electronAPI.loadUrl(url);
         }
 
@@ -729,6 +603,26 @@
                 info.appendChild(labelEl);
                 info.appendChild(urlEl);
 
+                // Status indicator (ping dot + latency)
+                const status = document.createElement('div');
+                status.className = 'server-card-status';
+                const pingLabel = document.createElement('span');
+                pingLabel.className = 'server-card-ping';
+                const dot = document.createElement('div');
+                dot.className = 'server-card-dot';
+                status.appendChild(pingLabel);
+                status.appendChild(dot);
+
+                // Async ping (cached to avoid re-fetching on every render)
+                pingServer(server.url, true).then(ms => {
+                    if (ms !== null) {
+                        dot.className = 'server-card-dot server-card-dot--online';
+                        pingLabel.textContent = ms + ' ms';
+                    } else {
+                        dot.className = 'server-card-dot server-card-dot--offline';
+                    }
+                });
+
                 const actions = document.createElement('div');
                 actions.className = 'server-card-actions';
 
@@ -758,6 +652,7 @@
                 actions.appendChild(removeBtn);
 
                 card.appendChild(info);
+                card.appendChild(status);
                 card.appendChild(actions);
                 card.addEventListener('click', () => {
                     if (isEditingLabel) return;
@@ -766,62 +661,6 @@
                 });
                 serverList.appendChild(card);
             });
-        }
-
-        // ─── Settings panel ───────────────────────────────────────
-        function toggleSettings() {
-            const panel = document.getElementById('settingsPanel');
-            panel.style.display = panel.style.display === 'none' ? '' : 'none';
-        }
-
-        // Close settings panel when clicking outside
-        document.addEventListener('click', (e) => {
-            const panel = document.getElementById('settingsPanel');
-            const toggle = document.getElementById('settingsToggleBtn');
-            if (panel.style.display !== 'none' && !panel.contains(e.target) && !toggle.contains(e.target)) {
-                panel.style.display = 'none';
-            }
-        });
-
-        function getStoredTheme() {
-            try {
-                const settings = JSON.parse(localStorage.getItem('lala-settings') || '{}');
-                return settings.theme || 'dark';
-            } catch { return 'dark'; }
-        }
-
-        function applyTheme(theme) {
-            if (theme === 'dark') {
-                document.documentElement.removeAttribute('data-theme');
-            } else {
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-        }
-
-        function changeTheme(theme) {
-            applyTheme(theme);
-            try {
-                const settings = JSON.parse(localStorage.getItem('lala-settings') || '{}');
-                settings.theme = theme;
-                localStorage.setItem('lala-settings', JSON.stringify(settings));
-            } catch {}
-        }
-
-        function changeLanguage(lang) {
-            localStorage.setItem('lala_language', lang);
-            applyTranslations();
-        }
-
-        function populateThemeSelect() {
-            const sel = document.getElementById('themeSelect');
-            sel.innerHTML = '';
-            THEME_OPTIONS.forEach(opt => {
-                const o = document.createElement('option');
-                o.value = opt.value;
-                o.textContent = t(opt.key);
-                sel.appendChild(o);
-            });
-            sel.value = getStoredTheme();
         }
 
         // ─── Form submit ────────────────────────────────────────────
@@ -853,7 +692,7 @@
         let autoConnectCancelled = false;
         const AUTO_CONNECT_KEY = 'lala_no_auto_connect';
 
-        function showAutoConnect(url) {
+        async function showAutoConnect(url) {
             autoConnecting = true;
             const host = (() => { try { return new URL(url).host; } catch { return url.replace(/[<>&"']/g, ''); } })();
 
@@ -871,6 +710,17 @@
                 renderServers();
             };
 
+            const ping = await pingServer(url);
+            if (autoConnectCancelled) return;
+            if (ping === null) {
+                autoConnecting = false;
+                splash.style.display = 'none';
+                document.getElementById('mainContainer').style.display = '';
+                errorMsg.textContent = t('connectionFailed');
+                renderServers();
+                return;
+            }
+
             saveServer(url);
             connectBtn.disabled = true;
             window.electronAPI.loadUrl(url);
@@ -884,15 +734,10 @@
             document.getElementById('serversHeader').textContent = t('savedServers');
             document.getElementById('addServerDividerText').textContent = t('addNewServer');
             document.getElementById('noAutoConnectLabel').textContent = t('noAutoConnect');
-            document.getElementById('settingsLangLabel').textContent = t('language');
-            document.getElementById('settingsThemeLabel').textContent = t('theme');
-            document.getElementById('langSelect').value = detectLanguage();
-            populateThemeSelect();
             renderServers();
         }
 
         // ─── Init ───────────────────────────────────────────────────
-        applyTheme(getStoredTheme());
         applyTranslations();
         renderServers();
 
@@ -907,13 +752,8 @@
             }
         });
 
-        // Pre-fill from most recent
-        const saved = getSavedServers();
-        if (saved.length > 0) {
-            input.value = saved[0].url;
-        }
-
         // Auto-connect to last server unless disabled
+        const saved = getSavedServers();
         const noAutoConnect = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
         if (returnedFromError) {
             document.getElementById('mainContainer').style.display = '';
