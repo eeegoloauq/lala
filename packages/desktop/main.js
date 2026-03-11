@@ -572,6 +572,38 @@ function createWindow() {
             .catch(() => {});
     });
 
+    // Handle complete connection failures (DNS, refused, timeout, cert errors).
+    // Navigate back to connection page so user can retry or pick another server.
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        // Only handle remote URLs, not file:// (index.html)
+        if (validatedURL.startsWith('file://')) return;
+        // Ignore aborted loads (user navigated away, e.g. loadFile called)
+        if (errorCode === -3) return;
+        console.error(`[Lala] Page load failed: ${errorDescription} (${errorCode}) for ${validatedURL}`);
+        hasReloadedForPreload = false;
+        mainWindow.loadFile('index.html', { query: { error: '1' } });
+        // Send error after index.html loads and sets up IPC listeners
+        mainWindow.webContents.once('did-finish-load', () => {
+            sendToRenderer(IPC.LOAD_URL_ERROR, { message: errorDescription || 'Connection failed' });
+        });
+    });
+
+    // Detect HTTP 5xx error pages (502 Bad Gateway, 503, etc.) and go back to
+    // the connection page instead of showing a raw nginx/server error.
+    mainWindow.webContents.on('did-navigate', (_event, url, httpResponseCode) => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        if (!url.startsWith('http')) return;
+        if (httpResponseCode >= 500) {
+            console.error(`[Lala] Server error ${httpResponseCode} for ${url}`);
+            hasReloadedForPreload = false;
+            mainWindow.loadFile('index.html', { query: { error: '1' } });
+            mainWindow.webContents.once('did-finish-load', () => {
+                sendToRenderer(IPC.LOAD_URL_ERROR, { message: `Server error: ${httpResponseCode}` });
+            });
+        }
+    });
+
     // Load the connection page
     mainWindow.loadFile('index.html');
 
@@ -758,7 +790,7 @@ function registerIpcHandlers() {
         }
         mainWindow.loadURL(url).catch(err => {
             console.error('[Lala] Failed to load URL:', err.message);
-            sendToRenderer(IPC.LOAD_URL_ERROR, { message: err.message });
+            // Error recovery handled by did-fail-load event
         });
     });
 

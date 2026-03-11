@@ -372,16 +372,75 @@
     transform: rotate(-25deg) scale(1.15);
 }
 
-/* ─── Offline bookmarks ─── */
-.channel-item-offline {
-    opacity: 0.55;
+/* ─── Room templates (history) ─── */
+.channel-templates {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.08));
 }
 
-.channel-item-offline:hover {
+.channel-item-template {
+    opacity: 0.45;
+    cursor: pointer;
+}
+.channel-item-template:hover {
     opacity: 0.75;
 }
 
-.channel-copy-btn.bookmarked {
+.channel-template-icon {
+    flex-shrink: 0;
     opacity: 0.7;
-    color: var(--accent);
+}
+
+.channel-template-remove {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    margin-left: auto;
+    opacity: 0.5;
+}
+.channel-template-remove:hover {
+    opacity: 1;
+    color: var(--color-danger);
+}
+.channel-item-template:hover .channel-template-remove {
+    display: flex;
+}
+
+.channel-item-template.channel-item-error {
+    opacity: 0.7;
+    color: var(--color-danger);
+}
+
+/* ─── Reconnecting spinner ─── */
+.sidebar-reconnecting {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.sidebar-reconnecting-banner {
+    padding: 6px 16px;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.sidebar-reconnecting-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--text-muted);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
