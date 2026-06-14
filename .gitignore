@@ -28,6 +28,10 @@ Thumbs.db
 *.swo
 *~
 
+# Claude Code — local settings (personal, not shared)
+.claude/settings.local.json
+.claude/hooks-config.local.json
+
 # Electron build output
 packages/desktop/out/
 packages/desktop/release/
