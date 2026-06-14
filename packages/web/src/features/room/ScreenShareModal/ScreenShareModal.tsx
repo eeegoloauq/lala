@@ -54,11 +54,6 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
             if (!mountedRef.current) return;
             setSources(fetched);
             setLoading(false);
-            setSelectedSourceId(prev => {
-                if (prev && fetched.some(s => s.id === prev)) return prev;
-                const firstWindow = fetched.find(s => s.id.startsWith('window:'));
-                return firstWindow?.id ?? fetched[0]?.id;
-            });
         }).catch(() => { if (mountedRef.current) setLoading(false); });
     }, []);
 
@@ -69,6 +64,18 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
         const timer = setInterval(fetchSources, REFRESH_INTERVAL);
         return () => { mountedRef.current = false; clearInterval(timer); };
     }, [fetchSources, showSourcePicker]);
+
+    // Keep selected source in sync with the active tab: if current selection isn't in
+    // the active tab (or disappeared on refresh), pick the first source from that tab.
+    useEffect(() => {
+        if (!showSourcePicker || loading) return;
+        const expectedPrefix = activeTab === 'screen' ? 'screen:' : 'window:';
+        setSelectedSourceId(prev => {
+            if (prev && prev.startsWith(expectedPrefix) && sources.some(s => s.id === prev)) return prev;
+            const first = sources.find(s => s.id.startsWith(expectedPrefix));
+            return first?.id;
+        });
+    }, [activeTab, sources, loading, showSourcePicker]);
 
     const fps = SCREEN_SHARE_FPS_STEPS[fpsIdx];
     const mbps = SCREEN_SHARE_BITRATE_STEPS[brIdx];

@@ -295,10 +295,14 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         return <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>{t('room.connecting')}</p></div>;
     }
 
+    // AEC is always on — disabling it in a voice room creates echo that every
+    // other listener hears, not just the muter. Speakerphone on phones is the
+    // worst case but laptops with built-in speakers have the same loop. Music
+    // / screen-share-audio uses a separate path with AEC explicitly off.
     const audioOptions: AudioCaptureOptions = {
         autoGainControl: settings.autoGainControl,
         noiseSuppression: settings.noiseSuppressionMode === 'browser',
-        echoCancellation: settings.echoCancellation,
+        echoCancellation: true,
         deviceId: settings.audioInputDeviceId || undefined,
     };
 

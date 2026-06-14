@@ -42,8 +42,8 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   audioQuality: 'musicHighQuality',
-  autoGainControl: false,
-  echoCancellation: false,
+  autoGainControl: true,
+  echoCancellation: true,
   pushToTalk: false,
   pushToTalkKey: 'Space',
   videoResolution: 'h720',

@@ -392,16 +392,6 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                   className="lala-select-wide"
                 />
               </div>
-              <div className="settings-row">
-                <div>
-                  <div className="settings-row-label">{t('settings.echoCancellation')}</div>
-                  <div className="settings-row-desc">{t('settings.echoCancellationHint')}</div>
-                </div>
-                <label className="toggle">
-                  <input type="checkbox" className="toggle-input" checked={settings.echoCancellation} onChange={(e) => onUpdate({ echoCancellation: e.target.checked })} />
-                  <span className="toggle-slider" />
-                </label>
-              </div>
             </div>
 
             <div className="settings-section">

@@ -1,7 +1,7 @@
 services:
   # ─── LiveKit Media Server ───
   livekit:
-    image: livekit/livekit-server:latest
+    image: livekit/livekit-server:v1.9.12
     container_name: lala-livekit
     restart: unless-stopped
     entrypoint: ["/bin/sh", "-c"]
@@ -61,7 +61,7 @@ services:
       - LIVEKIT_HOST=lala-livekit:7880
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/rooms"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/api/rooms"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -82,7 +82,7 @@ services:
     ports:
       - "3000:80"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
       interval: 15s
       timeout: 5s
       retries: 3
