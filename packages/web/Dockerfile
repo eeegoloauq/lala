@@ -2,8 +2,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci
 
 COPY . .
 ARG VITE_LIVEKIT_URL
