@@ -1,0 +1,58 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: registry.internal
+  IMAGE_API: registry.internal/homelab/lala-api
+  IMAGE_WEB: registry.internal/homelab/lala-web
+
+jobs:
+  build:
+    runs-on: docker
+    container:
+      image: node:22-bookworm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install docker CLI
+        run: |
+          curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz \
+            | tar xz --strip-components=1 -C /usr/local/bin docker/docker
+          docker version --format '{{.Client.Version}}'
+
+      - name: Login to registry
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "$REGISTRY" -u egor --password-stdin
+
+      - name: Build & push api
+        run: |
+          docker build -t "$IMAGE_API:${{ github.sha }}" -t "$IMAGE_API:latest" ./packages/api
+          docker push "$IMAGE_API:${{ github.sha }}"
+          docker push "$IMAGE_API:latest"
+
+      - name: Build & push web
+        run: |
+          docker build --build-arg VITE_LIVEKIT_URL=wss://rtc.egor-solovev.dev \
+            -t "$IMAGE_WEB:${{ github.sha }}" -t "$IMAGE_WEB:latest" ./packages/web
+          docker push "$IMAGE_WEB:${{ github.sha }}"
+          docker push "$IMAGE_WEB:latest"
+
+  deploy:
+    runs-on: docker
+    container:
+      image: node:22-bookworm
+    needs: build
+    steps:
+      - name: Deploy to .222
+        run: |
+          apt-get update -q && apt-get install -y -q openssh-client
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.LALA_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H deploy-host.internal >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            deploy@deploy-host.internal "${{ github.sha }}"
