@@ -46,9 +46,7 @@ services:
 
   # ─── API Server (token + rooms) ───
   api:
-    build:
-      context: ./packages/api
-      dockerfile: Dockerfile
+    image: registry.internal/homelab/lala-api:${LALA_TAG:-latest}
     container_name: lala-api
     restart: unless-stopped
     expose:
@@ -70,11 +68,7 @@ services:
 
   # ─── Web Frontend ───
   web:
-    build:
-      context: ./packages/web
-      dockerfile: Dockerfile
-      args:
-        VITE_LIVEKIT_URL: ${LIVEKIT_URL}
+    image: registry.internal/homelab/lala-web:${LALA_TAG:-latest}
     container_name: lala-web
     restart: unless-stopped
     environment:
