@@ -6,21 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Self-hosted voice/video chat app in the style of Mumble/Discord, built on LiveKit (WebRTC SFU). Monorepo with three packages: an Express API for token/room management (`packages/api`), a Vite+React SPA frontend (`packages/web`), and an Electron desktop client (`packages/desktop`). No database -- chat is ephemeral (LiveKit data channels), room state lives in LiveKit+Redis, user prefs in localStorage.
 
-## Build & Run
+## Build & Deploy
+
+Production (`.222`) does NOT build. CI is the only build path:
+push to Forgejo `main` -> runner builds `api`+`web` images -> Forgejo registry
+(SHA-tagged) -> auto-deploy to `.222` (`lala-deploy.sh`: pull + up).
+A deploy restarts containers and drops active calls -- time pushes accordingly.
 
 ```bash
-# Full stack (production)
-docker compose up -d --build
+# Deploy = push
+git push origin main
 
-# Rebuild one service
-docker compose up -d --build web
-docker compose up -d --build api
-
-# Logs
-docker compose logs -f web
-docker compose logs -f api
-docker compose logs -f livekit
+# On .222: logs / manual pull of already-built images
+docker compose logs -f web api livekit
 ```
+
+`docker compose` files reference registry images (`registry.internal/homelab/lala-*`);
+there is no `build:` section anymore -- `docker compose up -d --build` builds nothing.
 
 ### Local development
 
@@ -54,7 +56,7 @@ Browser -> Nginx (:80 -> :3000)
 - **Language**: UI strings in Russian + English via `react-i18next` (see `src/locales/`). Code comments in English.
 - **API errors**: snake_case codes (`server_error`, `invalid_input`, `wrong_password`, `rate_limited`).
 - **localStorage keys**: prefixed `lala_` or `lala-`. Full list in `packages/web/CLAUDE.md`.
-- **No tests/linter** yet -- verify changes manually via `docker compose up -d --build`.
+- **No tests/linter** yet -- verify changes via local dev servers (`npm run dev`), then deploy through CI.
 - **CSS**: 6 themes via `[data-theme]` CSS variable overrides in `globals.css`. New components auto-themed via structural vars.
 - **Security**: HMAC-derived stable identity, scrypt password hashing, E2EE for password rooms, admin secrets in Redis only. See Security section in `packages/api/CLAUDE.md`.
 
@@ -74,18 +76,18 @@ When working with multiple agents on this project:
 
 ### Parallelization Strategy
 - **API + Web changes** are independent -- use parallel agents (one per package).
-- **Docker rebuild** depends on code changes -- run sequentially after edits.
+- **Builds happen in CI** -- no local docker rebuild step; push once at the end.
 - **Desktop** changes rarely needed alongside API/Web -- separate agent when needed.
 
 ### Package-Level Context
 Each package has its own CLAUDE.md with detailed file maps and architecture. These load lazily when you access files in that package -- no need to read them upfront.
 
 ### Common Multi-Agent Patterns
-- **Feature across stack**: Agent 1 = API route, Agent 2 = Web UI, then sequential docker rebuild.
+- **Feature across stack**: Agent 1 = API route, Agent 2 = Web UI, then one push -> CI deploy.
 - **Bug investigation**: Use Explore agent to search across all packages, then targeted fix agent.
 - **Refactor**: Parallel agents per package with worktree isolation to avoid conflicts.
 
 ### Verification
-- After any change: `docker compose up -d --build <service>` then check `docker compose logs -f <service>`.
+- Locally: `npm run dev` in the affected package; after a CI deploy check `docker compose logs -f <service>` on `.222`.
 - API health: `curl http://localhost:3001/api/health` should return `{"status":"ok","service":"lala-api"}`.
 - No automated tests -- verify manually or via docker logs.
