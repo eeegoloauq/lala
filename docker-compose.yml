@@ -46,7 +46,7 @@ services:
 
   # ─── API Server (token + rooms) ───
   api:
-    image: registry.internal/homelab/lala-api:${LALA_TAG:-latest}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-api:${LALA_TAG:-latest}
     container_name: lala-api
     restart: unless-stopped
     expose:
@@ -68,7 +68,7 @@ services:
 
   # ─── Web Frontend ───
   web:
-    image: registry.internal/homelab/lala-web:${LALA_TAG:-latest}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-web:${LALA_TAG:-latest}
     container_name: lala-web
     restart: unless-stopped
     environment:
