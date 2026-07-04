@@ -96,10 +96,6 @@ cd packages/api && npm install && npm run dev   # :3001
 cd packages/web && npm install && npm run dev   # :3000
 ```
 
-## Donate
-
-BTC: `[redacted]`
-
 ## License
 
 [MIT](LICENSE)

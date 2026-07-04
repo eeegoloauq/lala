@@ -8,20 +8,20 @@ Self-hosted voice/video chat app in the style of Mumble/Discord, built on LiveKi
 
 ## Build & Deploy
 
-Production (`.222`) does NOT build. CI is the only build path:
-push to Forgejo `main` -> runner builds `api`+`web` images -> Forgejo registry
-(SHA-tagged) -> auto-deploy to `.222` (`lala-deploy.sh`: pull + up).
+Production does NOT build. CI is the only build path:
+push to `main` -> CI builds `api`+`web` images -> container registry
+(SHA-tagged) -> auto-deploy pulls images and restarts.
 A deploy restarts containers and drops active calls -- time pushes accordingly.
 
 ```bash
 # Deploy = push
 git push origin main
 
-# On .222: logs / manual pull of already-built images
+# On the prod host: logs / manual pull of already-built images
 docker compose logs -f web api livekit
 ```
 
-`docker compose` files reference registry images (`registry.internal/homelab/lala-*`);
+`docker compose` files reference registry images via `LALA_REGISTRY` (set in the prod `.env`);
 there is no `build:` section anymore -- `docker compose up -d --build` builds nothing.
 
 ### Local development
@@ -88,6 +88,6 @@ Each package has its own CLAUDE.md with detailed file maps and architecture. The
 - **Refactor**: Parallel agents per package with worktree isolation to avoid conflicts.
 
 ### Verification
-- Locally: `npm run dev` in the affected package; after a CI deploy check `docker compose logs -f <service>` on `.222`.
+- Locally: `npm run dev` in the affected package; after a CI deploy check `docker compose logs -f <service>` on the prod host.
 - API health: `curl http://localhost:3001/api/health` should return `{"status":"ok","service":"lala-api"}`.
 - No automated tests -- verify manually or via docker logs.

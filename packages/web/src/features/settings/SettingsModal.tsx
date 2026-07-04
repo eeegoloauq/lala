@@ -889,22 +889,6 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
             <a href="https://github.com/eeegoloauq/lala" target="_blank" rel="noopener noreferrer" className="settings-about-link">
               {t('settings.sourceCode')}
             </a>
-            <span className="settings-about-sep">&middot;</span>
-            {(() => {
-              const [copied, setCopied] = useState(false);
-              return (
-                <button
-                  className="settings-about-link settings-about-btn"
-                  onClick={() => {
-                    navigator.clipboard.writeText('[redacted]');
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                >
-                  {copied ? t('settings.copied') : t('settings.donate')}
-                </button>
-              );
-            })()}
           </div>
 
           </div>
