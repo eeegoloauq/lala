@@ -96,6 +96,12 @@ cd packages/api && npm install && npm run dev   # :3001
 cd packages/web && npm install && npm run dev   # :3000
 ```
 
+## Contributing
+
+Issues and PRs are welcome. See [Local dev](#local-dev) for running the API and web app without
+Docker. Keep changes small and focused; for anything bigger than a fix, open an issue first so
+we can talk it over.
+
 ## License
 
 [MIT](LICENSE)
