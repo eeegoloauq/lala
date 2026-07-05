@@ -26,7 +26,6 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
     { value: 'light', label: t('settings.themeLight') },
     { value: 'amoled', label: t('settings.themeAmoled') },
     { value: 'discord', label: t('settings.themeDiscord') },
-    { value: 'retro', label: t('settings.themeRetro') },
     { value: 'winxp', label: t('settings.themeWinXP') },
   ], [t]);
 

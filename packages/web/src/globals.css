@@ -182,7 +182,9 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.2);
+  /* --shadow-glow intentionally omitted — light doesn't override --accent-glow,
+     so the root formula (0 0 20px var(--accent-glow)) already derives the glow
+     from the theme's actual pink accent instead of a stale violet leftover. */
 }
 
 /* ─── Amoled Theme ─── */
@@ -241,7 +243,12 @@
   --text-primary:   #000000;
   --text-secondary: #444444;
   --text-muted:     #808080;
-  --text-accent:    #ffffff;
+  /* Classic IE/XP hyperlink blue — was #ffffff (white-on-light, invisible via
+     the global `a { color: var(--text-accent) }` rule, e.g. the Settings
+     "Source code" link). Contexts that need white-on-blue (selected dropdown
+     option, active button) use their own hardcoded overrides below, so they
+     are unaffected by this change. */
+  --text-accent:    #0033cc;
 
   --accent:          #316ac5;
   --accent-hover:    #1e4d9b;
@@ -296,6 +303,8 @@
   /* Shapes */
   --avatar-radius:        50%;
   --tile-radius:          2px;
+  --overlay-bg:           rgba(0, 0, 0, 0.55);
+  --overlay-backdrop:     none;
   --overlay-radius:       4px;
   --fl-main-radius:       2px;
   --fl-main-border:       2px solid #aca899;
@@ -305,6 +314,8 @@
   --fl-btn-radius:        3px;
   --fl-btn-shadow:        inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888;
   --fl-btn-color:         #000000;
+  --fl-label-bg:          rgba(0, 0, 0, 0.65);
+  --fl-label-backdrop:    none;
   --fl-label-radius:      0px;
   --fl-strip-tile-radius: 2px;
   --bubble-radius:        2px;
@@ -369,10 +380,13 @@
   background: #c8d4e8;
 }
 [data-theme="winxp"] .channel-item.active {
-  background: #316ac5 !important;
-  color: #ffffff !important;
-  border-left: none !important;
-  padding-left: 12px !important;
+  /* No !important needed: [data-theme] + 2 classes already outranks the
+     base .channel-item.active (2 classes) and .channel-item:hover (1 class
+     + pseudo), including when both active+hover apply simultaneously. */
+  background: #316ac5;
+  color: #ffffff;
+  border-left: none;
+  padding-left: 12px;
   text-shadow: 1px 1px rgba(0,0,0,0.3);
 }
 
@@ -404,12 +418,16 @@
 
 /* ── Video tiles ── */
 [data-theme="winxp"] .p-tile {
+  /* !important kept: .p-tile-clickable:hover sets border-color at higher
+     specificity (class+class+pseudo) and would otherwise win on hover. */
   border: 1px solid #aca899 !important;
   box-shadow: inset -1px -1px #fff, inset 1px 1px #808080;
 }
 [data-theme="winxp"] .p-tile.speaking {
-  outline: 2px solid #316ac5 !important;
-  box-shadow: 0 0 8px rgba(49, 106, 197, 0.5) !important;
+  /* [data-theme] + 2 classes already outranks base .p-tile.speaking (2
+     classes) for outline/box-shadow — no competing higher-specificity rule. */
+  outline: 2px solid #316ac5;
+  box-shadow: 0 0 8px rgba(49, 106, 197, 0.5);
 }
 
 /* ── Focus layout ── */
@@ -442,9 +460,12 @@
   border-color: #b0c4e8;
 }
 [data-theme="winxp"] .cp-input {
+  /* border keeps !important: .cp-input:focus (equal specificity, tie broken
+     by stylesheet order) sets border-color and could otherwise win on focus.
+     background/color have no competing rule, so no !important needed there. */
   border: 2px inset #808080 !important;
-  background: #ffffff !important;
-  color: #000000 !important;
+  background: #ffffff;
+  color: #000000;
   font-family: Tahoma, Arial, sans-serif;
   font-size: 12px;
 }
@@ -469,13 +490,23 @@
 }
 
 /* ── Inputs ── */
+/* No !important needed: [data-theme] + type + 3x :not([attr]) (specificity
+   0,4,1 for <input>) / [data-theme] + type (0,1,1 for <textarea>) already
+   outrank .input/.cp-input base rules and their :focus states. */
 [data-theme="winxp"] input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
 [data-theme="winxp"] textarea {
-  border: 2px solid #7f9db9 !important;
-  background: #ffffff !important;
-  color: #000000 !important;
+  border: 2px solid #7f9db9;
+  background: #ffffff;
+  color: #000000;
   font-family: Tahoma, Arial, sans-serif;
   font-size: 12px;
+}
+
+/* ── Dropdown (Select) ── */
+[data-theme="winxp"] .lala-select-option.selected {
+  /* Selected option sits on --bg-active (XP blue #316ac5), so it needs a
+     light color regardless of --text-accent (now a dark link blue). */
+  color: #ffffff;
 }
 
 /* ── Scrollbars ── */
@@ -495,277 +526,6 @@
   box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #888;
   display: block;
   height: 16px;
-}
-
-/* ═══════════════════════════════════════════════════════
-   RETRO THEME — Terminal / CRT / Early-2000s VoIP
-   Green phosphor on black. No rounded corners. No mercy.
-   ═══════════════════════════════════════════════════════ */
-[data-theme="retro"] {
-  --bg-primary:    #000d00;
-  --bg-secondary:  #001200;
-  --bg-sidebar:    #000a00;
-  --bg-hover:      #001a00;
-  --bg-active:     #002e00;
-  --bg-overlay:    rgba(0, 0, 0, 0.92);
-  --bg-control:    #000d00;
-
-  --text-primary:   #00cc00;
-  --text-secondary: #008800;
-  --text-muted:     #004d00;
-  --text-accent:    #00ff41;
-
-  --accent:          #00aa00;
-  --accent-hover:    #00cc00;
-  --accent-glow:     rgba(0, 200, 0, 0.35);
-  --accent-gradient: linear-gradient(180deg, #003800, #00aa00);
-
-  --color-success: #00ff00;
-  --color-danger:  #ff3333;
-  --color-warning: #ffaa00;
-  --color-info:    #00aaff;
-
-  --border-color:      #006600;
-  --border-radius:     0px;
-  --border-radius-lg:  0px;
-  --border-radius-round: 0px;
-
-  --shadow-sm:   0 0 4px rgba(0, 180, 0, 0.4);
-  --shadow-md:   0 0 10px rgba(0, 180, 0, 0.3), inset 0 0 6px rgba(0, 100, 0, 0.2);
-  --shadow-lg:   0 0 20px rgba(0, 200, 0, 0.4);
-  --shadow-glow: 0 0 24px rgba(0, 220, 0, 0.6);
-
-  --transition-fast:   60ms steps(3);
-  --transition-normal: 100ms steps(4);
-
-  --font-family: 'Courier New', Courier, monospace;
-  --font-mono:   'Courier New', Courier, monospace;
-
-  /* ─── Structural overrides ─── */
-
-  /* Pill */
-  --cb-pill-bg:       #000d00;
-  --cb-pill-border:   #006600;
-  --cb-pill-radius:   0px;
-  --cb-pill-backdrop: none;
-  --cb-pill-shadow:   0 0 16px rgba(0, 200, 0, 0.3), inset 0 1px 0 rgba(0, 255, 0, 0.1), inset 0 -1px 0 rgba(0, 40, 0, 0.8);
-
-  /* Buttons */
-  --cb-btn-radius:          0px;
-  --cb-btn-bg:              #000d00;
-  --cb-btn-color:           #00aa00;
-  --cb-btn-bg-hover:        #001a00;
-  --cb-btn-hover-transform: none;
-  --cb-btn-off-bg:          #120000;
-  --cb-btn-off-color:       #ff4444;
-  --cb-btn-active-bg:       #002800;
-  --cb-btn-active-color:    #00ff41;
-  --cb-btn-leave-bg:        #120000;
-  --cb-btn-leave-color:     #ff4444;
-
-  /* Shapes — all sharp */
-  --avatar-radius:        0px;
-  --tile-radius:          0px;
-  --overlay-radius:       0px;
-  --fl-main-radius:       0px;
-  --fl-btn-radius:        0px;
-  --fl-label-radius:      0px;
-  --fl-strip-tile-radius: 0px;
-  --bubble-radius:        0px;
-  --settings-modal-radius: 0px;
-  --settings-nav-radius:   0px;
-  --settings-close-radius: 0px;
-  --toggle-track-radius:   0px;
-  --toggle-thumb-radius:   0px;
-  --ss-modal-radius:       0px;
-  --ctx-menu-radius:       0px;
-
-  /* Scrollbar */
-  --scrollbar-width:        8px;
-  --scrollbar-thumb-radius: 0px;
-}
-
-/* CRT scanline overlay */
-[data-theme="retro"]::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 0, 0, 0.12) 3px,
-    rgba(0, 0, 0, 0.12) 4px
-  );
-  pointer-events: none;
-  z-index: 99999;
-}
-
-/* Phosphor text glow */
-[data-theme="retro"] body {
-  text-shadow: 0 0 6px rgba(0, 200, 0, 0.5);
-  -webkit-font-smoothing: none;
-  font-size: 13px;
-}
-
-/* ── Control bar buttons — phosphor glow ── */
-[data-theme="retro"] .cb-btn {
-  border: 1px solid #004400;
-  box-shadow: inset 1px 1px rgba(0, 200, 0, 0.15), inset -1px -1px rgba(0, 30, 0, 0.8);
-}
-[data-theme="retro"] .cb-btn:hover:not(:disabled) {
-  border-color: #00aa00;
-  box-shadow: 0 0 8px rgba(0, 200, 0, 0.5), inset 1px 1px rgba(0, 255, 0, 0.2), inset -1px -1px rgba(0, 30, 0, 0.8);
-}
-[data-theme="retro"] .cb-btn.cb-off {
-  border-color: #660000;
-  box-shadow: inset 1px 1px rgba(255, 80, 80, 0.1), inset -1px -1px rgba(50, 0, 0, 0.8);
-}
-[data-theme="retro"] .cb-btn.cb-off:hover:not(:disabled) {
-  border-color: #aa0000;
-}
-[data-theme="retro"] .cb-btn.cb-active {
-  border-color: #00aa00;
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.4), inset 0 0 6px rgba(0, 100, 0, 0.4);
-}
-[data-theme="retro"] .cb-btn.cb-off-soft {
-  border-color: #003300;
-}
-[data-theme="retro"] .cb-btn.cb-leave:hover {
-  background: #ff3333;
-  color: #000;
-  border-color: #ff0000;
-  text-shadow: none;
-  box-shadow: 0 0 12px rgba(255, 0, 0, 0.6);
-}
-[data-theme="retro"] .cb-divider {
-  background: #004400;
-}
-
-/* ── Settings modal ── */
-[data-theme="retro"] .settings-modal-box {
-  border: 1px solid #006600;
-  box-shadow: 0 0 30px rgba(0, 200, 0, 0.25);
-}
-[data-theme="retro"] .settings-sidebar {
-  border-right-color: #006600;
-}
-[data-theme="retro"] .settings-nav-item.active {
-  background: #001a00;
-  color: #00ff41;
-}
-[data-theme="retro"] .settings-nav-item:hover {
-  background: #001200;
-}
-[data-theme="retro"] .settings-close-circle {
-  border: 1px solid #006600;
-}
-
-/* ── Sidebar channels ── */
-[data-theme="retro"] .channel-item {
-  font-size: 12px;
-}
-[data-theme="retro"] .channel-item.active {
-  background: #002800 !important;
-  color: #00ff41 !important;
-  border-left-color: #00ff00 !important;
-}
-[data-theme="retro"] .channel-header {
-  font-size: 10px;
-  letter-spacing: 1px;
-}
-
-/* ── Video tiles ── */
-[data-theme="retro"] .p-tile {
-  border: 1px solid #004400 !important;
-}
-[data-theme="retro"] .p-tile.speaking {
-  outline: 2px solid #00ff00;
-  box-shadow: 0 0 14px rgba(0, 255, 0, 0.5) !important;
-}
-
-/* ── Focus layout ── */
-[data-theme="retro"] .fl-main {
-  border: 1px solid #005500;
-}
-[data-theme="retro"] .fl-back-btn,
-[data-theme="retro"] .fl-fullscreen-btn {
-  border: 1px solid #005500;
-  background: rgba(0, 15, 0, 0.85);
-}
-[data-theme="retro"] .fl-main-label {
-  background: rgba(0, 15, 0, 0.9);
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-/* ── Chat panel ── */
-[data-theme="retro"] .cp-panel {
-  border-left: 1px solid #006600;
-}
-[data-theme="retro"] .cp-header {
-  border-bottom: 1px solid #006600;
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-[data-theme="retro"] .cp-bubble {
-  border: 1px solid #002800;
-  font-size: 12px;
-}
-[data-theme="retro"] .cp-group-own .cp-bubble {
-  background: #001800;
-  border-color: #004400;
-}
-[data-theme="retro"] .cp-system {
-  font-size: 11px;
-  color: #008800;
-  letter-spacing: 0.5px;
-}
-[data-theme="retro"] .cp-input {
-  border-color: #006600 !important;
-  background: #000800 !important;
-  color: #00cc00 !important;
-  caret-color: #00ff00;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-}
-[data-theme="retro"] .cp-send {
-  border: 1px solid #006600;
-}
-
-/* ── Screen share modal ── */
-[data-theme="retro"] .ss-modal {
-  border: 1px solid #006600;
-}
-
-/* ── Context menu ── */
-[data-theme="retro"] .ctx-menu {
-  border-color: #006600;
-}
-
-/* ── Scrollbars ── */
-[data-theme="retro"] ::-webkit-scrollbar {
-  background: #000800;
-}
-[data-theme="retro"] ::-webkit-scrollbar-thumb {
-  background: #003300;
-  border: 1px solid #005500;
-}
-[data-theme="retro"] ::-webkit-scrollbar-thumb:hover {
-  background: #006600;
-}
-
-/* ── Inputs ── */
-[data-theme="retro"] input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
-[data-theme="retro"] textarea,
-[data-theme="retro"] select {
-  border-color: #006600 !important;
-  background: #000800 !important;
-  color: #00cc00 !important;
-  caret-color: #00ff00;
-  font-family: 'Courier New', monospace;
 }
 
 /* ─── Reset ─── */

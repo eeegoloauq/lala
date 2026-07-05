@@ -5,7 +5,7 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 ## Core Files
 
 - `src/App.tsx` -- root: sidebar + room; holds `volumes`, `myAvatar`, `liveIdentity` state; `SettingsModal` lazy-loaded
-- `src/globals.css` -- all styles + CSS vars; 6 themes: dark, light, amoled, discord, retro, winxp
+- `src/globals.css` -- all styles + CSS vars; 5 themes: dark, light, amoled, discord, winxp
 - `src/lib/api.ts` -- API client; handles 429 with `retryAfter`; wraps network errors as `ApiError('server_unavailable', 0)`
 - `src/lib/identity.ts` -- stable device UUID + HMAC cache
 - `src/lib/types.ts` -- `RoomInfo`, `TokenResponse`, `ApiError`, `ApiErrorCode`
@@ -43,7 +43,12 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 ## Architecture Details
 
 ### Themes
-6 themes in `globals.css` via `[data-theme="xxx"]` CSS variable overrides. Key structural vars: `--cb-pill-*`, `--cb-btn-*`, `--avatar-radius`, `--tile-radius`, `--overlay-bg/backdrop`, `--bubble-radius`, `--panel-header-*`, `--settings-modal-*`, `--toggle-*`. All define `--color-success/danger/warning/info` semantic vars.
+5 themes in `globals.css` via `[data-theme="xxx"]` CSS variable overrides. Key structural vars: `--cb-pill-*`, `--cb-btn-*`, `--avatar-radius`, `--tile-radius`, `--overlay-bg/backdrop`, `--fl-*`, `--bubble-radius`, `--panel-header-*`, `--settings-modal-*`, `--toggle-*`. All define `--color-success/danger/warning/info` semantic vars.
+
+Two tiers, by design:
+- **dark / light / amoled / discord -- pure token themes.** Zero selector hacks: every visual difference comes from overriding root CSS vars (colors + the structural vars above). A new component built entirely from vars/classes that already exist gets these 4 themes for free -- no per-theme work needed.
+- **winxp -- a hand-maintained skin, kept deliberately as a fun feature.** It overrides 81 of the 90 root vars (all structural/visual vars -- the 9 gaps are theme-agnostic spacing/layout constants like `--space-*`/`--sidebar-width` plus one true no-op, `--fl-btn-border: none`, that already matches root) *and* layers ~34 `[data-theme="winxp"] .some-class { ... }` selector blocks on top (bevel buttons, blue title bars, sunken inputs, XP-style scrollbars) because the Luna look needs literal borders/gradients/shadows that vars alone can't express. **Any new component or CSS class must be manually checked against winxp** -- vars alone will reliably reach the other 4 themes but won't make something *look* like XP (flat gray panels, 3D bevels, no blur/backdrop-filter). When adding a var-driven component, at minimum confirm winxp already covers the structural vars it consumes (see the list above) so it doesn't silently fall back to a value that reads wrong on XP's gray/silver palette.
+- `retro` (terminal/CRT theme) was **removed 2026-07-05** -- it needed the same hand-maintained-skin treatment as winxp but wasn't considered worth the upkeep. `ThemeProvider` falls back any stored `'retro'` (or otherwise unrecognized) value to `'dark'`.
 
 ### Avatar System
 1. Upload -> `compressAvatar()` -> 128x128 JPEG -> `saveMyAvatar()` in localStorage
