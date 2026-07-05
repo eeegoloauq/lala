@@ -52,18 +52,18 @@ jobs:
 
       # Build context is the repo root so packages/shared (types-only file:
       # dependency of api and web) is reachable inside the builds.
+      # Images are SHA-tagged only — no mutable :latest tag, so what runs in
+      # prod is always pinned and rollback is unambiguous.
       - name: Build & push api
         run: |
-          docker build -f packages/api/Dockerfile -t "$IMAGE_API:${{ github.sha }}" -t "$IMAGE_API:latest" .
+          docker build -f packages/api/Dockerfile -t "$IMAGE_API:${{ github.sha }}" .
           docker push "$IMAGE_API:${{ github.sha }}"
-          docker push "$IMAGE_API:latest"
 
       - name: Build & push web
         run: |
           docker build -f packages/web/Dockerfile --build-arg VITE_LIVEKIT_URL=wss://rtc.egor-solovev.dev \
-            -t "$IMAGE_WEB:${{ github.sha }}" -t "$IMAGE_WEB:latest" .
+            -t "$IMAGE_WEB:${{ github.sha }}" .
           docker push "$IMAGE_WEB:${{ github.sha }}"
-          docker push "$IMAGE_WEB:latest"
 
   deploy:
     runs-on: docker

@@ -41,10 +41,11 @@ room:
 keys:
   ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
 
-# Redis for room state / signaling
+# Redis for room state / signaling — password substituted from .env by the
+# compose entrypoint (same REDIS_PASSWORD the redis service requires)
 redis:
   address: redis:6379
-  password: lala_redis_internal
+  password: ${REDIS_PASSWORD}
 
 # Webhook — push room events to our API (internal Docker network, no external port needed)
 webhook:

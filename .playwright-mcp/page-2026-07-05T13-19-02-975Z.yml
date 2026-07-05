@@ -1,0 +1,5 @@
+- generic [ref=e4]:
+  - generic [ref=e6]: lala
+  - paragraph [ref=e7]: Enter your name to start talking
+  - textbox "Your name..." [active] [ref=e9]
+  - paragraph [ref=e10]: Press Enter to continue

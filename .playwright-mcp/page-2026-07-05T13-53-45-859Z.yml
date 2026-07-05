@@ -1,0 +1,19 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e7]: Lala
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: Voice Channels
+        - button "Create channel" [ref=e11] [cursor=pointer]:
+          - img [ref=e12]
+      - generic "Recreate channel" [ref=e14] [cursor=pointer]:
+        - img [ref=e15]
+        - generic [ref=e18]: T1
+    - generic [ref=e19]:
+      - generic [ref=e22]: T
+      - generic [ref=e23]: tester
+      - 'button "Theme: Dark" [ref=e24] [cursor=pointer]':
+        - img [ref=e25]
+      - button "Settings" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - main [ref=e31]
