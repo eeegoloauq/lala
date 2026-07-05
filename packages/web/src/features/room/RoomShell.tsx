@@ -36,12 +36,7 @@ const SCREEN_SHARE_TRACKS = [Track.Source.ScreenShare];
 interface RoomShellProps {
     name: string;  // display name — used to call setName on join/change
     myAvatarUrl?: string | null;
-    onSpeakersChange: (identities: string[]) => void;
-    onMutedChange: (mutedIds: Set<string>) => void;
-    onDeafenedChange: (deafenedIds: Set<string>) => void;
-    onLiveParticipantsChange?: (participants: Map<string, string>) => void;
     onIdentityAssigned?: (identity: string) => void;
-    onAvatarReceived?: (identity: string, dataUrl: string | null) => void;
     onOpenSettings?: () => void;
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
@@ -49,13 +44,25 @@ interface RoomShellProps {
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, onDeafenedChange, onLiveParticipantsChange, onIdentityAssigned, onAvatarReceived, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
+export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
     const [audioMuted, setAudioMuted] = useState(false);
     const [screenShareModalOpen, setScreenShareModalOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState<string | null>(null);
+    const [screenShareError, setScreenShareError] = useState(false);
+    const screenShareErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const micWasEnabledRef = useRef(false);
+
+    const showScreenShareError = useCallback(() => {
+        setScreenShareError(true);
+        if (screenShareErrorTimerRef.current) clearTimeout(screenShareErrorTimerRef.current);
+        screenShareErrorTimerRef.current = setTimeout(() => setScreenShareError(false), 8000);
+    }, []);
+
+    useEffect(() => () => {
+        if (screenShareErrorTimerRef.current) clearTimeout(screenShareErrorTimerRef.current);
+    }, []);
 
     // Screen share volumes persisted separately
     const { volumes: screenVolumes, handleVolumeChange: handleScreenVolumeChange } =
@@ -77,17 +84,12 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
         localParticipant,
         myAvatarUrl,
         onIdentityAssigned,
-        onAvatarReceived,
     });
 
     useRoomStatusSync({
         room,
         participants,
         audioMuted,
-        onMutedChange,
-        onDeafenedChange,
-        onSpeakersChange,
-        onLiveParticipantsChange,
     });
 
     const { messages, send, isSending } = useRoomChat();
@@ -153,18 +155,18 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
             stopScreen();
         } else if (settings.screenShareSkipDialog && (!isElectron || isWayland)) {
             console.log('[Lala] Screen share: skip dialog');
-            startScreen(getScreenShareQuality(settings.screenShareFpsIdx, settings.screenShareBrIdx));
+            startScreen(getScreenShareQuality(settings.screenShareFpsIdx, settings.screenShareBrIdx)).catch(showScreenShareError);
         } else {
             console.log('[Lala] Screen share: opening modal (isElectron:', isElectron, ', isWayland:', isWayland, ')');
             setScreenShareModalOpen(true);
         }
         // isElectron is a module-level constant — intentionally not a dependency
-    }, [screenEnabled, startScreen, stopScreen, isWayland, settings.screenShareSkipDialog, settings.screenShareFpsIdx, settings.screenShareBrIdx]);
+    }, [screenEnabled, startScreen, stopScreen, isWayland, settings.screenShareSkipDialog, settings.screenShareFpsIdx, settings.screenShareBrIdx, showScreenShareError]);
 
     const handleScreenShareModalConfirm = useCallback((quality: ScreenShareQuality, sourceId?: string, audio?: boolean) => {
         setScreenShareModalOpen(false);
-        startScreen(quality, sourceId, audio);
-    }, [startScreen]);
+        startScreen(quality, sourceId, audio).catch(showScreenShareError);
+    }, [startScreen, showScreenShareError]);
 
     // Single owner of the deafen mute/unmute sound: when deafening also toggles
     // the mic, useMicSound already plays a sound for that mic state transition —
@@ -274,6 +276,19 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
                 </Suspense>
             )}
 
+            {screenShareError && (
+                <div className="screen-share-error-toast" role="alert">
+                    <span>{t('room.screenShareFailed')}</span>
+                    <button
+                        className="screen-share-error-toast-close"
+                        onClick={() => setScreenShareError(false)}
+                        title={t('room.dismiss')}
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
                 <ControlBar
                     audioMuted={audioMuted}
@@ -281,8 +296,6 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
                     chatOpen={chatOpen}
                     onToggleChat={handleOpenChat}
                     unreadCount={unreadCount}
-                    settings={settings}
-                    onUpdateSettings={onUpdateSettings}
                     onScreenShareClick={handleScreenShareToggle}
                 />
             </div>

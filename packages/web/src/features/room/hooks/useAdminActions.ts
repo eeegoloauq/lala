@@ -8,6 +8,7 @@ import { ttsOptsFromSettings } from '../lib/ttsOpts';
 import { kickParticipant, banParticipant, muteParticipant } from '../../../lib/api';
 import { ApiError } from '../../../lib/types';
 import { getAdminSecret } from '../../../lib/passwords';
+import { setAdminBridge } from '../../../lib/adminBridge';
 import type { AppSettings } from '../../settings/types';
 import type { ParticipantAdminActions } from './useParticipantContextMenu';
 
@@ -17,6 +18,46 @@ function formatAdminMsg(action: string, target: string, by: string): string {
         return i18next.t(key, { by, target });
     }
     return `${by}: ${action} → ${target}`;
+}
+
+export interface BuildAdminActionsExtras {
+    /** Only pass this when the caller has a live data channel to `roomId` (i.e. it's
+     *  the room this client is currently connected to) — broadcasts the action to
+     *  other clients and adds the local system message/TTS. Omit for the cross-room
+     *  case (e.g. ChannelSidebar acting on a room the user isn't in): the HTTP admin
+     *  call still fires, it just can't announce itself over a data channel it doesn't
+     *  have. */
+    broadcast?: (action: string, targetIdentity: string) => void;
+    onError?: (err: unknown) => void;
+}
+
+/**
+ * Kick/ban/mute-toggle action builder shared by every admin-action entry point (tile
+ * context menu, sidebar context menu). Identical HTTP-call shape everywhere; the
+ * `broadcast`/`onError` extras are the only thing that varies by caller.
+ */
+export function buildAdminActions(
+    roomId: string,
+    adminSecret: string,
+    extras?: BuildAdminActionsExtras,
+): { onKick: (identity: string) => Promise<void>; onBan: (identity: string) => Promise<void>; onToggleMute: (identity: string, serverMuted: boolean) => Promise<void> } {
+    return {
+        onKick: async (identity: string) => {
+            extras?.broadcast?.('kicked', identity);
+            try { await kickParticipant(roomId, identity, adminSecret); }
+            catch (e) { extras?.onError?.(e); }
+        },
+        onBan: async (identity: string) => {
+            extras?.broadcast?.('banned', identity);
+            try { await banParticipant(roomId, identity, adminSecret); }
+            catch (e) { extras?.onError?.(e); }
+        },
+        onToggleMute: async (identity: string, serverMuted: boolean) => {
+            extras?.broadcast?.(serverMuted ? 'unmuted' : 'muted', identity);
+            try { await muteParticipant(roomId, identity, adminSecret, !serverMuted); }
+            catch (e) { extras?.onError?.(e); }
+        },
+    };
 }
 
 export interface UseAdminActionsOptions {
@@ -38,6 +79,11 @@ export interface UseAdminActionsOptions {
  * the data channel (the sender doesn't get its own DataReceived echo, so it also adds
  * the system message locally), and listens for the same broadcast from other admins so
  * every client shows an identical system message.
+ *
+ * Also registers itself as the `adminBridge` (see lib/adminBridge.ts) while mounted, so
+ * ChannelSidebar's admin actions for THIS SAME room (right-clicking a participant of the
+ * room you're currently in, from the sidebar instead of the tile) get the exact same
+ * broadcast/system-message/TTS behavior instead of silently skipping it.
  */
 export function useAdminActions({
     room,
@@ -99,25 +145,19 @@ export function useAdminActions({
         }
     }, [t, addSystem]);
 
-    const adminProps = useMemo(() => adminSecret ? {
-        adminSecret,
-        roomId: room.name,
-        onKick: async (identity: string) => {
-            broadcastAdminAction('kicked', identity);
-            try { await kickParticipant(room.name, identity, adminSecret); }
-            catch (e) { handleAdminError(e); }
-        },
-        onBan: async (identity: string) => {
-            broadcastAdminAction('banned', identity);
-            try { await banParticipant(room.name, identity, adminSecret); }
-            catch (e) { handleAdminError(e); }
-        },
-        onToggleMute: async (identity: string, serverMuted: boolean) => {
-            broadcastAdminAction(serverMuted ? 'unmuted' : 'muted', identity);
-            try { await muteParticipant(room.name, identity, adminSecret, !serverMuted); }
-            catch (e) { handleAdminError(e); }
-        },
-    } : undefined, [adminSecret, room.name, broadcastAdminAction, handleAdminError]);
+    // Publish the bridge for as long as we're connected to this room, so the sidebar
+    // can route same-room admin actions through the same broadcast/TTS path.
+    useEffect(() => {
+        if (!adminSecret) return;
+        setAdminBridge({ roomId: room.name, broadcast: broadcastAdminAction, onError: handleAdminError });
+        return () => setAdminBridge(null);
+    }, [adminSecret, room.name, broadcastAdminAction, handleAdminError]);
+
+    const adminProps = useMemo(() => {
+        if (!adminSecret) return undefined;
+        const actions = buildAdminActions(room.name, adminSecret, { broadcast: broadcastAdminAction, onError: handleAdminError });
+        return { adminSecret, roomId: room.name, ...actions };
+    }, [adminSecret, room.name, broadcastAdminAction, handleAdminError]);
 
     return adminProps;
 }

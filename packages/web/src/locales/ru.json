@@ -70,7 +70,9 @@
     "bannedDesc": "Ты заблокирован в этом канале",
     "errorCode": "Ошибка: {{code}}",
     "connecting": "Подключение...",
-    "reconnecting": "Переподключение..."
+    "reconnecting": "Переподключение...",
+    "screenShareFailed": "Демонстрация экрана не удалась или была отменена. В Linux/Wayland убедитесь, что установлены xdg-desktop-portal и PipeWire.",
+    "dismiss": "Скрыть"
   },
   "ctx": {
     "unmute": "Включить звук",
@@ -99,7 +101,6 @@
     "light": "Светлая",
     "amoled": "AMOLED",
     "discord": "Discord",
-    "retro": "Ретро",
     "winxp": "Windows XP"
   },
   "welcome": {
@@ -107,7 +108,8 @@
     "subtitle": "Выбери голосовой канал слева, чтобы начать",
     "enterName": "Введи имя, чтобы начать",
     "namePlaceholder": "Твоё имя...",
-    "pressEnter": "Нажми Enter, чтобы продолжить"
+    "pressEnter": "Нажми Enter, чтобы продолжить",
+    "lobbyHint": "Выбери канал, чтобы присоединиться, или создай новый"
   },
   "chat": {
     "title": "Чат",
@@ -135,7 +137,9 @@
     "flipCamera": "Отразить",
     "fullscreen": "Полный экран",
     "exitFullscreen": "Выйти из полного экрана",
-    "focusOn": "Фокус на {{name}}"
+    "focusOn": "Фокус на {{name}}",
+    "showCameraLarge": "Показать камеру крупно",
+    "showScreenLarge": "Показать экран крупно"
   },
   "tile": {
     "screenSharing": "Демонстрация экрана",
@@ -217,7 +221,6 @@
     "themeLight": "Светлая",
     "themeAmoled": "AMOLED (Чёрная)",
     "themeDiscord": "Discord",
-    "themeRetro": "Терминал (CRT)",
     "themeWinXP": "Windows XP",
     "language": "Язык",
     "ambientMode": "Подсветка",

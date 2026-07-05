@@ -2,7 +2,6 @@ import { useDisconnectButton } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 import { useLocalControls } from '../hooks/useLocalControls';
 import { useScreenShare } from '../hooks/useScreenShare';
-import type { AppSettings } from '../../settings/types';
 import {
     MicIcon, MicOffIcon,
     VideoIcon, VideoOffIcon,
@@ -22,12 +21,10 @@ interface ControlBarProps {
     chatOpen: boolean;
     onToggleChat: () => void;
     unreadCount?: number;
-    settings: AppSettings;
-    onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onScreenShareClick?: () => void;
 }
 
-export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, unreadCount = 0, settings, onUpdateSettings, onScreenShareClick }: ControlBarProps) {
+export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, unreadCount = 0, onScreenShareClick }: ControlBarProps) {
     const { t } = useTranslation();
     const { mic, cam } = useLocalControls();
     const { enabled: screenEnabled, pending: screenPending } = useScreenShare();

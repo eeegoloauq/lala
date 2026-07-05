@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import './waveform-welcome.css';
 
 const BARS = Array.from({ length: 32 });
 
 export function WaveformWelcome() {
+  const { t } = useTranslation();
   return (
     <div className="waveform-welcome">
       <div className="waveform-bars">
@@ -14,6 +16,7 @@ export function WaveformWelcome() {
           />
         ))}
       </div>
+      <p className="waveform-welcome-hint">{t('welcome.lobbyHint')}</p>
     </div>
   );
 }

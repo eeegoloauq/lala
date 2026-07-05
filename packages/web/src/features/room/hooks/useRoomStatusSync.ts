@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { RoomEvent } from 'livekit-client';
 import type { Participant, Room } from 'livekit-client';
 import { readDeafened } from '../lib/participantMeta';
+import { setSpeakingUsers, setMutedInRoom, setDeafenedInRoom, setLiveParticipants } from '../../../lib/roomStatusStore';
 
 export interface UseRoomStatusSyncOptions {
     room: Room;
@@ -9,10 +10,6 @@ export interface UseRoomStatusSyncOptions {
     participants: Participant[];
     /** Local "deafen" toggle state, folded into the deafened-identities set. */
     audioMuted: boolean;
-    onMutedChange: (mutedIds: Set<string>) => void;
-    onDeafenedChange: (deafenedIds: Set<string>) => void;
-    onSpeakersChange: (identities: string[]) => void;
-    onLiveParticipantsChange?: (participants: Map<string, string>) => void;
 }
 
 /**
@@ -20,26 +17,27 @@ export interface UseRoomStatusSyncOptions {
  * set, deafened-identity set, and active speakers. These four used to be four separate
  * `room.on/off` effects in RoomShell with overlapping ParticipantConnected/Disconnected
  * subscriptions; kept as four effects here too (clarity over micro-optimizing listener
- * count) but under one roof since they all feed the same family of callbacks.
+ * count) but under one roof since they all feed the same family of writers.
+ *
+ * Writes straight into the external room-status store (lib/roomStatusStore.ts) instead
+ * of bubbling callbacks up through RoomShell -> RoomView -> App -> ChannelSidebar — that
+ * chain used to force a full top-down React re-render (App and everything below it) on
+ * every ActiveSpeakersChanged event, even though only a single sidebar avatar dot ever
+ * needed to update.
  */
 export function useRoomStatusSync({
     room,
     participants,
     audioMuted,
-    onMutedChange,
-    onDeafenedChange,
-    onSpeakersChange,
-    onLiveParticipantsChange,
 }: UseRoomStatusSyncOptions): void {
     // Keep active participants in sync for sidebar
     useEffect(() => {
-        if (!onLiveParticipantsChange) return;
         const live = new Map<string, string>();
         participants.forEach(p => {
             if (p.identity) live.set(p.identity, p.name || p.identity);
         });
-        onLiveParticipantsChange(live);
-    }, [participants, onLiveParticipantsChange]);
+        setLiveParticipants(live);
+    }, [participants]);
 
     // Track real-time mic mute state for all participants → sidebar
     // Uses room.remoteParticipants directly (live Map) to avoid stale closure from useParticipants() snapshot
@@ -52,8 +50,8 @@ export function useRoomStatusSync({
             if (!room.localParticipant.isMicrophoneEnabled) s.add(room.localParticipant.identity);
             return s;
         };
-        onMutedChange(buildMuted());
-        const update = () => onMutedChange(buildMuted());
+        setMutedInRoom(buildMuted());
+        const update = () => setMutedInRoom(buildMuted());
         room.on(RoomEvent.TrackMuted, update);
         room.on(RoomEvent.TrackUnmuted, update);
         room.on(RoomEvent.TrackPublished, update);
@@ -86,8 +84,8 @@ export function useRoomStatusSync({
             });
             return s;
         };
-        onDeafenedChange(buildDeafened());
-        const update = () => onDeafenedChange(buildDeafened());
+        setDeafenedInRoom(buildDeafened());
+        const update = () => setDeafenedInRoom(buildDeafened());
         room.on(RoomEvent.ParticipantMetadataChanged, update);
         room.on(RoomEvent.ParticipantConnected, update);
         room.on(RoomEvent.ParticipantDisconnected, update);
@@ -100,9 +98,9 @@ export function useRoomStatusSync({
 
     const handleSpeakers = useCallback(
         (speakers: Participant[]) => {
-            onSpeakersChange(speakers.map((s) => s.identity));
+            setSpeakingUsers(speakers.map((s) => s.identity));
         },
-        [onSpeakersChange],
+        [],
     );
 
     useEffect(() => {
