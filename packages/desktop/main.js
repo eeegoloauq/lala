@@ -921,7 +921,29 @@ function isDisplayCaptureRequestTrusted(request) {
     return true;
 }
 
+// Deny a display-media request the way Electron actually supports: only
+// `callback(null)` (or undefined) makes it respond CAPTURE_FAILURE so the
+// renderer's getDisplayMedia() rejects cleanly. `callback({})` is NOT a valid
+// deny — when video was requested, Electron's DisplayMediaDeviceChosen throws
+// "TypeError: Video was requested, but no video stream was provided" straight
+// back into the handler (an unhandled rejection if the handler is async).
+// This was exactly the Wayland crash seen on Fedora when the portal returned
+// no sources.
+function denyDisplayMediaRequest(callback, reason) {
+    console.error(`[Lala] Screen share denied: ${reason}`);
+    try {
+        callback(null);
+    } catch (err) {
+        console.error('[Lala] Screen share: deny callback failed:', err.message);
+    }
+}
+
 function setupScreenShareHandler() {
+    // Note: setDisplayMediaRequestHandler's { useSystemPicker: true } option
+    // would let Chromium drive the picker natively, but in Electron 40 it is
+    // macOS 15+ only (experimental) — see DisplayMediaRequestHandlerOpts in
+    // electron.d.ts. On Linux/Wayland the desktopCapturer→portal dance below
+    // remains the only supported path.
     if (IS_WAYLAND) {
         // On Wayland, desktopCapturer.getSources() triggers the XDG desktop portal
         // (PipeWire) which shows the native screen/window picker. We must still
@@ -931,26 +953,41 @@ function setupScreenShareHandler() {
         console.log('[Lala] Wayland detected — using XDG portal for screen share');
         session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
             if (!isDisplayCaptureRequestTrusted(request)) {
-                callback({});
+                denyDisplayMediaRequest(callback, 'untrusted origin (Wayland)');
                 return;
             }
+            // Once the callback has been invoked, Electron has consumed the
+            // request — never call it a second time from the catch block.
+            let calledBack = false;
             try {
                 console.log('[Lala] Screen share (Wayland): requesting sources via portal');
-                const sources = await desktopCapturer.getSources({
-                    types: ['screen', 'window'],
-                });
-                if (sources.length > 0) {
+                // Only ['screen']: under the portal, PipeWire exposes a single
+                // capture stream and the portal dialog itself lets the user pick
+                // either a monitor or a window regardless of the types we pass.
+                // Requesting ['screen', 'window'] just re-labels the result as a
+                // window capture and is flakier on some portal backends.
+                const sources = await desktopCapturer.getSources({ types: ['screen'] });
+                if (Array.isArray(sources) && sources.length > 0 && sources[0].id) {
                     // The portal returns only the user-selected source
                     console.log('[Lala] Screen share (Wayland): got source', sources[0].id);
+                    calledBack = true;
                     callback({ video: sources[0] });
                 } else {
-                    // User cancelled the portal picker
-                    console.log('[Lala] Screen share (Wayland): no source selected (user cancelled)');
-                    callback({});
+                    // getSources() resolved but gave us nothing: the user cancelled
+                    // the portal dialog, or xdg-desktop-portal / its desktop backend
+                    // / PipeWire is missing or broken (portal resolves empty instead
+                    // of rejecting in that case).
+                    denyDisplayMediaRequest(callback,
+                        'portal returned no sources (dialog cancelled, or xdg-desktop-portal/PipeWire missing/broken)');
                 }
             } catch (err) {
-                console.error('[Lala] Screen share (Wayland): portal error', err.message);
-                callback({});
+                if (calledBack) {
+                    // callback() itself threw — Electron already failed the request
+                    // internally; calling it again would throw "called twice".
+                    console.error('[Lala] Screen share (Wayland): Electron rejected the stream response:', err.message);
+                } else {
+                    denyDisplayMediaRequest(callback, `portal error: ${err.message}`);
+                }
             }
         });
         return;
@@ -958,7 +995,7 @@ function setupScreenShareHandler() {
 
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
         if (!isDisplayCaptureRequestTrusted(request)) {
-            callback({});
+            denyDisplayMediaRequest(callback, 'untrusted origin');
             return;
         }
         if (pendingScreenShareSourceId) {
@@ -972,9 +1009,15 @@ function setupScreenShareHandler() {
             if (request.audioRequested) {
                 response.audio = 'loopbackWithoutChrome';
             }
-            callback(response);
+            try {
+                callback(response);
+            } catch (err) {
+                // Electron rejected the response shape — it has already failed
+                // the request; just log so terminal output identifies the cause.
+                console.error('[Lala] Screen share: Electron rejected the stream response:', err.message);
+            }
         } else {
-            callback({});
+            denyDisplayMediaRequest(callback, 'no pre-selected source (picker not used or source timed out)');
         }
     });
 }
@@ -1384,6 +1427,19 @@ function setupCrashHandling() {
             fs.writeFileSync(logPath, `Uncaught Exception: ${err.stack || err.message}\n`);
         } catch { /* ignore write errors */ }
         console.error('[Lala] Uncaught exception:', err);
+    });
+
+    // Async errors that escape every try/catch (e.g. a throw inside an async
+    // Electron handler) surface here instead of as a bare
+    // UnhandledPromiseRejectionWarning with no [Lala] context.
+    process.on('unhandledRejection', (reason) => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const logPath = path.join(CRASH_LOG_DIR, `rejection-${timestamp}.log`);
+        const detail = reason instanceof Error ? (reason.stack || reason.message) : String(reason);
+        try {
+            fs.writeFileSync(logPath, `Unhandled Rejection: ${detail}\n`);
+        } catch { /* ignore write errors */ }
+        console.error('[Lala] Unhandled rejection:', reason);
     });
 
     app.on('render-process-gone', (_event, _webContents, details) => {

@@ -20,6 +20,12 @@ Source0:        {{{ git_dir_pack }}}
 # Electron only ships x64/arm64 Linux builds
 ExclusiveArch:  x86_64 aarch64
 
+# Wayland screen share goes through the XDG desktop portal + PipeWire; without
+# them desktopCapturer resolves empty and screen share is denied. Soft deps
+# only — X11-only setups work fine without either.
+Recommends:     xdg-desktop-portal
+Recommends:     pipewire
+
 BuildRequires:  nodejs >= 20
 BuildRequires:  nodejs-npm
 BuildRequires:  desktop-file-utils
