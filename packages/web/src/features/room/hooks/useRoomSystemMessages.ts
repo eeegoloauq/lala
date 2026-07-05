@@ -8,6 +8,7 @@ import { speak } from '../../../lib/tts';
 import { ttsOptsFromSettings } from '../lib/ttsOpts';
 import type { AppSettings } from '../../settings/types';
 import type { ChatEntry } from '../ChatPanel/ChatPanel';
+import type { FileTransferItem } from '../../../lib/fileTransfer';
 
 export interface UseRoomSystemMessagesResult {
     /** Chat messages + system entries, merged and sorted by insertion order. */
@@ -34,6 +35,7 @@ export function useRoomSystemMessages(
     t: TFunction,
     settings: AppSettings,
     messages: ReceivedChatMessage[],
+    fileTransfers: FileTransferItem[] = [],
 ): UseRoomSystemMessagesResult {
     // System entries carry insertion order for correct chat interleaving
     const [systemEntries, setSystemEntries] = useState<ChatEntry[]>([]);
@@ -43,10 +45,11 @@ export function useRoomSystemMessages(
     const settingsRef = useRef(settings);
     useEffect(() => { settingsRef.current = settings; });
 
-    // Insertion-order counter shared by system entries and chat messages
+    // Insertion-order counter shared by system entries, chat messages, and file transfers
     // Ensures correct interleaving regardless of server vs client clock skew
     const orderCounterRef = useRef(0);
     const msgOrderRef = useRef(new Map<string, number>());
+    const fileOrderRef = useRef(new Map<string, number>());
 
     // Identities that were kicked or banned — suppress the redundant "left" system message for them.
     // Cleared after 10s to avoid stale entries if the disconnect never arrives.
@@ -130,8 +133,8 @@ export function useRoomSystemMessages(
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room]);
 
-    // Rebuild sorted chat entries whenever messages or system entries change.
-    // Must be useEffect (not useMemo) so msgOrderRef is always populated before we read it.
+    // Rebuild sorted chat entries whenever messages, system entries, or file transfers change.
+    // Must be useEffect (not useMemo) so msgOrderRef/fileOrderRef are always populated before we read them.
     useEffect(() => {
         // Assign insertion order to new messages (sort within batch by server timestamp)
         const newMsgs = messages.filter(m => !msgOrderRef.current.has(m.id));
@@ -139,6 +142,16 @@ export function useRoomSystemMessages(
             newMsgs.sort((a, b) => a.timestamp - b.timestamp);
             for (const m of newMsgs) {
                 msgOrderRef.current.set(m.id, orderCounterRef.current++);
+            }
+        }
+
+        // Same treatment for file transfers — order assigned once at creation, so
+        // later progress/status updates (same id) don't reshuffle their position.
+        const newFiles = fileTransfers.filter(f => !fileOrderRef.current.has(f.id));
+        if (newFiles.length > 0) {
+            newFiles.sort((a, b) => a.timestamp - b.timestamp);
+            for (const f of newFiles) {
+                fileOrderRef.current.set(f.id, orderCounterRef.current++);
             }
         }
 
@@ -151,9 +164,13 @@ export function useRoomSystemMessages(
                 entry: e,
                 order: (e as ChatEntry & { order?: number }).order ?? 0,
             })),
+            ...fileTransfers.map(f => ({
+                entry: { kind: 'file' as const, id: f.id, timestamp: f.timestamp, item: f },
+                order: fileOrderRef.current.get(f.id) ?? 0,
+            })),
         ];
         setChatEntries(all.sort((a, b) => a.order - b.order).map(x => x.entry));
-    }, [messages, systemEntries]);
+    }, [messages, systemEntries, fileTransfers]);
 
     return { chatEntries, addSystem, suppressLeave };
 }
