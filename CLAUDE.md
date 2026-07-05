@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Lala
 
-Self-hosted voice/video chat app in the style of Mumble/Discord, built on LiveKit (WebRTC SFU). Monorepo with three packages: an Express API for token/room management (`packages/api`), a Vite+React SPA frontend (`packages/web`), and an Electron desktop client (`packages/desktop`). No database -- chat is ephemeral (LiveKit data channels), room state lives in LiveKit+Redis, user prefs in localStorage.
+Self-hosted voice/video chat app in the style of Mumble/Discord, built on LiveKit (WebRTC SFU). Monorepo with four packages: an Express API for token/room management (`packages/api`), a Vite+React SPA frontend (`packages/web`), an Electron desktop client (`packages/desktop`), and a types-only wire contract (`packages/shared`, consumed by api+web as a `file:` devDependency -- change API response shapes THERE first). No database -- chat is ephemeral (LiveKit data channels), room state lives in LiveKit+Redis, user prefs in localStorage.
 
 ## Build & Deploy
 
@@ -23,6 +23,8 @@ docker compose logs -f web api livekit
 
 `docker compose` files reference registry images via `LALA_REGISTRY` (set in the prod `.env`);
 there is no `build:` section anymore -- `docker compose up -d --build` builds nothing.
+Image builds use the REPO ROOT as context (`docker build -f packages/api/Dockerfile .`)
+so `packages/shared` is reachable; building with `./packages/api` as context no longer works.
 
 ### Local development
 

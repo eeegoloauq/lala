@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import type { TokenRequest, TokenResponse } from '@lala/shared';
 import { createHmac } from 'crypto';
 import { AccessToken } from 'livekit-server-sdk';
 import { getRoomService } from '../lib/livekit';
@@ -12,13 +13,9 @@ export function createTokenRouter(): Router {
 
     router.post('/', async (req: Request, res: Response): Promise<void> => {
         try {
-            const { room, name, deviceId, password, adminSecret } = req.body as {
-                room?: string;
-                name?: string;
-                deviceId?: string;
-                password?: string;
-                adminSecret?: string;
-            };
+            // Partial<> because the body is untrusted input — every field is
+            // validated below before use.
+            const { room, name, deviceId, password, adminSecret } = req.body as Partial<TokenRequest>;
 
             if (!room || typeof room !== 'string' || room.length > 50) {
                 res.status(400).json({ error: 'room_required' });
@@ -122,7 +119,8 @@ export function createTokenRouter(): Router {
             });
 
             const jwt = await token.toJwt();
-            res.json({ token: jwt, identity });
+            const response: TokenResponse = { token: jwt, identity };
+            res.json(response);
         } catch (error) {
             console.error('Token generation failed:', error);
             res.status(500).json({ error: 'server_error' });

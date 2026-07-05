@@ -1,0 +1,12 @@
+# Applies to the root build context used by packages/*/Dockerfile.
+**/node_modules
+**/dist
+.git
+.playwright-mcp
+.forgejo
+packages/desktop
+**/.env
+**/.env.*
+!**/.env.example
+*.md
+!packages/shared/*.md
