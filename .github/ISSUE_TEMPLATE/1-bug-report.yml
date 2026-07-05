@@ -1,0 +1,47 @@
+name: Bug report
+description: Something broke in a call, the UI, or the desktop app
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - Demo (lala.egor-solovev.dev)
+        - Self-hosted instance
+        - Desktop app (Windows)
+        - Desktop app (Linux)
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      description: For the desktop app, the app version from the releases page.
+      placeholder: Firefox 141 / Chrome 138 / Lala desktop 1.4.0
+    validations:
+      required: true
+  - type: dropdown
+    id: e2ee
+    attributes:
+      label: Was the room password-protected?
+      description: Password-protected rooms use end-to-end encryption, which is a different code path.
+      options:
+        - "No"
+        - "Yes (E2EE active)"
+        - Not room-related
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Steps to reproduce, what you expected, and what happened instead. For audio/video problems, mention how many participants were in the room.
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console output
+      description: Open devtools (F12) → Console, and paste anything red or suspicious from around the failure.
+      render: text
