@@ -121,49 +121,6 @@ export function PhoneOffIcon() {
     );
 }
 
-export function LoudspeakerIcon() {
-    return (
-        <svg {...PROPS}>
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <path d="M15.54 8.46a5 5 0 010 7.07" />
-            <path d="M19.07 4.93a10 10 0 010 14.14" />
-            <line x1="12" y1="2" x2="12" y2="5" strokeWidth="2" />
-            <line x1="16" y1="3" x2="14.5" y2="5.5" strokeWidth="2" />
-            <line x1="8" y1="3" x2="9.5" y2="5.5" strokeWidth="2" />
-        </svg>
-    );
-}
-
-export function EarpieceIcon() {
-    return (
-        <svg {...PROPS}>
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <line x1="15" y1="9" x2="19" y2="9" />
-            <line x1="15" y1="12" x2="21" y2="12" />
-            <line x1="15" y1="15" x2="19" y2="15" />
-        </svg>
-    );
-}
-
-export function MenuIcon() {
-    return (
-        <svg {...PROPS}>
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
-    );
-}
-
-export function XIcon() {
-    return (
-        <svg {...PROPS}>
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-    );
-}
-
 export function SettingsIcon({ size }: { size?: number }) {
     return (
         <svg {...PROPS} width={size ?? 20} height={size ?? 20}>

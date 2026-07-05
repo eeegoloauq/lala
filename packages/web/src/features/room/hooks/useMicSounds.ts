@@ -19,7 +19,9 @@ export function useMicSound(enabled: boolean) {
             return;
         }
         if (isMicrophoneEnabled !== prevRef.current) {
-            if (enabled) isMicrophoneEnabled ? playUnmuteSound() : playMuteSound();
+            if (enabled) {
+                if (isMicrophoneEnabled) playUnmuteSound(); else playMuteSound();
+            }
             prevRef.current = isMicrophoneEnabled;
         }
     }, [isMicrophoneEnabled, enabled, connectionState]);

@@ -3,14 +3,16 @@ import { ApiError } from './types';
 
 const API_BASE = '/api';
 
-export async function getToken(request: TokenRequest): Promise<TokenResponse> {
+/**
+ * Shared fetch wrapper for every API call. Unifies network-error wrapping,
+ * 429 + Retry-After handling, and snake_case error-code extraction from the
+ * response body so every caller gets the same behavior instead of each
+ * re-implementing (and occasionally forgetting) it.
+ */
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let res: Response;
     try {
-        res = await fetch(`${API_BASE}/token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
+        res = await fetch(`${API_BASE}${path}`, init);
     } catch {
         throw new ApiError('server_unavailable', 0);
     }
@@ -24,58 +26,30 @@ export async function getToken(request: TokenRequest): Promise<TokenResponse> {
         throw new ApiError(body.error ?? 'server_error', res.status);
     }
 
-    return res.json() as Promise<TokenResponse>;
+    return res.json() as Promise<T>;
+}
+
+const jsonBody = (body: object): RequestInit => ({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+});
+
+export function getToken(req: TokenRequest): Promise<TokenResponse> {
+    return request<TokenResponse>('/token', jsonBody(req));
 }
 
 export async function getRooms(): Promise<RoomInfo[]> {
-    let res: Response;
-    try {
-        res = await fetch(`${API_BASE}/rooms`);
-    } catch {
-        throw new ApiError('server_unavailable', 0);
-    }
-    if (!res.ok) throw new ApiError('server_error', res.status);
-    const data = await res.json();
+    const data = await request<{ rooms: RoomInfo[] }>('/rooms');
     return data.rooms;
 }
 
-export async function createRoom(request: CreateRoomRequest): Promise<RoomInfo> {
-    let res: Response;
-    try {
-        res = await fetch(`${API_BASE}/rooms`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
-    } catch {
-        throw new ApiError('server_unavailable', 0);
-    }
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'server_error' }));
-        throw new ApiError(body.error ?? 'server_error', res.status);
-    }
-    return res.json();
+export function createRoom(req: CreateRoomRequest): Promise<RoomInfo> {
+    return request<RoomInfo>('/rooms', jsonBody(req));
 }
 
-async function adminPost(roomId: string, action: string, body: object): Promise<void> {
-    let res: Response;
-    try {
-        res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(roomId)}/admin/${action}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
-    } catch {
-        throw new ApiError('server_unavailable', 0);
-    }
-    if (!res.ok) {
-        if (res.status === 429) {
-            const retryAfter = parseInt(res.headers.get('Retry-After') ?? '15', 10);
-            throw new ApiError('rate_limited', 429, isNaN(retryAfter) ? 15 : retryAfter);
-        }
-        const data = await res.json().catch(() => ({ error: 'server_error' }));
-        throw new ApiError(data.error ?? 'server_error', res.status);
-    }
+function adminPost(roomId: string, action: string, body: object): Promise<void> {
+    return request<void>(`/rooms/${encodeURIComponent(roomId)}/admin/${action}`, jsonBody(body));
 }
 
 export const kickParticipant = (roomId: string, identity: string, adminSecret: string) =>

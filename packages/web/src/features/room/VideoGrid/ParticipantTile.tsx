@@ -5,7 +5,7 @@ import type { TrackReference, TrackReferenceOrPlaceholder } from '@livekit/compo
 import { isTrackReference } from '@livekit/components-react';
 import { RemoteParticipant } from 'livekit-client';
 import type { Participant } from 'livekit-client';
-import { ConnectionQuality, ParticipantEvent, Track } from 'livekit-client';
+import { ConnectionQuality, ParticipantEvent } from 'livekit-client';
 import { Avatar } from './Avatar';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../icons/Icons';
 import { useConnectionQuality } from '../hooks/useConnectionQuality';

@@ -2,7 +2,6 @@ import { useDisconnectButton } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 import { useLocalControls } from '../hooks/useLocalControls';
 import { useScreenShare } from '../hooks/useScreenShare';
-import { playMuteSound, playUnmuteSound } from '../../../lib/sounds'; // speaker button only — mic sound handled by useMicSound hook in RoomShell
 import type { AppSettings } from '../../settings/types';
 import {
     MicIcon, MicOffIcon,
@@ -48,7 +47,7 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
 
                 <button
                     className={`cb-btn cb-anim-pulse${audioMuted ? ' cb-off' : ''}`}
-                    onClick={() => { audioMuted ? playUnmuteSound() : playMuteSound(); onToggleAudio(); }}
+                    onClick={onToggleAudio}
                     title={audioMuted ? t('controls.undeafen') : t('controls.deafen')}
                 >
                     {audioMuted ? <SpeakerOffIcon /> : <SpeakerIcon />}
@@ -73,7 +72,7 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
                     disabled={cam.pending}
                     title={cam.enabled ? t('controls.cameraOff') : t('controls.cameraOn')}
                 >
-                    {cam.enabled ? <VideoOffIcon /> : <VideoIcon />}
+                    {cam.enabled ? <VideoIcon /> : <VideoOffIcon />}
                 </button>
 
                 <div className="cb-divider" />

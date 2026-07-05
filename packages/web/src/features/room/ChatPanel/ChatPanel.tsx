@@ -16,7 +16,6 @@ interface ChatPanelProps {
     send: (msg: string) => Promise<unknown>;
     isSending: boolean;
     onClose?: () => void;
-    inline?: boolean;
     overlay?: boolean;
 }
 
@@ -82,7 +81,7 @@ const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 3000;
 const RATE_LIMIT_COOLDOWN_MS = 2000;
 
-export function ChatPanel({ entries, send, isSending, onClose, inline = false, overlay = false }: ChatPanelProps) {
+export function ChatPanel({ entries, send, isSending, onClose, overlay = false }: ChatPanelProps) {
     const { t } = useTranslation();
     const { localParticipant } = useLocalParticipant();
     const [text, setText] = useState('');
@@ -266,7 +265,7 @@ export function ChatPanel({ entries, send, isSending, onClose, inline = false, o
     return (
         <div
             ref={panelRef}
-            className={`cp-panel${inline ? ' cp-inline' : ''}${overlay ? ' cp-overlay' : ''}`}
+            className={`cp-panel${overlay ? ' cp-overlay' : ''}`}
         >
             {overlay && <>
                 <div className="cp-resize cp-resize-n" onMouseDown={e => startResize(e, 'n')} />
@@ -279,14 +278,12 @@ export function ChatPanel({ entries, send, isSending, onClose, inline = false, o
                 <div className="cp-resize cp-resize-se" onMouseDown={e => startResize(e, 'se')} />
             </>}
 
-            {!inline && (
-                <div className="cp-header" onMouseDown={overlay ? startDrag : undefined}>
-                    <span>{t('chat.title')}</span>
-                    {onClose && (
-                        <button className="cp-close" onMouseDown={e => e.stopPropagation()} onClick={onClose} title={t('chat.close')}>✕</button>
-                    )}
-                </div>
-            )}
+            <div className="cp-header" onMouseDown={overlay ? startDrag : undefined}>
+                <span>{t('chat.title')}</span>
+                {onClose && (
+                    <button className="cp-close" onMouseDown={e => e.stopPropagation()} onClick={onClose} title={t('chat.close')}>✕</button>
+                )}
+            </div>
 
             <div className="cp-messages" ref={messagesRef}>
                 {entries.length === 0 && <span className="cp-empty">{t('chat.noMessages')}</span>}

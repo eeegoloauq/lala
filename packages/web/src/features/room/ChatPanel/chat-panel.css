@@ -9,14 +9,6 @@
   overflow: hidden;
 }
 
-.cp-panel.cp-inline {
-  width: 100%;
-  flex: 1;
-  border-left: none;
-  animation: none;
-  background: var(--bg-primary);
-}
-
 /* Overlay — floats over video as a mini window, no layout shift */
 .cp-panel.cp-overlay {
   position: absolute;

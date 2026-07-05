@@ -30,7 +30,7 @@ export interface ParticipantContextMenuProps {
     onClose: () => void;
 }
 
-export function ParticipantContextMenu({ identity, name, isRemote, x, y, volume = 50, onVolumeChange, screenVolume, onScreenVolumeChange, screenShareHidden, onToggleScreenShare, admin, onOpenSettings, onRenameRequest, onClose }: ParticipantContextMenuProps) {
+export function ParticipantContextMenu({ identity: _identity, name, isRemote, x, y, volume = 50, onVolumeChange, screenVolume, onScreenVolumeChange, screenShareHidden, onToggleScreenShare, admin, onOpenSettings, onRenameRequest, onClose }: ParticipantContextMenuProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
 
