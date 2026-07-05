@@ -28,5 +28,13 @@
         "electron": "^40.6.1",
         "electron-builder": "^26.15.3",
         "sharp": "^0.34.5"
+    },
+    "overrides": {
+        "@electron/get": {
+            "undici": "^7.28.0"
+        },
+        "node-gyp": {
+            "undici": "^6.27.0"
+        }
     }
 }
