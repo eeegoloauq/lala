@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { STORAGE_KEYS } from '../../lib/constants';
 
 export type Theme = 'dark' | 'light' | 'amoled' | 'discord' | 'retro' | 'winxp';
 
@@ -11,11 +12,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme>(() => {
-        return (localStorage.getItem('lala_theme') as Theme) || 'dark';
+        return (localStorage.getItem(STORAGE_KEYS.theme) as Theme) || 'dark';
     });
 
     useEffect(() => {
-        localStorage.setItem('lala_theme', theme);
+        localStorage.setItem(STORAGE_KEYS.theme, theme);
         // Apply to body dataset for global CSS targeting
         document.documentElement.dataset.theme = theme;
     }, [theme]);
@@ -27,6 +28,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- context hook lives alongside its provider by design; splitting into a separate file would be pure ceremony here
 export function useTheme() {
     const context = useContext(ThemeContext);
     if (context === undefined) {

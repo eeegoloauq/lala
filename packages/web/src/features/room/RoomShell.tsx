@@ -9,6 +9,7 @@ import { ControlBar } from './ControlBar/ControlBar';
 import { ChatPanel } from './ChatPanel/ChatPanel';
 import { useJoinLeaveSound, useScreenShareSound } from './hooks/useJoinLeaveSound';
 import { useMicSound, useTalkingWhileMuted } from './hooks/useMicSounds';
+import { playMuteSound, playUnmuteSound } from '../../lib/sounds';
 import { useIosAudioKeepAlive } from './hooks/useIosAudioKeepAlive';
 import { useRoomChat } from './hooks/useRoomChat';
 import { usePushToTalk } from './hooks/usePushToTalk';
@@ -144,7 +145,8 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
         window.electronAPI!.getAppInfo().then(info => {
             if (info.isWayland) setIsWayland(true);
         }).catch(() => {});
-    }, [isElectron]);
+        // isElectron is a module-level constant — intentionally not a dependency
+    }, []);
 
     const handleScreenShareToggle = useCallback(() => {
         if (screenEnabled) {
@@ -156,21 +158,29 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
             console.log('[Lala] Screen share: opening modal (isElectron:', isElectron, ', isWayland:', isWayland, ')');
             setScreenShareModalOpen(true);
         }
-    }, [screenEnabled, startScreen, stopScreen, isElectron, isWayland, settings.screenShareSkipDialog, settings.screenShareFpsIdx, settings.screenShareBrIdx]);
+        // isElectron is a module-level constant — intentionally not a dependency
+    }, [screenEnabled, startScreen, stopScreen, isWayland, settings.screenShareSkipDialog, settings.screenShareFpsIdx, settings.screenShareBrIdx]);
 
     const handleScreenShareModalConfirm = useCallback((quality: ScreenShareQuality, sourceId?: string, audio?: boolean) => {
         setScreenShareModalOpen(false);
         startScreen(quality, sourceId, audio);
     }, [startScreen]);
 
+    // Single owner of the deafen mute/unmute sound: when deafening also toggles
+    // the mic, useMicSound already plays a sound for that mic state transition —
+    // playing one here too would double up. Only play it directly here when the
+    // mic doesn't change (already off while deafening, or was never re-enabled
+    // while undeafening), since nothing else will provide that feedback.
     const handleToggleAudio = useCallback(() => {
         setAudioMuted((prev) => {
             const nextMuted = !prev;
             if (nextMuted) {
                 micWasEnabledRef.current = isMicrophoneEnabled;
                 if (isMicrophoneEnabled) localParticipant.setMicrophoneEnabled(false);
+                else playMuteSound();
             } else {
                 if (micWasEnabledRef.current) localParticipant.setMicrophoneEnabled(true);
+                else playUnmuteSound();
             }
             const meta = JSON.stringify({ deafened: nextMuted });
             localParticipant.setMetadata(meta).catch(() => {

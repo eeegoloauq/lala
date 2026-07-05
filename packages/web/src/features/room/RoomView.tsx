@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { LIVEKIT_URL } from '../../lib/constants';
 import { getToken } from '../../lib/api';
 import { ApiError } from '../../lib/types';
-import { getPassPool, saveToPool, saveRoomPassword, getAdminSecret } from '../../lib/passwords';
+import { getPassPool, saveToPool, saveRoomPassword, getRoomPassword, getAdminSecret } from '../../lib/passwords';
 import type { AppSettings } from '../settings/types';
 import { RoomShell } from './RoomShell';
 import './RoomView.css';
@@ -93,11 +93,25 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         setPasswordError(null);
         setE2eeSetup(null);
 
-        const tryPool = async () => {
-            // Try hash password first (from invite link #pw=...), then saved pool
-            const pool = hashPassword
-                ? [hashPassword, ...getPassPool().filter(p => p !== hashPassword)]
-                : getPassPool();
+        // Fatal (non-password) error — rate limit gets its own countdown UI.
+        const handleFatalError = (err: unknown) => {
+            if (err instanceof ApiError && err.code === 'rate_limited') {
+                const secs = err.retryAfter ?? 60;
+                countdownInitRef.current = secs;
+                setCountdown(secs);
+                setErrorCode('rate_limited');
+                return;
+            }
+            setErrorCode(err instanceof ApiError ? err.code : 'server_error');
+        };
+
+        // Try every remaining candidate password (hash password first, then the
+        // saved pool), skipping any password already attempted by the caller.
+        const tryPool = async (skip?: string) => {
+            const base = getPassPool().filter(p => p !== skip);
+            const pool = hashPassword && hashPassword !== skip
+                ? [hashPassword, ...base.filter(p => p !== hashPassword)]
+                : base;
             for (const pw of pool) {
                 try {
                     const data = await fetchToken(pw);
@@ -109,15 +123,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                     if (!mounted()) return;
                     // Wrong password — try next in pool
                     if (err instanceof ApiError && (err.code === 'wrong_password' || err.code === 'password_required')) continue;
-                    // Rate limited or other error — stop pool iteration, show error
-                    if (err instanceof ApiError && err.code === 'rate_limited') {
-                        const secs = err.retryAfter ?? 60;
-                        countdownInitRef.current = secs;
-                        setCountdown(secs);
-                        setErrorCode('rate_limited');
-                        return;
-                    }
-                    setErrorCode(err instanceof ApiError ? err.code : 'server_error');
+                    handleFatalError(err);
                     return;
                 }
             }
@@ -127,27 +133,29 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
             }
         };
 
-        fetchToken()
-            .then(async (data) => {
-                if (mounted()) {
-                    onIdentityAssigned?.(data.identity);
-                    await applyToken(data.token);
-                }
-            })
-            .catch((err) => {
+        // If a password is already known for this room (URL invite fragment or a
+        // previously saved room password), send it on the FIRST token request —
+        // requesting without it would just eat an avoidable 401 (password_required)
+        // round trip before falling back to the same password anyway.
+        const knownPassword = hashPassword || getRoomPassword(roomName) || undefined;
+
+        const start = async () => {
+            try {
+                const data = await fetchToken(knownPassword);
+                if (!mounted()) return;
+                onIdentityAssigned?.(data.identity);
+                await applyToken(data.token, knownPassword);
+            } catch (err) {
                 if (!mounted()) return;
                 if (err instanceof ApiError && (err.code === 'password_required' || err.code === 'wrong_password')) {
-                    tryPool();
+                    await tryPool(knownPassword);
                 } else {
-                    const code = err instanceof ApiError ? err.code : 'server_error';
-                    if (code === 'rate_limited' && err instanceof ApiError) {
-                        const secs = err.retryAfter ?? 60;
-                        countdownInitRef.current = secs;
-                        setCountdown(secs);
-                    }
-                    setErrorCode(code);
+                    handleFatalError(err);
                 }
-            });
+            }
+        };
+
+        start();
         return () => {
             // Invalidate in-flight async work from this attempt
             connectGenRef.current++;
@@ -334,7 +342,12 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         },
         publishDefaults: {
             audioPreset: AudioPresets[settings.audioQuality],
-            dtx: true,
+            // DTX (discontinuous transmission) stops sending audio packets during
+            // silence. On the music-quality presets, receivers' Opus decoders fill
+            // those gaps with comfort noise — audible as hiss right after a silent
+            // participant joins. Only the speech preset (voice-tuned, mono, lower
+            // bitrate) is worth the tradeoff; music presets keep the stream live.
+            dtx: settings.audioQuality === 'speech',
             forceStereo: settings.audioQuality.includes('Stereo'),
             videoEncoding: {
                 maxBitrate: 1_500_000,

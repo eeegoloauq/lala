@@ -10,6 +10,16 @@ function getCtx(): AudioContext {
 function playTone(startHz: number, endHz: number, durationSec: number, gain = 0.12) {
     try {
         const ac = getCtx();
+
+        // On gesture-less page load the context starts 'suspended' and
+        // currentTime is frozen at 0 — any tone scheduled now would queue up
+        // and all fire at once the moment the context resumes (first click).
+        // Kick off the resume and drop this tone rather than let it stack.
+        if (ac.state !== 'running') {
+            ac.resume().catch(() => {});
+            return;
+        }
+
         const osc = ac.createOscillator();
         const g = ac.createGain();
 

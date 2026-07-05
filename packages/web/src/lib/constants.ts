@@ -24,7 +24,10 @@ export function screenShareBitrateLabel(mbps: number): string {
 export const STORAGE_KEYS = {
   displayName: 'lala-display-name',
   identity: 'lala-identity',
-  theme: 'lala-theme',
-  screenShareQuality: 'lala-screen-quality',
+  // Actual key in users' storage is 'lala_theme' (underscore) — ThemeProvider
+  // used to hardcode this string instead of importing the constant, and the
+  // constant itself drifted to the wrong (never-used) value. Keep the real
+  // value here so existing users' saved theme isn't silently dropped.
+  theme: 'lala_theme',
   settings: 'lala-settings',
 } as const;

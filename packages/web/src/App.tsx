@@ -15,7 +15,6 @@ import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
 import { saveRoomPassword, getRoomPassword, saveAdminSecret } from './lib/passwords';
 import { saveTemplate } from './lib/roomTemplates';
-import { IS_ELECTRON as isElectron } from './lib/env';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
@@ -66,7 +65,8 @@ export default function App() {
     useEffect(() => {
         const color = settings.accentColor;
         const root = document.documentElement;
-        if (!color) {
+        // Guard against a corrupted/hand-edited value reaching slice/parseInt below.
+        if (!color || !/^#[0-9a-f]{6}$/i.test(color)) {
             ['--accent', '--accent-hover', '--accent-glow', '--accent-gradient', '--text-accent']
                 .forEach(v => root.style.removeProperty(v));
             return;

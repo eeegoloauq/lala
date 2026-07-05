@@ -34,6 +34,7 @@ export function RoomUIProvider({ value, children }: { value: RoomUIContextValue;
     return <RoomUIContext.Provider value={value}>{children}</RoomUIContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- context hook lives alongside its provider by design; splitting into a separate file would be pure ceremony here
 export function useRoomUIContext(): RoomUIContextValue {
     const ctx = useContext(RoomUIContext);
     if (!ctx) throw new Error('useRoomUIContext must be used within a RoomUIProvider');

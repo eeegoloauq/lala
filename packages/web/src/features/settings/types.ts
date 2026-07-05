@@ -1,5 +1,10 @@
-export type AudioQualityPreset = 'speech' | 'music' | 'musicHighQuality' | 'musicHighQualityStereo';
-export type NoiseSuppressionMode = 'disabled' | 'browser' | 'rnnoise';
+// Exported as runtime arrays (not just types) so stored-settings validation
+// can whitelist-check them without hardcoding the values a second time.
+export const AUDIO_QUALITY_PRESETS = ['speech', 'music', 'musicHighQuality', 'musicHighQualityStereo'] as const;
+export type AudioQualityPreset = typeof AUDIO_QUALITY_PRESETS[number];
+
+export const NOISE_SUPPRESSION_MODES = ['disabled', 'browser', 'rnnoise'] as const;
+export type NoiseSuppressionMode = typeof NOISE_SUPPRESSION_MODES[number];
 
 export interface AppSettings {
   audioQuality: AudioQualityPreset;

@@ -194,11 +194,8 @@
   --bg-active: #222222;
   --bg-control: #000000;
   --border-color: #1a1a1a;
-
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
+  /* --color-success/danger/warning/info intentionally omitted — identical to
+     the root theme's values, so no override is needed here. */
 }
 
 /* ─── Discord Theme ─── */
