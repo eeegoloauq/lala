@@ -12,7 +12,7 @@ export interface AdminActions {
     onToggleMute: () => void;
 }
 
-interface ParticipantContextMenuProps {
+export interface ParticipantContextMenuProps {
     identity: string;
     name: string;
     isRemote: boolean;
