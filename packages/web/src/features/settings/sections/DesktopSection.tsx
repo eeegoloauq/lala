@@ -120,6 +120,7 @@ function UpdateSection() {
       case 'downloading': return t('settings.updateDownloading', { percent: updateStatus.percent ?? 0 });
       case 'installing': return t('settings.updateInstalling');
       case 'ready': return t('settings.updateReady', { version: updateStatus.version });
+      case 'package-manager': return t('settings.updatePackageManager');
       case 'error': return updateStatus.error
         ? `${t('settings.updateError')}\n${updateStatus.error}`
         : t('settings.updateError');
