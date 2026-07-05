@@ -20,7 +20,7 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 - `VideoGrid/` -- participant tiles, context menu (volume, hide screen share, admin actions), Avatar component
 - `FocusLayout/` -- screen share focused view
 - `ControlBar/` -- stateless: mic/deafen/cam/screenshare/chat/leave buttons
-- `ChatPanel/` -- draggable+resizable overlay; emoji picker; fullscreen on mobile; direct DOM mutation during drag
+- `ChatPanel/` -- docked reflow panel on desktop, floating overlay 641-899px, fullscreen on mobile; emoji picker; file bubbles
 - `ScreenShareModal/` -- Electron: source picker + thumbnails; Browser: settings + native picker
 
 ### Channels (`features/channels/`)
@@ -35,7 +35,7 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 - `useRoute.ts` -- URL routing; parses `roomId` from path, `hashPassword` from `#pw=` fragment
 - `useDisplayName.ts` -- localStorage-persisted display name
 - `usePersistedVolumes.ts` -- volume Map with 30-day TTL, 400ms debounce
-- `useAvatarSync.ts` -- broadcasts avatar on connect/change; handles deletion
+- `useAvatarSync.ts` -- syncs avatar via participant attributes; handles deletion
 - `useRoomKeyboard.ts` -- rebindable shortcuts; Esc always works
 - `useMicSounds.ts` -- mute/unmute sounds + talking-while-muted detection
 - `useJoinLeaveSound.ts` -- join/leave + screen share sounds
@@ -52,11 +52,11 @@ Two tiers, by design:
 
 ### Avatar System
 1. Upload -> `compressAvatar()` -> 128x128 JPEG -> `saveMyAvatar()` in localStorage
-2. `useAvatarSync` broadcasts on connect; unicasts to new joiners; sends `null` on deletion
-3. Cached as `lala_av_<identity>` + `lala_avn_<name>` (fallback)
+2. `useAvatarSync` publishes via participant attributes (`lala.avatar` key) -- server delivers to late joiners automatically; sends `''` on deletion. Legacy `publishData` receive path kept until ~2026-10 for old clients.
+3. Cached as `lala_av_<identity>` + `lala_avn_<name>` (fallback), in-memory layer in `roomStatusStore`
 
 ### Chat Panel
-Overlay floating window (no layout shift). `position: absolute`, z-index 20. 8-direction resize. Direct DOM mutation during drag (no React setState race). `isFloating` ref converts CSS to inline positioning on first interaction.
+Desktop (>=900px): docked flex sibling of the stage (`.cp-dock`), animates only `width` (0 -> 340px, 200ms); inner panel keeps fixed width so content never reflows mid-slide; stays mounted through the close transition. 641-899px: floating/resizable overlay with direct DOM mutation during drag. <=640px: fullscreen overlay. File sharing rides LiveKit byte streams (`streamBytes`/`registerByteStreamHandler`, topic `files`, 100MB cap) via `useFileTransfers` -- ephemeral like chat, NOT covered by media E2EE (same trust level as chat text).
 
 ### Screen Share Hide
 Right-click -> hide: `publication.setSubscribed(false)` on both video + audio tracks. LiveKit stops sending data.
@@ -108,6 +108,7 @@ IndexedDB (`lala-secure`); ciphertext lives under `lala_enc_<logical-key>`.
 | pushToTalk | false | |
 | pushToTalkKey | Space | |
 | videoResolution | h720 | h1080/h720/vga |
+| cameraEffect | none | none/blur — background blur via `@livekit/track-processors`, applied by `useCameraProcessor` |
 | screenShareFpsIdx | 0 | index into [30, 60] |
 | screenShareBrIdx | 2 | index into [1,2,5,8,15] Mbps |
 | screenShareAudio | true | include system audio |

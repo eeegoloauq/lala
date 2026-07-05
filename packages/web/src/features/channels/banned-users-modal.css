@@ -1,0 +1,55 @@
+/* ─── Banned Users Modal ─── */
+.bum-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 12px 0;
+}
+
+.bum-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--border-radius);
+    background: var(--bg-hover);
+}
+
+.bum-row-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.bum-row-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bum-row-identity {
+    font-size: 11px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bum-empty {
+    padding: 16px 4px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.bum-error {
+    color: var(--color-danger);
+    font-size: 13px;
+    margin: 4px 0;
+}

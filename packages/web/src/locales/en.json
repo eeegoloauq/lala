@@ -118,7 +118,17 @@
     "placeholder": "Send a message...",
     "emoji": "Emoji",
     "send": "Send",
-    "tooFast": "Too fast — wait a moment"
+    "tooFast": "Too fast — wait a moment",
+    "attach": "Attach file",
+    "cancelTransfer": "Cancel",
+    "download": "Download",
+    "dropToSend": "Drop to send",
+    "fileCanceled": "Transfer canceled",
+    "fileFailed": "Failed to receive file",
+    "fileSent": "{{name}} sent a file",
+    "fileTooLarge": "File is too large (max {{max}})",
+    "jumpToLatest": "Jump to latest",
+    "openImage": "Open full size"
   },
   "controls": {
     "mute": "Mute microphone",
@@ -216,6 +226,11 @@
     "res1080": "1080p (Full HD)",
     "res720": "720p (HD)",
     "res480": "480p (SD)",
+    "cameraEffect": "Background effect",
+    "cameraEffectHint": "Apply a video effect to your camera",
+    "cameraEffectNone": "None",
+    "cameraEffectBlur": "Blur",
+    "cameraEffectUnsupported": "Not supported by this browser",
     "theme": "Theme",
     "themeDark": "Dark",
     "themeLight": "Light",
@@ -326,5 +341,13 @@
   },
   "app": {
     "openSidebar": "Open sidebar"
+  },
+  "roomAdmin": {
+    "bannedUsers": "Banned users",
+    "deleteRoom": "Delete room",
+    "deleteConfirm": "Click again to delete",
+    "unban": "Unban",
+    "loading": "Loading...",
+    "noBans": "No banned users"
   }
 }

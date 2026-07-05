@@ -10,12 +10,12 @@ Express server for token generation, room management, and admin actions. Uses `l
 | POST | `/api/token` | HMAC-derived identity, password/ban check, returns `{ token, identity }` |
 | GET | `/api/rooms` | List rooms |
 | POST | `/api/rooms` | Create room (returns `adminSecret`) |
-| GET | `/api/rooms/:id` | Room details |
 | DELETE | `/api/rooms/:id` | Delete room (requires `adminSecret` in body) |
-| POST | `/api/rooms/:id/kick` | Kick participant |
-| POST | `/api/rooms/:id/ban` | Ban participant |
-| POST | `/api/rooms/:id/mute` | Mute participant |
-| POST | `/api/rooms/:id/unban` | Unban participant |
+| POST | `/api/rooms/:id/admin/kick` | Kick participant |
+| POST | `/api/rooms/:id/admin/ban` | Ban participant |
+| POST | `/api/rooms/:id/admin/mute` | Mute participant |
+| POST | `/api/rooms/:id/admin/unban` | Unban participant |
+| GET | `/api/rooms/:id/admin/bans` | List banned identities (`adminSecret` via `X-Admin-Secret` header) |
 | GET | `/api/events` | SSE stream for room updates |
 
 ## Key Files

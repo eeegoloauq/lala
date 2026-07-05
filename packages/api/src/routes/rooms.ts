@@ -98,36 +98,6 @@ export function createRoomsRouter(): Router {
         }
     });
 
-    /** Get single room info (for direct link join) */
-    router.get('/:id', async (req: Request, res: Response): Promise<void> => {
-        try {
-            const { id } = req.params;
-            if (id.length > 50) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-            const roomService = getRoomService();
-            const rooms = await roomService.listRooms([id]);
-            if (rooms.length === 0) {
-                res.status(404).json({ error: 'room_not_found' });
-                return;
-            }
-            const room = rooms[0];
-            const meta = parseRoomMeta(room.metadata);
-            res.json({
-                id: room.name,
-                displayName: meta?.displayName ?? room.name,
-                numParticipants: room.numParticipants,
-                maxParticipants: meta?.maxParticipants ?? Number(room.maxParticipants),
-                hasPassword: !!meta?.passwordHash,
-                creationTime: Number(room.creationTime),
-            });
-        } catch (error) {
-            console.error('Failed to get room:', error);
-            res.status(500).json({ error: 'server_error' });
-        }
-    });
-
     /** Create a new room */
     router.post('/', async (req: Request, res: Response): Promise<void> => {
         try {

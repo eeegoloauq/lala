@@ -25,6 +25,11 @@ export interface RoomInfo {
     adminSecret?: string;            // only present in POST /api/rooms response — store and don't share
 }
 
+/** One banned participant, from GET /api/rooms/:id/admin/bans. Only identities are stored server-side, so `name` is currently always absent — kept optional so a future name-carrying ban store is a non-breaking change. */
+export interface RoomBan { identity: string; name?: string; }
+/** Response from GET /api/rooms/:id/admin/bans */
+export interface BansResponse { bans: RoomBan[]; }
+
 /** Payload for POST /api/rooms */
 export interface CreateRoomRequest {
     name: string;

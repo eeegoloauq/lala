@@ -6,6 +6,9 @@ export type AudioQualityPreset = typeof AUDIO_QUALITY_PRESETS[number];
 export const NOISE_SUPPRESSION_MODES = ['disabled', 'browser', 'rnnoise'] as const;
 export type NoiseSuppressionMode = typeof NOISE_SUPPRESSION_MODES[number];
 
+export const CAMERA_EFFECTS = ['none', 'blur'] as const;
+export type CameraEffect = typeof CAMERA_EFFECTS[number];
+
 export interface AppSettings {
   audioQuality: AudioQualityPreset;
   autoGainControl: boolean;
@@ -18,6 +21,7 @@ export interface AppSettings {
   pushToTalk: boolean;
   pushToTalkKey: string;
   videoResolution: string;
+  cameraEffect: CameraEffect; // 'none' | 'blur' — background blur via @livekit/track-processors
   screenShareFpsIdx: number;
   screenShareBrIdx: number;
   screenShareSkipDialog: boolean;
@@ -52,6 +56,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   pushToTalk: false,
   pushToTalkKey: 'Space',
   videoResolution: 'h720',
+  cameraEffect: 'none',
   screenShareFpsIdx: 0,     // 30fps
   screenShareBrIdx: 2,      // 5 Mbps (1080p)
   screenShareSkipDialog: false,

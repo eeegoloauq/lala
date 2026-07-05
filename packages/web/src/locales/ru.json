@@ -118,7 +118,17 @@
     "placeholder": "Напишите сообщение...",
     "emoji": "Эмодзи",
     "send": "Отправить",
-    "tooFast": "Слишком быстро — подождите"
+    "tooFast": "Слишком быстро — подождите",
+    "attach": "Прикрепить файл",
+    "cancelTransfer": "Отменить",
+    "download": "Скачать",
+    "dropToSend": "Отпустите, чтобы отправить",
+    "fileCanceled": "Передача отменена",
+    "fileFailed": "Не удалось получить файл",
+    "fileSent": "{{name}} отправил(а) файл",
+    "fileTooLarge": "Файл слишком большой (макс. {{max}})",
+    "jumpToLatest": "К последним сообщениям",
+    "openImage": "Открыть в полном размере"
   },
   "controls": {
     "mute": "Выключить микрофон",
@@ -216,6 +226,11 @@
     "res1080": "1080p (Full HD)",
     "res720": "720p (HD)",
     "res480": "480p (SD)",
+    "cameraEffect": "Фон",
+    "cameraEffectHint": "Применить видеоэффект к камере",
+    "cameraEffectNone": "Без эффекта",
+    "cameraEffectBlur": "Размытие",
+    "cameraEffectUnsupported": "Не поддерживается в этом браузере",
     "theme": "Тема",
     "themeDark": "Тёмная",
     "themeLight": "Светлая",
@@ -326,5 +341,13 @@
   },
   "app": {
     "openSidebar": "Открыть боковую панель"
+  },
+  "roomAdmin": {
+    "bannedUsers": "Забаненные",
+    "deleteRoom": "Удалить канал",
+    "deleteConfirm": "Нажмите ещё раз для удаления",
+    "unban": "Разбанить",
+    "loading": "Загрузка...",
+    "noBans": "Нет забаненных"
   }
 }
