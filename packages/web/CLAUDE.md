@@ -76,11 +76,22 @@ Auto-saved after 30s. Up to 3, deduped by name. Sidebar shows offline templates 
 | `lala_avn_<name>` | cached avatar by display name (fallback) |
 | `lala_volumes` | mic volumes Map JSON |
 | `lala_screen_volumes` | screen share volumes Map JSON |
+| `lala_language` | i18next preference |
+| `lala_enc_<name>` | AES-GCM blob managed by `lib/secureStore.ts` (see below) |
+
+### Encrypted keys (via `lib/secureStore.ts`)
+
+Secrets are AES-GCM-encrypted with a non-extractable WebCrypto key stored in
+IndexedDB (`lala-secure`); ciphertext lives under `lala_enc_<logical-key>`.
+`initSecureStore()` hydrates a sync in-memory cache before first render
+(`main.tsx`); legacy plaintext keys migrate automatically on load.
+
+| Logical key | Contents |
+|-----|----------|
 | `lala_passwords` | password pool `string[]` (max 20) |
 | `lala_admin_<roomId>` | admin secret (creator only) |
-| `lala_room_templates` | room templates (max 3) |
+| `lala_room_templates` | room templates (max 3, may carry a password) |
 | `lala_room_pw_<roomId>` | saved password for room |
-| `lala_language` | i18next preference |
 
 ## AppSettings (in `lala-settings`)
 

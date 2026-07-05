@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { LIVEKIT_URL } from '../../lib/constants';
 import { getToken } from '../../lib/api';
 import { ApiError } from '../../lib/types';
-import { getPassPool, saveToPool, saveRoomPassword } from '../../lib/passwords';
+import { getPassPool, saveToPool, saveRoomPassword, getAdminSecret } from '../../lib/passwords';
 import type { AppSettings } from '../settings/types';
 import { RoomShell } from './RoomShell';
 import './RoomView.css';
@@ -51,7 +51,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         return () => { e2eeSetup?.worker.terminate(); };
     }, [e2eeSetup]);
 
-    const adminSecret = localStorage.getItem(`lala_admin_${roomName}`) ?? undefined;
+    const adminSecret = getAdminSecret(roomName) ?? undefined;
 
     const fetchToken = (pw?: string) => {
         return getToken({ room: roomName, name, deviceId: identity, password: pw, adminSecret });
