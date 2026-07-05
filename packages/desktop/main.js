@@ -55,6 +55,9 @@ const WINDOW_STATE_FILE = path.join(app.getPath('userData'), 'window-state.json'
 const ICON_PREF_FILE = path.join(app.getPath('userData'), 'icon-preference.json');
 const ALLOWED_URL_PROTOCOLS = new Set(['http:', 'https:']);
 const ICON_VARIANTS = ['voice-wave', 'dark-sphere', 'single-wave', 'double-wave'];
+// Absolute path of our bundled connection page — used to make sure `file://`
+// navigation is only ever permitted to this exact file, not arbitrary local paths.
+const INDEX_HTML_PATH = path.join(__dirname, 'index.html');
 
 // ─── IPC Channel Names ──────────────────────────────────────────────────────
 const IPC = {
@@ -102,6 +105,14 @@ let pendingScreenShareSourceId = null;
 
 /** @type {ReturnType<typeof setTimeout> | null} */
 let screenShareSourceTimer = null;
+
+// Origin of the currently-connected server, set when LOAD_URL loads a server
+// URL and cleared whenever we navigate back to the local connection page.
+// This is the trust boundary for the electronAPI bridge, WebRTC permissions,
+// and screen capture — the local file:// connection page and this origin are
+// the only two contexts allowed to use them. See "Origin Trust Helpers" below.
+/** @type {string | null} */
+let trustedOrigin = null;
 
 let isQuitting = false;
 
@@ -215,6 +226,98 @@ function isUrlAllowed(url) {
     } catch {
         return false;
     }
+}
+
+function isIndexHtmlUrl(url) {
+    // Restrict file:// navigation to exactly our bundled index.html (any query
+    // string, e.g. ?error=1, is fine) — blocks navigation to arbitrary local
+    // files that a compromised renderer might try to reach via window.location.
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+    if (parsed.protocol !== 'file:') return false;
+    try {
+        let filePath = decodeURIComponent(parsed.pathname);
+        // On Windows, file:// URLs have a leading slash before the drive letter (/C:/...)
+        if (process.platform === 'win32') filePath = filePath.replace(/^\/+/, '');
+        return path.normalize(filePath) === path.normalize(INDEX_HTML_PATH);
+    } catch {
+        return false;
+    }
+}
+
+// ─── Origin Trust Helpers ───────────────────────────────────────────────────
+// The window can only ever be showing one of two trusted contexts: our local
+// file:// connection page, or the remote origin the user picked (tracked in
+// `trustedOrigin`). Everything below re-derives trust from the *current*
+// state of the frame/webContents making the request — never from whether a
+// navigation was merely allowed at some point in the past.
+
+function classifySender(event) {
+    const frame = event.senderFrame;
+    if (!frame || typeof frame.url !== 'string') {
+        return { isFileTop: false, isTrustedTop: false };
+    }
+    // Only the top-level frame of our single window may use sensitive channels
+    // — never an embedded sub-frame/iframe, even if same-origin.
+    const isTopFrame = !!mainWindow && !mainWindow.isDestroyed() &&
+        frame === mainWindow.webContents.mainFrame;
+    if (!isTopFrame) return { isFileTop: false, isTrustedTop: false };
+
+    if (frame.url.startsWith('file://')) {
+        return { isFileTop: true, isTrustedTop: false };
+    }
+    try {
+        const origin = new URL(frame.url).origin;
+        return { isFileTop: false, isTrustedTop: trustedOrigin !== null && origin === trustedOrigin };
+    } catch {
+        return { isFileTop: false, isTrustedTop: false };
+    }
+}
+
+/** True if the IPC event was sent from the top-level local connection page. */
+function isFileSender(event) {
+    return classifySender(event).isFileTop;
+}
+
+/** True if the IPC event was sent from the top-level currently-trusted server origin. */
+function isTrustedSender(event) {
+    return classifySender(event).isTrustedTop;
+}
+
+/** True if the IPC event was sent from either trusted context. */
+function isFileOrTrustedSender(event) {
+    const { isFileTop, isTrustedTop } = classifySender(event);
+    return isFileTop || isTrustedTop;
+}
+
+/** True if a WebContents' current top-level URL is the trusted server origin. */
+function isWebContentsOriginTrusted(webContents) {
+    if (!webContents || webContents.isDestroyed() || trustedOrigin === null) return false;
+    try {
+        return new URL(webContents.getURL()).origin === trustedOrigin;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Navigate back to the local connection page. Centralizes the three things
+ * that must always happen together: stop the power-save blocker, drop trust
+ * in the previously-connected origin, and load index.html. Used by manual
+ * "change server" actions as well as automatic error recovery.
+ */
+function navigateToConnectionPage(query) {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (powerSaveBlockerId !== null) {
+        powerSaveBlocker.stop(powerSaveBlockerId);
+        powerSaveBlockerId = null;
+    }
+    trustedOrigin = null;
+    mainWindow.loadFile('index.html', query ? { query } : undefined);
 }
 
 // ─── Icon Extraction ─────────────────────────────────────────────────────────
@@ -585,7 +688,11 @@ function createWindow() {
         if (errorCode === -3) return;
         console.error(`[Lala] Page load failed: ${errorDescription} (${errorCode}) for ${validatedURL}`);
         hasReloadedForPreload = false;
-        mainWindow.loadFile('index.html', { query: { error: '1' } });
+        // navigateToConnectionPage() is a programmatic loadFile() call — it does
+        // NOT fire 'will-navigate', so the navigation lock below never sees (and
+        // never needs to allow) this recovery hop. It also drops trustedOrigin,
+        // which is correct: the server we were trying to reach failed to load.
+        navigateToConnectionPage({ error: '1' });
         // Send error after index.html loads and sets up IPC listeners
         mainWindow.webContents.once('did-finish-load', () => {
             sendToRenderer(IPC.LOAD_URL_ERROR, { message: errorDescription || 'Connection failed' });
@@ -601,7 +708,7 @@ function createWindow() {
         if (httpResponseCode >= 500) {
             console.error(`[Lala] Server error ${httpResponseCode} for ${url}`);
             hasReloadedForPreload = false;
-            mainWindow.loadFile('index.html', { query: { error: '1' } });
+            navigateToConnectionPage({ error: '1' });
             mainWindow.webContents.once('did-finish-load', () => {
                 sendToRenderer(IPC.LOAD_URL_ERROR, { message: `Server error: ${httpResponseCode}` });
                 mainWindow.show();
@@ -638,12 +745,33 @@ function createWindow() {
         mainWindow = null;
     });
 
-    // Security: block navigation to non-allowed URLs and new-window popups
+    // Security: only allow renderer-initiated navigation (link clicks, JS
+    // location changes, form submits, etc.) within the trusted origin model —
+    // our own bundled connection page, or the same origin as the currently
+    // connected server. Everything else is blocked; this is what contains a
+    // page that gets redirected somewhere unexpected (MITM on http, a rogue
+    // link, etc.) from being able to reach a different origin while still
+    // holding the electronAPI bridge/permissions.
+    //
+    // Note: this does NOT fire for programmatic webContents.loadURL/loadFile()
+    // calls made by main.js itself (initial connect, 502-flash recovery) — only
+    // for navigations the page/user initiates — so those flows are unaffected.
     mainWindow.webContents.on('will-navigate', (event, url) => {
-        // Allow navigation within the app (file:// for index.html, loaded server URL)
-        if (url.startsWith('file://')) return;
-        if (!isUrlAllowed(url)) {
-            event.preventDefault();
+        if (isIndexHtmlUrl(url)) return;
+
+        if (trustedOrigin) {
+            try {
+                if (new URL(url).origin === trustedOrigin) return;
+            } catch { /* fall through to block */ }
+        }
+
+        // Untrusted destination — block the in-window navigation. If it's a
+        // plain http(s) link (e.g. the user clicked an external link inside the
+        // web app), send it to the OS browser instead of silently discarding
+        // it. Never do this for file:, javascript:, or other schemes.
+        event.preventDefault();
+        if (isUrlAllowed(url)) {
+            shell.openExternal(url).catch(() => {});
         }
     });
 
@@ -676,11 +804,7 @@ function createTray() {
             label: isRu ? 'Сменить сервер' : 'Change server',
             click: () => {
                 if (!mainWindow || mainWindow.isDestroyed()) return;
-                if (powerSaveBlockerId !== null) {
-                    powerSaveBlocker.stop(powerSaveBlockerId);
-                    powerSaveBlockerId = null;
-                }
-                mainWindow.loadFile('index.html');
+                navigateToConnectionPage();
                 mainWindow.show();
             },
         },
@@ -726,6 +850,22 @@ function clearPendingScreenShare() {
     }
 }
 
+/**
+ * Gate for setDisplayMediaRequestHandler: only the top-level frame of the
+ * currently trusted server origin may capture the screen. Silent screen
+ * capture from a page that isn't the connected server (e.g. one the window
+ * got redirected to) is exactly the vector this closes.
+ */
+function isDisplayCaptureRequestTrusted(request) {
+    if (trustedOrigin === null) return false;
+    if (request.securityOrigin !== trustedOrigin) return false;
+    if (mainWindow && !mainWindow.isDestroyed() && request.frame &&
+        request.frame !== mainWindow.webContents.mainFrame) {
+        return false; // deny sub-frame capture requests
+    }
+    return true;
+}
+
 function setupScreenShareHandler() {
     if (IS_WAYLAND) {
         // On Wayland, desktopCapturer.getSources() triggers the XDG desktop portal
@@ -734,7 +874,11 @@ function setupScreenShareHandler() {
         // getDisplayMedia() entirely. Inside the handler we call getSources()
         // to invoke the portal, then pass the user-selected source to the callback.
         console.log('[Lala] Wayland detected — using XDG portal for screen share');
-        session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+        session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+            if (!isDisplayCaptureRequestTrusted(request)) {
+                callback({});
+                return;
+            }
             try {
                 console.log('[Lala] Screen share (Wayland): requesting sources via portal');
                 const sources = await desktopCapturer.getSources({
@@ -758,6 +902,10 @@ function setupScreenShareHandler() {
     }
 
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+        if (!isDisplayCaptureRequestTrusted(request)) {
+            callback({});
+            return;
+        }
         if (pendingScreenShareSourceId) {
             const sourceId = pendingScreenShareSourceId;
             clearPendingScreenShare();
@@ -789,6 +937,14 @@ function detectCommand(commands) {
     return commands[0]; // fallback to first
 }
 
+// SECURITY (known accepted risk): --nogpgcheck / --allow-unsigned-rpm / plain
+// `rpm -Uvh` below skip RPM signature verification entirely. Proper fix is to
+// GPG-sign releases and ship/import a public key, which needs signing
+// infrastructure we don't have yet. Accepted for now because installerPath
+// always comes from electron-updater's own download of our GitHub Release
+// asset (HTTPS, and electron-updater verifies the download's checksum from
+// latest-linux.yml before this ever runs) — this isn't installing arbitrary
+// attacker-supplied RPMs, just skipping the *GPG* signature check specifically.
 function buildRpmInstallArgs(installerPath) {
     const pm = detectCommand(['dnf', 'zypper', 'yum', 'rpm']);
     switch (pm) {
@@ -802,8 +958,13 @@ function buildRpmInstallArgs(installerPath) {
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
 
 function registerIpcHandlers() {
-    // Ping a server (health check from connection page, bypasses CORS)
-    ipcMain.handle(IPC.PING_SERVER, async (_event, url) => {
+    // Ping a server (health check from connection page, bypasses CORS).
+    // File://-only: this is a user-driven "is this server up" probe issued from
+    // the connection page before loadUrl(), never from a loaded server page.
+    // Combined with the http(s)-only protocol check and the 5s timeout below,
+    // restricting the sender closes off using this as a general SSRF proxy.
+    ipcMain.handle(IPC.PING_SERVER, async (event, url) => {
+        if (!isFileSender(event)) return null;
         if (!isUrlAllowed(url)) return null;
         const endpoint = url.replace(/\/+$/, '') + '/api/health';
         const mod = endpoint.startsWith('https') ? require('https') : require('http');
@@ -818,13 +979,18 @@ function registerIpcHandlers() {
         });
     });
 
-    // Load a server URL (from connection page)
+    // Load a server URL (from connection page). File://-only: this is how a
+    // server origin becomes trusted in the first place, so only the local
+    // connection page — never an already-loaded remote page — may call it.
     ipcMain.on(IPC.LOAD_URL, (event, url) => {
+        if (!isFileSender(event)) return;
         if (!mainWindow) return;
         if (!isUrlAllowed(url)) {
             sendToRenderer(IPC.LOAD_URL_ERROR, { message: 'Invalid URL protocol. Only HTTP(S) is allowed.' });
             return;
         }
+        // isUrlAllowed() above already parsed the URL successfully, so this can't throw.
+        trustedOrigin = new URL(url).origin;
         mainWindow.hide();  // Hide to prevent 502 flash
         mainWindow.loadURL(url).catch(err => {
             console.error('[Lala] Failed to load URL:', err.message);
@@ -838,8 +1004,11 @@ function registerIpcHandlers() {
         }, 15000);
     });
 
-    // Get desktop sources for screen share picker
-    ipcMain.handle(IPC.GET_DESKTOP_SOURCES, async () => {
+    // Get desktop sources for screen share picker. Trusted-origin-only: this
+    // hands out desktop thumbnails (and window titles) without a native OS
+    // prompt, so it must never be reachable from an untrusted page.
+    ipcMain.handle(IPC.GET_DESKTOP_SOURCES, async (event) => {
+        if (!isTrustedSender(event)) return [];
         try {
             const sources = await desktopCapturer.getSources({
                 types: ['screen', 'window'],
@@ -863,8 +1032,11 @@ function registerIpcHandlers() {
         }
     });
 
-    // Pre-select screen share source (called before getDisplayMedia)
-    ipcMain.handle(IPC.SET_SCREEN_SHARE_SOURCE, (_event, id) => {
+    // Pre-select screen share source (called before getDisplayMedia). Same
+    // trust requirement as GET_DESKTOP_SOURCES — it feeds directly into
+    // setDisplayMediaRequestHandler's response.
+    ipcMain.handle(IPC.SET_SCREEN_SHARE_SOURCE, (event, id) => {
+        if (!isTrustedSender(event)) return false;
         clearPendingScreenShare();
         pendingScreenShareSourceId = id;
 
@@ -910,7 +1082,8 @@ function registerIpcHandlers() {
         return autoUpdater.checkForUpdates().catch(() => null);
     });
 
-    ipcMain.on(IPC.INSTALL_UPDATE, () => {
+    ipcMain.on(IPC.INSTALL_UPDATE, (event) => {
+        if (!isFileOrTrustedSender(event)) return;
         const installerPath = autoUpdater.installerPath;
 
         // On Linux RPM: run pkexec async (non-blocking) while the app stays alive.
@@ -956,7 +1129,8 @@ function registerIpcHandlers() {
     });
 
     // Badge count for unread messages
-    ipcMain.on(IPC.SET_BADGE_COUNT, (_event, count) => {
+    ipcMain.on(IPC.SET_BADGE_COUNT, (event, count) => {
+        if (!isFileOrTrustedSender(event)) return;
         if (typeof count !== 'number' || !Number.isFinite(count)) return;
         count = Math.max(0, Math.floor(count));
         if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -982,29 +1156,36 @@ function registerIpcHandlers() {
         }
     });
 
-    // Auto-launch
-    ipcMain.handle(IPC.GET_AUTO_LAUNCH, () => {
+    // Auto-launch — only used by the web app's SettingsModal, but harmless to
+    // also allow from the connection page for consistency with the rest of
+    // the settings-style channels.
+    ipcMain.handle(IPC.GET_AUTO_LAUNCH, (event) => {
+        if (!isFileOrTrustedSender(event)) return false;
         return app.getLoginItemSettings().openAtLogin;
     });
 
-    ipcMain.handle(IPC.SET_AUTO_LAUNCH, (_event, enabled) => {
+    ipcMain.handle(IPC.SET_AUTO_LAUNCH, (event, enabled) => {
+        if (!isFileOrTrustedSender(event)) return false;
         app.setLoginItemSettings({ openAtLogin: enabled });
         return true;
     });
 
     // Icon preference
-    ipcMain.handle(IPC.GET_APP_ICON, () => {
+    ipcMain.handle(IPC.GET_APP_ICON, (event) => {
+        if (!isFileOrTrustedSender(event)) return null;
         return getIconPreference();
     });
 
-    ipcMain.handle(IPC.SET_APP_ICON, (_event, name) => {
+    ipcMain.handle(IPC.SET_APP_ICON, (event, name) => {
+        if (!isFileOrTrustedSender(event)) return false;
         if (!ICON_VARIANTS.includes(name)) return false;
         saveIconPreference(name);
         applyIcon(name, { forceRedraw: true });
         return true;
     });
 
-    ipcMain.on(IPC.RELAUNCH, () => {
+    ipcMain.on(IPC.RELAUNCH, (event) => {
+        if (!isFileOrTrustedSender(event)) return;
         const options = { args: process.argv.slice(1) };
         if (process.env.APPIMAGE) {
             options.execPath = process.env.APPIMAGE;
@@ -1015,24 +1196,23 @@ function registerIpcHandlers() {
     });
 
     // Session persistence
-    ipcMain.on(IPC.SAVE_SESSION, (_event, data) => {
+    ipcMain.on(IPC.SAVE_SESSION, (event, data) => {
+        if (!isFileOrTrustedSender(event)) return;
         if (data) saveSession(data);
         else clearSession();
     });
 
     // Navigate back to connection page (server switching)
-    ipcMain.on(IPC.NAVIGATE_BACK, () => {
-        if (!mainWindow || mainWindow.isDestroyed()) return;
-        // Stop power save blocker if active
-        if (powerSaveBlockerId !== null) {
-            powerSaveBlocker.stop(powerSaveBlockerId);
-            powerSaveBlockerId = null;
-        }
-        mainWindow.loadFile('index.html');
+    ipcMain.on(IPC.NAVIGATE_BACK, (event) => {
+        if (!isFileOrTrustedSender(event)) return;
+        navigateToConnectionPage();
     });
 
-    // Power save blocker for active calls
-    ipcMain.on(IPC.SET_IN_CALL, (_event, inCall) => {
+    // Power save blocker for active calls. Trusted-origin-only: this is only
+    // meaningful while the web app is in a call — the connection page never
+    // needs it, and it controls a real OS-level side effect (blocking sleep).
+    ipcMain.on(IPC.SET_IN_CALL, (event, inCall) => {
+        if (!isTrustedSender(event)) return;
         if (inCall && powerSaveBlockerId === null) {
             powerSaveBlockerId = powerSaveBlocker.start('prevent-display-sleep');
         } else if (!inCall && powerSaveBlockerId !== null) {
@@ -1046,8 +1226,14 @@ function registerIpcHandlers() {
 
 function setupAutoUpdater() {
     autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = true;
+    // Installing must always be an explicit user action (INSTALL_UPDATE IPC,
+    // gated to the connection page / trusted server origin above) — never
+    // silently on quit. A downloaded update just sits there until the user
+    // clicks "Update" in Settings.
+    autoUpdater.autoInstallOnAppQuit = false;
     autoUpdater.disableWebInstaller = true;
+    // Never silently install an older version than what's running.
+    autoUpdater.allowDowngrade = false;
 
     autoUpdater.on('checking-for-update', () => {
         sendToRenderer(IPC.UPDATE_STATUS, { status: 'checking' });
@@ -1114,17 +1300,10 @@ const CRASH_LOG_DIR = path.join(app.getPath('userData'), 'crash-logs');
 const RUNNING_LOCK = path.join(app.getPath('userData'), 'running.lock');
 const SESSION_FILE = path.join(app.getPath('userData'), 'session.json');
 
-let previousCrash = false;
-
 function setupCrashHandling() {
-    // Detect if previous session crashed
-    try {
-        if (fs.existsSync(RUNNING_LOCK)) {
-            previousCrash = true;
-        }
-    } catch { /* ignore */ }
-
-    // Write running lock
+    // Write running lock. Not currently read back by anything (no crash-based
+    // session-restore flow is wired up — see saveSession()/loadSession() note
+    // below); left in place as a cheap unclean-shutdown marker on disk.
     try {
         fs.writeFileSync(RUNNING_LOCK, String(Date.now()));
     } catch { /* ignore */ }
@@ -1176,20 +1355,16 @@ function cleanupRunningLock() {
     } catch { /* ignore */ }
 }
 
+// Writes the renderer's session snapshot (server + room) to disk. Nothing in
+// main.js currently reads SESSION_FILE back — there's no crash/restart
+// session-restore flow wired up despite this being written on every room
+// join. Kept as-is (low cost, and a restore feature may consume it later);
+// a previous `loadSession()` that was dead code (defined, never called) has
+// been removed. See packages/desktop/CLAUDE.md.
 function saveSession(data) {
     try {
         fs.writeFileSync(SESSION_FILE, JSON.stringify({ ...data, timestamp: Date.now() }));
     } catch { /* ignore */ }
-}
-
-function loadSession() {
-    try {
-        if (!fs.existsSync(SESSION_FILE)) return null;
-        const data = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
-        // Session stale after 24 hours
-        if (Date.now() - data.timestamp > 24 * 60 * 60 * 1000) return null;
-        return data;
-    } catch { return null; }
 }
 
 function clearSession() {
@@ -1207,10 +1382,28 @@ app.whenReady().then(() => {
     createWindow();
     setupScreenShareHandler();
 
-    // Restrict permissions — only allow what a voice/video chat app needs
-    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-        const allowed = ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'display-capture'];
-        callback(allowed.includes(permission));
+    // Restrict permissions — only allow what a voice/video chat app needs, and
+    // only for the currently trusted server origin. The local file://
+    // connection page needs none of these and is denied by
+    // isWebContentsOriginTrusted() (it never matches trustedOrigin).
+    const ALLOWED_PERMISSIONS = ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'display-capture'];
+
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        callback(ALLOWED_PERMISSIONS.includes(permission) && isWebContentsOriginTrusted(webContents));
+    });
+
+    // Synchronous counterpart — required for APIs like enumerateDevices() that
+    // check permission state directly instead of going through a request/
+    // callback flow, which would otherwise bypass the handler above entirely.
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
+        if (!ALLOWED_PERMISSIONS.includes(permission) || trustedOrigin === null) return false;
+        // requestingOrigin is a full URL (usually with a trailing slash), not a
+        // bare origin — normalize before comparing or every check is denied.
+        try {
+            return new URL(requestingOrigin).origin === trustedOrigin;
+        } catch {
+            return false;
+        }
     });
 
     createTray();
