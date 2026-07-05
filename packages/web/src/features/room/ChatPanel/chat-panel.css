@@ -513,6 +513,12 @@
   align-self: flex-end;
 }
 
+/* Image thumbnails are a separate element (.cp-file-thumb-link, not .cp-file) —
+   own messages need the same right-alignment the text/chip bubbles get above. */
+.cp-group-own .cp-file-thumb-link {
+  align-self: flex-end;
+}
+
 .cp-file-error {
   color: var(--text-muted);
 }
@@ -580,12 +586,19 @@
   background: color-mix(in srgb, var(--accent) 12%, var(--bg-primary));
 }
 
-/* Inline image thumbnail */
+/* Inline image thumbnail — a <button> (not <a>) so clicking opens the in-app
+   lightbox instead of navigating; reset default button chrome. */
 .cp-file-thumb-link {
   display: block;
   align-self: flex-start;
   max-width: 100%;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: inherit;
 }
 
 .cp-file-thumb {
@@ -594,4 +607,63 @@
   max-width: 100%;
   border-radius: var(--bubble-radius);
   object-fit: contain;
+}
+
+/* ─── Image lightbox ───
+ * Fullscreen viewer for chat image attachments (see ImageLightbox.tsx). `position:
+ * fixed` covers the viewport regardless of where in the DOM this mounts — none of
+ * ChatPanel's ancestors apply a CSS transform, so no containing-block surprises.
+ * Backdrop reuses the same --overlay-* vars as the video-tile overlays, so every
+ * theme (winxp included, which already overrides all three) is covered for free. */
+.cp-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  backdrop-filter: var(--overlay-backdrop);
+  -webkit-backdrop-filter: var(--overlay-backdrop);
+  animation: cp-lightbox-in 0.15s ease-out;
+}
+
+@keyframes cp-lightbox-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cp-lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--overlay-radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+.cp-lightbox-toolbar {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  gap: 8px;
+}
+
+.cp-lightbox-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius);
+  border: 1px solid color-mix(in srgb, #fff 25%, transparent);
+  background: color-mix(in srgb, #000 45%, transparent);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.cp-lightbox-btn:hover {
+  background: color-mix(in srgb, #000 65%, transparent);
 }

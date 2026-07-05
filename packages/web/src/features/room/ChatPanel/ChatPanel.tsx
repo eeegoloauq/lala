@@ -7,6 +7,7 @@ import type { ReceivedChatMessage } from '@livekit/components-react';
 import { avatarColorForIdentity } from '../../../lib/avatarUtils';
 import { MAX_FILE_SIZE, formatFileSize, type FileTransferItem } from '../../../lib/fileTransfer';
 import { FileBubble } from './FileBubble';
+import { ImageLightbox } from './ImageLightbox';
 import './chat-panel.css';
 
 export type ChatEntry =
@@ -111,6 +112,7 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
     const [dragActive, setDragActive] = useState(false);
     const [fileError, setFileError] = useState<string | null>(null);
     const [jumpToLatest, setJumpToLatest] = useState(false);
+    const [lightboxItem, setLightboxItem] = useState<FileTransferItem | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const messagesRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -438,7 +440,7 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
                             </div>
                             {group.entries.map((e) => (
                                 e.kind === 'file'
-                                    ? <FileBubble key={e.id} item={e.item} onCancel={onCancelFile} t={t} />
+                                    ? <FileBubble key={e.id} item={e.item} onCancel={onCancelFile} onOpenImage={setLightboxItem} t={t} />
                                     : <div key={e.id} className="cp-bubble">{e.text}</div>
                             ))}
                         </div>
@@ -526,6 +528,15 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
                     </svg>
                 </button>
             </div>
+
+            {lightboxItem && lightboxItem.blobUrl && (
+                <ImageLightbox
+                    src={lightboxItem.blobUrl}
+                    fileName={lightboxItem.fileName}
+                    onClose={() => setLightboxItem(null)}
+                    t={t}
+                />
+            )}
         </div>
     );
 }

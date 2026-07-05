@@ -5,16 +5,21 @@ interface FileBubbleProps {
     item: FileTransferItem;
     /** Only meaningful for the sender's own in-flight outgoing transfers. */
     onCancel?: (id: string) => void;
+    /** Opens the in-app lightbox for a finished image transfer. */
+    onOpenImage?: (item: FileTransferItem) => void;
     t: TFunction;
 }
 
 /**
  * Renders one file-transfer chat bubble: progress while sending/receiving, an inline
- * thumbnail for finished images (click opens full size via the object URL in a new
- * tab), or a download chip for everything else. Never auto-opens/executes anything —
- * images just render as an <img>, other files are plain <a download> links.
+ * thumbnail for finished images (click opens the in-app lightbox — see
+ * ChatPanel/ImageLightbox.tsx), or a download chip for everything else. Never
+ * auto-opens/executes anything — images just render as an <img>, other files are
+ * plain <a download> links. Nothing here ever uses window.open/target="_blank":
+ * those are silently blocked by Electron's window-open handler for non-http(s)
+ * (blob:) URLs, so both the lightbox and the download chip stay same-document.
  */
-export function FileBubble({ item, onCancel, t }: FileBubbleProps) {
+export function FileBubble({ item, onCancel, onOpenImage, t }: FileBubbleProps) {
     const sizeLabel = item.size !== undefined ? formatFileSize(item.size) : '';
 
     if (item.status === 'error' || item.status === 'canceled') {
@@ -58,9 +63,14 @@ export function FileBubble({ item, onCancel, t }: FileBubbleProps) {
     // status === 'done'
     if (item.isImage && item.blobUrl) {
         return (
-            <a className="cp-file-thumb-link" href={item.blobUrl} target="_blank" rel="noopener noreferrer" title={t('chat.openImage')}>
+            <button
+                type="button"
+                className="cp-file-thumb-link"
+                onClick={() => onOpenImage?.(item)}
+                title={t('chat.openImage')}
+            >
                 <img className="cp-file-thumb" src={item.blobUrl} alt={item.fileName} />
-            </a>
+            </button>
         );
     }
 
@@ -85,7 +95,7 @@ function FileIcon() {
     );
 }
 
-function DownloadIcon() {
+export function DownloadIcon() {
     return (
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />

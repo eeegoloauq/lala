@@ -66,6 +66,16 @@ export function AudioSection({ headerRef, settings, onUpdate, keybindCleanupRef 
             className="lala-select-wide"
           />
         </div>
+        <div className="settings-row">
+          <div>
+            <div className="settings-row-label">{t('settings.aec')}</div>
+            <div className="settings-row-desc">{t('settings.aecHint')}</div>
+          </div>
+          <label className="toggle">
+            <input type="checkbox" className="toggle-input" checked={settings.echoCancellation} onChange={(e) => onUpdate({ echoCancellation: e.target.checked })} />
+            <span className="toggle-slider" />
+          </label>
+        </div>
       </div>
 
       <div className="settings-section">
