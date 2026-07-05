@@ -50,9 +50,19 @@ recovery flow, the tray "Change server" item, and the `NAVIGATE_BACK` IPC).
   granted only when the requesting page's current top-level origin ===
   `trustedOrigin`. The connection page needs none of these and is always denied.
 - **Screen capture** (`GET_DESKTOP_SOURCES` IPC, `setDisplayMediaRequestHandler`):
-  gated the same way, checked against the requesting frame's own origin/top-frame
-  status directly (`request.securityOrigin` / `event.senderFrame`), not just
-  "some page is currently trusted".
+  the IPC channel checks `event.senderFrame` as above; the display-media
+  handler (`getDisplayCaptureDenyReason()`) trusts the origin of the URL the
+  window is *currently displaying* (`webContents.getURL()` origin match against
+  the normalized `request.securityOrigin`), denying sub-frames and the file://
+  connection page. Beware: `request.securityOrigin` (like `requestingOrigin` in
+  the permission check handler) is a serialized URL with a trailing slash — it
+  must be normalized via `new URL(...).origin` before comparing, never
+  string-compared to a bare `URL.origin` value.
+- **Downloads** (`will-download` in `setupDownloadHandler()`): default Electron
+  behavior kept (native Save As dialog — `setSavePath()` intentionally not
+  called); handler only logs start/completed/cancelled/interrupted to stderr.
+  Chat file saving relies on `<a download href="blob:...">` anchors —
+  `window.open(blobUrl)` is denied by `setWindowOpenHandler`.
 - **Sensitive IPC channels**: `LOAD_URL` and `PING_SERVER` are callable only
   from the `file://` connection page (they're what *establish* trust, so a
   loaded server page must never be able to call them). Most other
