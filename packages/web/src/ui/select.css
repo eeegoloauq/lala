@@ -34,6 +34,11 @@
     border-color: var(--accent);
 }
 
+.lala-select.disabled .lala-select-trigger {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .lala-select-trigger span {
     flex: 1;
     overflow: hidden;

@@ -8,6 +8,8 @@ import { getRoomPassword, getAdminSecret } from '../../lib/passwords';
 import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { CreateRoomModal } from './CreateRoomModal';
+import { RoomContextMenu } from './RoomContextMenu';
+import { BannedUsersModal } from './BannedUsersModal';
 import { ChannelUserRow } from './ChannelUserRow';
 import { useTheme } from '../settings/ThemeProvider';
 import type { Theme } from '../settings/ThemeProvider';
@@ -42,6 +44,19 @@ interface ContextMenuState {
     roomId: string;
     x: number;
     y: number;
+}
+
+interface RoomContextMenuState {
+    roomId: string;
+    roomName: string;
+    adminSecret: string;
+    x: number;
+    y: number;
+}
+
+interface BansModalState {
+    roomId: string;
+    adminSecret: string;
 }
 
 function LockIcon({ title }: { title?: string }) {
@@ -86,6 +101,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenuState | null>(null);
+    const [bansModal, setBansModal] = useState<BansModalState | null>(null);
     const [copiedRoom, setCopiedRoom] = useState<string | null>(null);
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState('');
@@ -144,6 +161,18 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     const handleUserContextMenu = useCallback((e: React.MouseEvent, participantIdentity: string, participantName: string, roomId: string) => {
         e.preventDefault();
         setContextMenu({ identity: participantIdentity, name: participantName, roomId, x: e.clientX, y: e.clientY });
+    }, []);
+
+    // Room-level right-click menu (banned users / delete room) — creator/admin only.
+    // Presence of a saved adminSecret for this room IS the creator/admin check
+    // (see lib/passwords.ts getAdminSecret); if it's absent, let the default
+    // browser context menu show instead of hijacking the right-click.
+    const handleRoomContextMenu = useCallback((e: React.MouseEvent, roomId: string, roomName: string) => {
+        const secret = getAdminSecret(roomId);
+        if (!secret) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setRoomContextMenu({ roomId, roomName, adminSecret: secret, x: e.clientX, y: e.clientY });
     }, []);
 
     // Keep room participants in a ref for the long-press callback
@@ -251,6 +280,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                         <div
                             className={`channel-item ${activeRoom === room.id ? 'active' : ''}`}
                             onClick={() => onJoinRoom(room.id)}
+                            onContextMenu={(e) => handleRoomContextMenu(e, room.id, room.displayName)}
                         >
                             <svg className="channel-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -403,6 +433,26 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                     onOpenSettings={onOpenSettings}
                     onRenameRequest={startRename}
                     onClose={() => setContextMenu(null)}
+                />
+            )}
+
+            {roomContextMenu && (
+                <RoomContextMenu
+                    roomId={roomContextMenu.roomId}
+                    roomName={roomContextMenu.roomName}
+                    adminSecret={roomContextMenu.adminSecret}
+                    x={roomContextMenu.x}
+                    y={roomContextMenu.y}
+                    onOpenBans={(roomId, adminSecret) => setBansModal({ roomId, adminSecret })}
+                    onClose={() => setRoomContextMenu(null)}
+                />
+            )}
+
+            {bansModal && (
+                <BannedUsersModal
+                    roomId={bansModal.roomId}
+                    adminSecret={bansModal.adminSecret}
+                    onClose={() => setBansModal(null)}
                 />
             )}
         </div>

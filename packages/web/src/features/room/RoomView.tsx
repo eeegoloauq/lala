@@ -1,5 +1,5 @@
 import { LiveKitRoom } from '@livekit/components-react';
-import { AudioPresets, VideoPresets, ScreenSharePresets, ExternalE2EEKeyProvider, isE2EESupported } from 'livekit-client';
+import { AudioPresets, VideoPresets, ScreenSharePresets, ExternalE2EEKeyProvider, isE2EESupported, Room } from 'livekit-client';
 import type { AudioCaptureOptions, RoomOptions } from 'livekit-client';
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -97,6 +97,30 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
             dynacast: true,
         };
     }, [e2eeSetup, audioOptions, settings.audioOutputDeviceId, settings.videoResolution, settings.videoInputDeviceId, settings.audioQuality, settings.simulcast]);
+
+    // We construct the Room ourselves (instead of letting <LiveKitRoom> do it via
+    // `options`) so we can call `prepareConnection` on it before the token even
+    // arrives — warming up DNS/TLS while the token fetch (and password/E2EE setup)
+    // is still in flight. Passing a `room` instance makes the `options` prop a
+    // no-op (per @livekit/components-react's LiveKitRoomProps doc), so options
+    // must be — and are, via roomOptions above — set at construction time here.
+    // Recreating the Room when roomOptions changes is correct: e2ee must be
+    // configured at construction, and this mirrors the prior behavior where
+    // <LiveKitRoom> itself recreated its internal Room whenever `options` changed
+    // identity. <LiveKitRoom> handles disconnecting the previous Room instance
+    // when the `room` prop changes, so no manual disconnect is needed here.
+    const room = useMemo(() => new Room(roomOptions), [roomOptions]);
+
+    // Warm up the connection (DNS + TLS) as soon as we have a Room instance,
+    // without waiting for the token — prepareConnection accepts just a URL.
+    // Safe to call multiple times (e.g. React StrictMode double-invoke): it's
+    // idempotent on the Room side, and since `room` is memoized we don't leak
+    // instances by calling it again.
+    useEffect(() => {
+        room.prepareConnection(LIVEKIT_URL).catch(err => {
+            console.warn('[RoomView] prepareConnection failed:', err instanceof Error ? err.message : err);
+        });
+    }, [room]);
 
     const adminSecret = getAdminSecret(roomName) ?? undefined;
 
@@ -364,12 +388,12 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     return (
         <div className="main-content">
             <LiveKitRoom
+                room={room}
                 token={token}
                 serverUrl={LIVEKIT_URL}
                 connect={true}
                 video={false}
                 audio={audioOptions}
-                options={roomOptions}
                 onDisconnected={onLeave}
                 style={{ height: '100%' }}
             >

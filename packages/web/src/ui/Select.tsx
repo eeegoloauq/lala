@@ -11,9 +11,10 @@ interface SelectProps {
     onChange: (value: string) => void;
     options: SelectOption[];
     className?: string;
+    disabled?: boolean;
 }
 
-export function Select({ value, onChange, options, className = '' }: SelectProps) {
+export function Select({ value, onChange, options, className = '', disabled = false }: SelectProps) {
     const [open, setOpen] = useState(false);
     const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -53,12 +54,13 @@ export function Select({ value, onChange, options, className = '' }: SelectProps
     }, [open]);
 
     return (
-        <div className={`lala-select${open ? ' open' : ''}${className ? ' ' + className : ''}`}>
+        <div className={`lala-select${open ? ' open' : ''}${disabled ? ' disabled' : ''}${className ? ' ' + className : ''}`}>
             <button
                 ref={triggerRef}
                 className="lala-select-trigger"
                 type="button"
-                onClick={() => open ? setOpen(false) : openDropdown()}
+                disabled={disabled}
+                onClick={() => { if (disabled) return; if (open) setOpen(false); else openDropdown(); }}
             >
                 <span>{selected?.label ?? ''}</span>
                 <svg className="lala-select-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">

@@ -21,7 +21,3 @@ export function broadcastSse(event: string, data: unknown = {}): void {
         }
     }
 }
-
-export function sseClientCount(): number {
-    return clients.size;
-}

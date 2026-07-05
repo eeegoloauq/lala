@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getAuthedRoom } from '../lib/auth';
 import type { RoomMeta } from '../lib/roomMeta';
 import { cacheRoomMeta } from '../lib/roomStore';
+import type { BansResponse } from '@lala/shared';
 
 /** Strip adminSecret before writing metadata back to LiveKit (it must never be in LK metadata) */
 function stripSecret(meta: RoomMeta): Omit<RoomMeta, 'adminSecret'> {
@@ -28,6 +29,29 @@ function validateAdminInput(
 
 export function createAdminRouter(): Router {
     const router = Router({ mergeParams: true });
+
+    /** List banned identities. GET (not POST) so it's cheap to poll from the admin UI;
+     * the secret travels via header (not query string, which nginx/access logs would capture,
+     * and a GET can't carry a JSON body via fetch). */
+    router.get('/bans', async (req: Request, res: Response): Promise<void> => {
+        try {
+            const secret = req.header('X-Admin-Secret');
+            if (secret !== undefined && (typeof secret !== 'string' || secret.length > 100)) {
+                res.status(400).json({ error: 'invalid_input' });
+                return;
+            }
+
+            const ctx = await getAuthedRoom(req.params.id, secret, res);
+            if (!ctx) return;
+
+            res.json({
+                bans: (ctx.meta.bannedIdentities ?? []).map((identity) => ({ identity })),
+            } satisfies BansResponse);
+        } catch (err) {
+            console.error('bans error:', err);
+            res.status(500).json({ error: 'server_error' });
+        }
+    });
 
     /** Kick a participant (immediate disconnect, can rejoin) */
     router.post('/kick', async (req: Request, res: Response): Promise<void> => {

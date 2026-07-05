@@ -1,4 +1,4 @@
-import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse } from './types';
+import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse } from './types';
 import { ApiError } from './types';
 
 const API_BASE = '/api';
@@ -60,3 +60,22 @@ export const banParticipant = (roomId: string, identity: string, adminSecret: st
 
 export const muteParticipant = (roomId: string, identity: string, adminSecret: string, muted: boolean) =>
     adminPost(roomId, 'mute', { identity, adminSecret, muted });
+
+/** List of participants banned from a room. Auth via X-Admin-Secret header (not body/query). */
+export async function getBans(roomId: string, adminSecret: string): Promise<RoomBan[]> {
+    const data = await request<BansResponse>(`/rooms/${encodeURIComponent(roomId)}/admin/bans`, {
+        headers: { 'X-Admin-Secret': adminSecret },
+    });
+    return data.bans;
+}
+
+export const unbanParticipant = (roomId: string, identity: string, adminSecret: string) =>
+    adminPost(roomId, 'unban', { identity, adminSecret });
+
+export function deleteRoom(roomId: string, adminSecret: string): Promise<void> {
+    return request<void>(`/rooms/${encodeURIComponent(roomId)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminSecret }),
+    });
+}

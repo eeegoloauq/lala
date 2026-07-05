@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { STORAGE_KEYS } from '../../lib/constants';
 import { safeJsonParse } from '../../lib/utils';
-import { DEFAULT_SETTINGS, AUDIO_QUALITY_PRESETS, NOISE_SUPPRESSION_MODES } from './types';
+import { DEFAULT_SETTINGS, AUDIO_QUALITY_PRESETS, NOISE_SUPPRESSION_MODES, CAMERA_EFFECTS } from './types';
 import type { AppSettings } from './types';
 
 // Bump when adding a migration. Stored as `_v` inside the settings JSON.
@@ -74,6 +74,12 @@ function sanitize(partial: Partial<AppSettings>): Partial<AppSettings> {
     if (key === 'noiseSuppressionMode') {
       if (typeof value === 'string' && (NOISE_SUPPRESSION_MODES as readonly string[]).includes(value)) {
         clean.noiseSuppressionMode = value as AppSettings['noiseSuppressionMode'];
+      }
+      continue;
+    }
+    if (key === 'cameraEffect') {
+      if (typeof value === 'string' && (CAMERA_EFFECTS as readonly string[]).includes(value)) {
+        clean.cameraEffect = value as AppSettings['cameraEffect'];
       }
       continue;
     }

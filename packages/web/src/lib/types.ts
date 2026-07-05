@@ -7,6 +7,8 @@ export type {
     TokenRequest,
     TokenResponse,
     ApiErrorCode,
+    RoomBan,
+    BansResponse,
 } from '@lala/shared';
 
 import type { ApiErrorCode } from '@lala/shared';
