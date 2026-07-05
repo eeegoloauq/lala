@@ -1,5 +1,6 @@
-# Built in Copr (eeegoloauq/lala) via the rpkg method; custom macros live in
-# rpkg.macros. Needs network during build (npm ci + Electron download).
+# Built in Copr (eeegoloauq/lala) via the rpkg method; {{{ }}} blocks are
+# rendered by rpkg-util at srpm time (inline bash, cwd = git root).
+# Needs network during build (npm ci + Electron download).
 
 # Electron ships prebuilt, stripped binaries — no debuginfo to extract,
 # and its bundled .so files must not leak into RPM provides/requires.
@@ -9,8 +10,8 @@
 %global __requires_exclude ^(libffmpeg\\.so.*|libEGL\\.so.*|libGLESv2\\.so.*|libvk_swiftshader\\.so.*|libvulkan\\.so.*)$
 
 Name:           lala-desktop
-Version:        {{{ lala_version }}}
-Release:        {{{ lala_release }}}%{?dist}
+Version:        {{{ sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' packages/desktop/package.json | head -n1 }}}
+Release:        {{{ echo -n "$(git rev-list --count HEAD).git$(git rev-parse --short HEAD)" }}}%{?dist}
 Summary:        Self-hosted voice and video chat (Lala desktop client)
 License:        MIT
 URL:            https://github.com/eeegoloauq/lala
