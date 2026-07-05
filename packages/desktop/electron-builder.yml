@@ -8,6 +8,7 @@ files:
   - main.js
   - preload.js
   - index.html
+  - connection.js
   - build/**/*
   - "!build/icon-variants/*.svg"
 
