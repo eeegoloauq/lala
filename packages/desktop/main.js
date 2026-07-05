@@ -43,6 +43,22 @@ const IS_WAYLAND = IS_LINUX && (
 const IS_GNOME = IS_LINUX && (process.env.XDG_CURRENT_DESKTOP || '').toLowerCase().includes('gnome');
 const HAS_SYSTEM_TRAY = !IS_LINUX || (!IS_GNOME && !process.env.SWAYSOCK && !process.env.HYPRLAND_INSTANCE_SIGNATURE);
 
+// How this build was installed — decides desktop integration and update behavior.
+// 'appimage'       — APPIMAGE env set by the AppImage runtime; no system .desktop exists,
+//                    so we own the user-level launcher entry and self-update in place.
+// 'system-package' — Linux package owned by the distro package manager (execPath under
+//                    /usr/, e.g. Copr RPM in /usr/lib/lala); dnf owns the files, we must
+//                    neither write launcher overrides nor run electron-updater.
+// 'github-rpm'     — electron-builder RPM/tar.gz from GitHub Releases (/opt/Lala);
+//                    updates via electron-updater + pkexec dnf install.
+const INSTALL_CHANNEL = (() => {
+    if (process.env.APPIMAGE) return 'appimage';
+    if (process.platform === 'win32') return 'windows';
+    if (IS_MAC) return 'macos';
+    if (IS_LINUX) return process.execPath.startsWith('/usr/') ? 'system-package' : 'github-rpm';
+    return 'unknown';
+})();
+
 const WINDOW_MIN_WIDTH = 800;
 const WINDOW_MIN_HEIGHT = 600;
 const WINDOW_DEFAULT_WIDTH = 1280;
@@ -547,6 +563,13 @@ function updateWindowsShortcutIcons(icoPath) {
 }
 
 function installLinuxDesktopIcon(variantDir) {
+    // Only AppImage lacks system-installed .desktop/icons. RPM installs
+    // (electron-builder /opt/Lala or Copr /usr/lib/lala) ship a valid
+    // /usr/share/applications/lala-desktop.desktop — a user-level override
+    // written here would shadow it with an absolute Exec path that goes
+    // stale after an upgrade, making the launcher entry vanish.
+    if (INSTALL_CHANNEL !== 'appimage') return;
+
     const home = os.homedir();
     const sizes = [16, 32, 48, 64, 256];
 
@@ -576,6 +599,38 @@ function installLinuxDesktopIcon(variantDir) {
     const iconDir = path.join(home, '.local', 'share', 'icons', 'hicolor');
     execFile('gtk-update-icon-cache', ['-f', '-t', iconDir], () => {});
     execFile('update-desktop-database', [appsDir], () => {});
+}
+
+/**
+ * Self-heal: older versions wrote a user-level .desktop override on every
+ * launch regardless of install type. On RPM installs it shadows the package's
+ * /usr/share/applications entry, and after an upgrade/relayout its absolute
+ * Exec path points at a binary that no longer exists — the app disappears
+ * from GNOME. Remove the override if it's ours and either duplicates a
+ * system-installed entry or points at a missing binary. Best-effort.
+ */
+function removeStaleDesktopOverride() {
+    if (!IS_LINUX || INSTALL_CHANNEL === 'appimage') return;
+
+    const appsDir = path.join(os.homedir(), '.local', 'share', 'applications');
+    const overridePath = path.join(appsDir, 'lala-desktop.desktop');
+    try {
+        if (!fs.existsSync(overridePath)) return;
+        const content = fs.readFileSync(overridePath, 'utf8');
+        // Only touch files we wrote ourselves.
+        if (!content.includes('StartupWMClass=lala-desktop')) return;
+
+        const execLine = content.split('\n').find(line => line.startsWith('Exec='));
+        const quoted = execLine && execLine.match(/^Exec="([^"]+)"/);
+        const binary = quoted ? quoted[1] : (execLine ? execLine.slice(5).split(' ')[0] : null);
+
+        const binaryMissing = !binary || !fs.existsSync(binary);
+        const shadowsSystemEntry = fs.existsSync('/usr/share/applications/lala-desktop.desktop');
+        if (binaryMissing || shadowsSystemEntry) {
+            fs.unlinkSync(overridePath);
+            execFile('update-desktop-database', [appsDir], () => {});
+        }
+    } catch { /* best-effort */ }
 }
 
 // ─── Window Creation ─────────────────────────────────────────────────────────
@@ -1079,6 +1134,10 @@ function registerIpcHandlers() {
 
     // Auto-updater
     ipcMain.handle(IPC.CHECK_UPDATE, () => {
+        if (INSTALL_CHANNEL === 'system-package') {
+            sendToRenderer(IPC.UPDATE_STATUS, { status: 'package-manager' });
+            return null;
+        }
         return autoUpdater.checkForUpdates().catch(() => null);
     });
 
@@ -1225,6 +1284,11 @@ function registerIpcHandlers() {
 // ─── Auto-Updater ───────────────────────────────────────────────────────────
 
 function setupAutoUpdater() {
+    // Files owned by the distro package manager — electron-updater must not
+    // touch them or even phone home. Updates come via dnf; the manual check
+    // in Settings gets a dedicated 'package-manager' status instead.
+    if (INSTALL_CHANNEL === 'system-package') return;
+
     autoUpdater.autoDownload = false;
     // Installing must always be an explicit user action (INSTALL_UPDATE IPC,
     // gated to the connection page / trusted server origin above) — never
@@ -1377,6 +1441,7 @@ function clearSession() {
 
 app.whenReady().then(() => {
     ensureIconsExtracted();
+    removeStaleDesktopOverride();
     setupCrashHandling();
     registerIpcHandlers();
     createWindow();
