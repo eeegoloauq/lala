@@ -1,0 +1,7 @@
+{
+    "name": "@lala/shared",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Types-only wire contract between the Lala API and clients. No runtime code.",
+    "types": "./index.d.ts"
+}

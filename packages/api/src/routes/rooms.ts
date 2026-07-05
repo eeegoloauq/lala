@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import type { RoomInfo, CreateRoomRequest } from '@lala/shared';
 import { getRoomService } from '../lib/livekit';
 import { generateRoomId, hashPassword, parseRoomMeta } from '../lib/roomMeta';
 import { cacheRoomMeta, evictRoomMeta } from '../lib/roomStore';
@@ -12,8 +13,8 @@ import { getAuthedRoom } from '../lib/auth';
 // every 15s). TTL is short enough that SSE-driven UI refreshes still see fresh-enough
 // data; the webhook handler also invalidates it explicitly on room-changing events.
 const ROOMS_CACHE_TTL_MS = 2000;
-let roomsCache: { data: unknown; expiresAt: number } | null = null;
-let roomsCacheInflight: Promise<unknown> | null = null;
+let roomsCache: { data: RoomInfo[]; expiresAt: number } | null = null;
+let roomsCacheInflight: Promise<RoomInfo[]> | null = null;
 
 /** Drop the cached room list so the next GET /api/rooms fetches fresh data. */
 export function invalidateRoomsCache(): void {
@@ -21,7 +22,7 @@ export function invalidateRoomsCache(): void {
     roomsCacheInflight = null;
 }
 
-async function listRoomsAggregated(): Promise<unknown> {
+async function listRoomsAggregated(): Promise<RoomInfo[]> {
     const now = Date.now();
     if (roomsCache && roomsCache.expiresAt > now) {
         return roomsCache.data;
@@ -36,8 +37,8 @@ async function listRoomsAggregated(): Promise<unknown> {
     roomsCacheInflight = (async () => {
         const rooms = await roomService.listRooms();
 
-        const result = await Promise.all(
-            rooms.map(async (room) => {
+        const result: RoomInfo[] = await Promise.all(
+            rooms.map(async (room): Promise<RoomInfo> => {
                 const participants = await roomService.listParticipants(room.name);
                 const meta = parseRoomMeta(room.metadata);
                 // TrackSource: SCREEN_SHARE=3, MICROPHONE=2 in LiveKit protobuf enum
@@ -130,12 +131,9 @@ export function createRoomsRouter(): Router {
     /** Create a new room */
     router.post('/', async (req: Request, res: Response): Promise<void> => {
         try {
-            const { name, password, maxParticipants, identity } = req.body as {
-                name?: string;
-                password?: string;
-                maxParticipants?: number;
-                identity?: string;
-            };
+            // Partial<> because the body is untrusted input — every field is
+            // validated below before use.
+            const { name, password, maxParticipants, identity } = req.body as Partial<CreateRoomRequest>;
 
             if (!name || typeof name !== 'string' || !name.trim()) {
                 res.status(400).json({ error: 'invalid_input' });
@@ -194,8 +192,8 @@ export function createRoomsRouter(): Router {
             await cacheRoomMeta(roomId, { ...meta, adminSecret });
             invalidateRoomsCache();
 
-            // adminSecret is returned ONCE here — client must persist it in localStorage
-            res.json({
+            // adminSecret is returned ONCE here — client must persist it locally
+            const created: RoomInfo = {
                 id: room.name,
                 displayName: meta.displayName,
                 numParticipants: 0,
@@ -204,7 +202,8 @@ export function createRoomsRouter(): Router {
                 creationTime: Number(room.creationTime),
                 participants: [],
                 adminSecret,
-            });
+            };
+            res.json(created);
         } catch (error) {
             console.error('Failed to create room:', error);
             res.status(500).json({ error: 'server_error' });

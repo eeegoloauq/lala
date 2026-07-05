@@ -50,16 +50,18 @@ jobs:
       - name: Login to registry
         run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "$REGISTRY" -u egor --password-stdin
 
+      # Build context is the repo root so packages/shared (types-only file:
+      # dependency of api and web) is reachable inside the builds.
       - name: Build & push api
         run: |
-          docker build -t "$IMAGE_API:${{ github.sha }}" -t "$IMAGE_API:latest" ./packages/api
+          docker build -f packages/api/Dockerfile -t "$IMAGE_API:${{ github.sha }}" -t "$IMAGE_API:latest" .
           docker push "$IMAGE_API:${{ github.sha }}"
           docker push "$IMAGE_API:latest"
 
       - name: Build & push web
         run: |
-          docker build --build-arg VITE_LIVEKIT_URL=wss://rtc.egor-solovev.dev \
-            -t "$IMAGE_WEB:${{ github.sha }}" -t "$IMAGE_WEB:latest" ./packages/web
+          docker build -f packages/web/Dockerfile --build-arg VITE_LIVEKIT_URL=wss://rtc.egor-solovev.dev \
+            -t "$IMAGE_WEB:${{ github.sha }}" -t "$IMAGE_WEB:latest" .
           docker push "$IMAGE_WEB:${{ github.sha }}"
           docker push "$IMAGE_WEB:latest"
 
