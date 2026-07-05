@@ -23,6 +23,12 @@ function save(storageKey: string, volumes: Map<string, number>) {
     try {
         const existing: Record<string, StoredEntry> = safeJsonParse(localStorage.getItem(storageKey), {});
         const now = Date.now();
+        // Prune expired entries on write too — long-lived sessions (desktop app
+        // rarely reloads) would otherwise accumulate stale identities forever.
+        const cutoff = now - TTL_MS;
+        for (const [id, entry] of Object.entries(existing)) {
+            if (!(entry?.t > cutoff)) delete existing[id];
+        }
         for (const [id, vol] of volumes) {
             existing[id] = { vol, t: now };
         }

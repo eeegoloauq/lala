@@ -53,17 +53,25 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
 
     const adminSecret = getAdminSecret(roomName) ?? undefined;
 
+    // Bumped on every (re)connect attempt and on unmount; async work compares
+    // its captured generation to detect it went stale mid-flight (fast room
+    // switch), so a late token/E2EE worker can't attach to an abandoned attempt.
+    const connectGenRef = useRef(0);
+
     const fetchToken = (pw?: string) => {
         return getToken({ room: roomName, name, deviceId: identity, password: pw, adminSecret });
     };
 
     const applyToken = async (tokenStr: string, pw?: string) => {
+        const gen = connectGenRef.current;
         if (pw && isE2EESupported()) {
             const keyProvider = new ExternalE2EEKeyProvider();
             await keyProvider.setKey(pw);
+            if (connectGenRef.current !== gen) return;
             const worker = new Worker('/lala-e2ee-worker.js', { type: 'module' });
             setE2eeSetup({ keyProvider, worker });
         }
+        if (connectGenRef.current !== gen) return;
         // Remember working password for this room (for invite links)
         if (pw) saveRoomPassword(roomName, pw);
         setToken(tokenStr);
@@ -74,7 +82,9 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     };
 
     useEffect(() => {
-        let mounted = true;
+        connectGenRef.current++;
+        const gen = connectGenRef.current;
+        const mounted = () => connectGenRef.current === gen;
         setToken(null);
         setErrorCode(null);
         setNeedsPassword(false);
@@ -90,12 +100,12 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
             for (const pw of pool) {
                 try {
                     const data = await fetchToken(pw);
-                    if (!mounted) return;
+                    if (!mounted()) return;
                     onIdentityAssigned?.(data.identity);
                     await applyToken(data.token, pw);
                     return;
                 } catch (err) {
-                    if (!mounted) return;
+                    if (!mounted()) return;
                     // Wrong password — try next in pool
                     if (err instanceof ApiError && (err.code === 'wrong_password' || err.code === 'password_required')) continue;
                     // Rate limited or other error — stop pool iteration, show error
@@ -110,7 +120,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                     return;
                 }
             }
-            if (mounted) {
+            if (mounted()) {
                 setNeedsPassword(true);
                 setTimeout(() => passwordRef.current?.focus(), 50);
             }
@@ -118,13 +128,13 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
 
         fetchToken()
             .then(async (data) => {
-                if (mounted) {
+                if (mounted()) {
                     onIdentityAssigned?.(data.identity);
                     await applyToken(data.token);
                 }
             })
             .catch((err) => {
-                if (!mounted) return;
+                if (!mounted()) return;
                 if (err instanceof ApiError && (err.code === 'password_required' || err.code === 'wrong_password')) {
                     tryPool();
                 } else {
@@ -138,7 +148,8 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                 }
             });
         return () => {
-            mounted = false;
+            // Invalidate in-flight async work from this attempt
+            connectGenRef.current++;
             // Release power save blocker on leave/unmount
             window.electronAPI?.setInCall?.(false);
         };
