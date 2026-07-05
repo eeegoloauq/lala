@@ -15,7 +15,7 @@
         "@livekit/components-styles": "^1.1.0",
         "i18next": "^25.8.14",
         "i18next-browser-languagedetector": "^8.2.1",
-        "livekit-client": "^2.6.0",
+        "livekit-client": "^2.20.0",
         "react": "^18.3.0",
         "react-dom": "^18.3.0",
         "react-i18next": "^16.5.6"
