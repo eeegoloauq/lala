@@ -5,9 +5,7 @@ Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are 
 
 ![Screen sharing in Lala](screenshots/stream.png)
 
-**Demo:** [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
-
-**Desktop app:** [Download](https://github.com/eeegoloauq/lala/releases) (Windows, Linux)
+**Try it:** [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
 
 ## What it does
 
@@ -25,31 +23,61 @@ Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are 
   <img src="screenshots/call.png" width="49%" alt="Voice call" />
 </p>
 
-## Setup
+## Desktop app
 
-Need: Docker, a server with a public IP, a domain.
+Works in any browser, but there's a native client too:
+
+- **Windows** — installer from [Releases](https://github.com/eeegoloauq/lala/releases), auto-updates itself.
+- **Fedora** — via [Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/), updates come with `dnf upgrade`:
+
+  ```bash
+  sudo dnf copr enable eeegoloauq/lala
+  sudo dnf install lala-desktop
+  ```
+
+- **Other Linux** — AppImage / rpm / tar.gz from [Releases](https://github.com/eeegoloauq/lala/releases).
+
+## Self-hosting
+
+You need: Docker, a server with a public IP, a domain.
+
+There are no prebuilt public images — build the two images from the repo root
+(the root is the build context so `packages/shared` is reachable), then point
+compose at them:
 
 ```bash
 git clone https://github.com/eeegoloauq/lala.git
 cd lala
 cp .env.example .env
-# edit .env — set your IP, domain, generate LiveKit keys
-docker compose up -d --build
+# edit .env — set your IP, domain, LiveKit keys, Redis password;
+# for a local build set LALA_REGISTRY=local and LALA_TAG=dev
+
+docker build -f packages/api/Dockerfile -t local/homelab/lala-api:dev .
+docker build -f packages/web/Dockerfile \
+  --build-arg VITE_LIVEKIT_URL=wss://rtc.example.com \
+  -t local/homelab/lala-web:dev .
+
+docker compose up -d
 ```
 
-Web UI runs on port 3000. Put a reverse proxy in front for TLS.
+Web UI runs on port 3000. Put a reverse proxy in front for TLS — both for the
+UI and for LiveKit signaling (`wss://rtc.example.com` → `:7880`).
+
+> Note: `LIVEKIT_URL` is baked into the web image at build time
+> (`VITE_LIVEKIT_URL`), so rebuild `lala-web` if it changes.
 
 ### Environment
 
 | Variable | What |
 |----------|------|
-| `LIVEKIT_URL` | WebSocket URL (`wss://rtc.example.com`) |
-| `LIVEKIT_API_KEY` | LiveKit API key |
-| `LIVEKIT_API_SECRET` | LiveKit API secret |
-| `NODE_IP` | Server public IP |
-| `LIVEKIT_DOMAIN` | Domain for TURN |
-| `ALLOWED_ORIGINS` | Allowed frontend origins |
-| `CSP_CONNECT_SRC` | CSP connect-src (default: `wss: ws:`, tighten for prod) |
+| `LIVEKIT_URL` | WebSocket URL clients connect to (`wss://rtc.example.com`) |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | LiveKit credentials |
+| `NODE_IP` | Server public IP (WebRTC ICE) |
+| `LIVEKIT_DOMAIN` | Domain for TURN (must resolve to the server) |
+| `REDIS_PASSWORD` | Redis password (`openssl rand -hex 24`) |
+| `LALA_REGISTRY` / `LALA_TAG` | Where compose pulls the api/web images from |
+| `ALLOWED_ORIGINS` | Allowed frontend origins (CORS) |
+| `CSP_CONNECT_SRC` | CSP connect-src (default `wss: ws:`, tighten for prod) |
 
 ### Ports
 
@@ -70,11 +98,12 @@ Browser → Nginx (:3000)
           → LiveKit (:7880 WS, :50000/udp, :3478/udp TURN)
 ```
 
-Three packages:
+Four packages:
 
 - `packages/api` — Express. Token generation, room CRUD, admin actions, SSE. Uses `livekit-server-sdk` v2.
 - `packages/web` — Vite + React. `livekit-client` v2, custom UI.
 - `packages/desktop` — Electron. Native screen share, tray, auto-updates.
+- `packages/shared` — types-only wire contract between api and web.
 
 No database. Identity = HMAC of a stable device UUID — same device, same participant, always.
 
@@ -86,8 +115,10 @@ No database. Identity = HMAC of a stable device UUID — same device, same parti
 - Admin secrets: 128-bit random, Redis-only (never in room metadata)
 - Rate limiting: nginx + Express, client-side chat throttle
 - Input sanitization: null bytes, RTL overrides, control chars stripped
-- CSP, X-Frame-Options, X-Content-Type-Options, HSTS
-- API runs as non-root (`node` user)
+- CSP without inline scripts, X-Frame-Options, X-Content-Type-Options, HSTS
+- Containers run as non-root with `no-new-privileges` and memory limits
+
+Found a vulnerability? See [SECURITY.md](SECURITY.md).
 
 ## Local dev
 
