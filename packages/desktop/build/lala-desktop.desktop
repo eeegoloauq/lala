@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Lala
+Comment=Voice & Video Chat
+Exec=lala-desktop %U
+Icon=lala-desktop
+Terminal=false
+Categories=Network;Chat;AudioVideo;
+StartupWMClass=lala-desktop
