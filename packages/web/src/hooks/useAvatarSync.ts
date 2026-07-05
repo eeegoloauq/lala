@@ -65,16 +65,17 @@ export function useAvatarSync({ room, myAvatarUrl, onAvatarReceived }: UseAvatar
         room.on(RoomEvent.ParticipantConnected, onJoin);
 
         // Broadcast own avatar only after the data channel is ready
+        const onConnected = () => sendAvatar();
         if (room.state === ConnectionState.Connected) {
             sendAvatar();
         } else {
-            room.once(RoomEvent.Connected, () => sendAvatar());
+            room.once(RoomEvent.Connected, onConnected);
         }
 
         return () => {
             room.off(RoomEvent.DataReceived, onData);
             room.off(RoomEvent.ParticipantConnected, onJoin);
-            room.off(RoomEvent.Connected, sendAvatar);
+            room.off(RoomEvent.Connected, onConnected);
         };
     }, [room, sendAvatar, onAvatarReceived]);
 

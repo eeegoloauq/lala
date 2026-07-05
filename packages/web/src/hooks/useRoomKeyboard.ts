@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface RoomKeyboardOptions {
     onMicToggle: () => void;
@@ -20,20 +20,26 @@ interface RoomKeyboardOptions {
 
 const IGNORED_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
-export function useRoomKeyboard({
-    onMicToggle, onCamToggle, onDeafen, onChat, onFullscreen,
-    onScreenShare, onEscape,
-    pttKey,
-    enabled = true,
-    keyMic = 'KeyM',
-    keyCam = 'KeyV',
-    keyDeafen = 'KeyD',
-    keyChat = 'KeyC',
-    keyFullscreen = 'KeyF',
-    keyScreenShare = 'KeyS',
-}: RoomKeyboardOptions) {
+export function useRoomKeyboard(options: RoomKeyboardOptions) {
+    // Callbacks from callers are often recreated per render; reading them
+    // through a ref keeps the global keydown listener bound exactly once.
+    const optionsRef = useRef(options);
+    optionsRef.current = options;
+
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
+            const {
+                onMicToggle, onCamToggle, onDeafen, onChat, onFullscreen,
+                onScreenShare, onEscape,
+                enabled = true,
+                keyMic = 'KeyM',
+                keyCam = 'KeyV',
+                keyDeafen = 'KeyD',
+                keyChat = 'KeyC',
+                keyFullscreen = 'KeyF',
+                keyScreenShare = 'KeyS',
+            } = optionsRef.current;
+
             // Escape always works regardless of enabled flag
             if (e.code === 'Escape') {
                 if (onEscape) onEscape();
@@ -53,6 +59,5 @@ export function useRoomKeyboard({
 
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [onMicToggle, onCamToggle, onDeafen, onChat, onFullscreen, onScreenShare, onEscape,
-        enabled, keyMic, keyCam, keyDeafen, keyChat, keyFullscreen, keyScreenShare, pttKey]);
+    }, []);
 }
