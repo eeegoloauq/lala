@@ -280,6 +280,7 @@
     "updateInstalling": "Installing…",
     "updateReady": "Version {{version}} ready to install",
     "updateError": "Could not check for updates",
+    "updatePackageManager": "Installed from the system package manager — update via dnf",
     "check": "Check",
     "about": "About",
     "sourceCode": "Source code",

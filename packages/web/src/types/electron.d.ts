@@ -15,7 +15,7 @@ export interface AppInfo {
 }
 
 export interface UpdateStatus {
-    status: 'checking' | 'available' | 'not-available' | 'downloading' | 'installing' | 'ready' | 'error';
+    status: 'checking' | 'available' | 'not-available' | 'downloading' | 'installing' | 'ready' | 'error' | 'package-manager';
     version?: string;
     percent?: number;
     error?: string;

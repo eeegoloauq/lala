@@ -280,6 +280,7 @@
     "updateInstalling": "Установка…",
     "updateReady": "Версия {{version}} готова к установке",
     "updateError": "Не удалось проверить обновления",
+    "updatePackageManager": "Установлено из пакетного менеджера — обновляйтесь через dnf",
     "check": "Проверить",
     "about": "О программе",
     "sourceCode": "Исходный код",
