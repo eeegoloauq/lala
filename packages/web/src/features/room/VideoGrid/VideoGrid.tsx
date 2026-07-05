@@ -10,8 +10,8 @@ import { useCameraFlip } from '../hooks/useCameraFlip';
 import { findTileIdentity } from '../lib/findTileIdentity';
 import { useRoomUIContext } from '../RoomUIContext';
 import './video-grid.css';
+import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
 
-const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
 
 interface VideoGridProps {
     onFocusTile?: (identity: string) => void;

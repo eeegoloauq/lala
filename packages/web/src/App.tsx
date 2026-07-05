@@ -15,6 +15,7 @@ import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
 import { saveRoomPassword, getRoomPassword, saveAdminSecret } from './lib/passwords';
 import { saveTemplate } from './lib/roomTemplates';
+import { IS_ELECTRON as isElectron } from './lib/env';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
@@ -166,7 +167,6 @@ export default function App() {
         );
     }
 
-    const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
 
     return (
         <div className={`app-layout${!activeRoom ? ' no-room' : ''}`}>

@@ -17,6 +17,7 @@ import { useTheme } from '../settings/ThemeProvider';
 import type { Theme } from '../settings/ThemeProvider';
 import '../settings/settings.css';
 import './channel-sidebar.css';
+import { IS_TOUCH as isTouchDevice } from '../../lib/env';
 
 const THEMES: Theme[] = ['dark', 'light', 'amoled', 'discord', 'retro', 'winxp'];
 
@@ -155,7 +156,6 @@ export function ChannelSidebar({
     roomParticipantsRef.current = roomParticipants;
     const channelListRef = useRef<HTMLDivElement>(null);
 
-    const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
 
     const handleUserCardClick = useCallback((e: React.MouseEvent) => {
         if (!isTouchDevice) return;

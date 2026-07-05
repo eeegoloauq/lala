@@ -27,6 +27,7 @@ import { useChatNotifications } from './hooks/useChatNotifications';
 import { useReconnectingBanner } from './hooks/useReconnectingBanner';
 import { RoomUIProvider } from './RoomUIContext';
 import type { AppSettings } from '../settings/types';
+import { IS_ELECTRON as isElectron } from '../../lib/env';
 
 const ScreenShareModal = lazy(() => import('./ScreenShareModal/ScreenShareModal').then(m => ({ default: m.ScreenShareModal })));
 const SCREEN_SHARE_TRACKS = [Track.Source.ScreenShare];
@@ -134,7 +135,6 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
         }
     }, []);
 
-    const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
 
     // Wayland detection: on Wayland, the XDG portal handles source selection natively,
     // so we skip our custom source picker and don't call setScreenShareSource IPC.
