@@ -24,10 +24,12 @@ linux:
     - rpm
     - tar.gz
   category: Network
+  # electron-builder >=26 nests desktop-file keys under `entry`
   desktop:
-    Name: Lala
-    Comment: Voice & Video Chat
-    StartupWMClass: lala-desktop
+    entry:
+      Name: Lala
+      Comment: Voice & Video Chat
+      StartupWMClass: lala-desktop
 
 rpm:
   afterRemove: scripts/afterRemove.sh
