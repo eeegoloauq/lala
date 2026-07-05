@@ -27,6 +27,7 @@ import { kickParticipant, banParticipant, muteParticipant } from '../../lib/api'
 import { ApiError } from '../../lib/types';
 import { useAvatarSync } from '../../hooks/useAvatarSync';
 import { getCachedAvatar, setCachedAvatar, clearCachedAvatar } from '../../lib/avatarUtils';
+import { getAdminSecret } from '../../lib/passwords';
 import type { AppSettings } from '../settings/types';
 
 const ScreenShareModal = lazy(() => import('./ScreenShareModal/ScreenShareModal').then(m => ({ default: m.ScreenShareModal })));
@@ -210,7 +211,7 @@ export function RoomShell({ name, myAvatarUrl, onSpeakersChange, onMutedChange, 
         else clearCachedAvatar(id);
     }, [myAvatarUrl, localParticipant.identity]);
 
-    const adminSecret = localStorage.getItem(`lala_admin_${room.name}`) ?? undefined;
+    const adminSecret = getAdminSecret(room.name) ?? undefined;
 
     // Identities that were kicked or banned — suppress the redundant "left" system message for them.
     // Cleared after 10s to avoid stale entries if the disconnect never arrives.

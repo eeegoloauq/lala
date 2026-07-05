@@ -13,7 +13,7 @@ import { getOrCreateIdentity, getCachedHmacIdentity, saveCachedHmacIdentity } fr
 import type { CreateRoomRequest } from './lib/types';
 import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
-import { saveRoomPassword, getRoomPassword } from './lib/passwords';
+import { saveRoomPassword, getRoomPassword, saveAdminSecret } from './lib/passwords';
 import { saveTemplate } from './lib/roomTemplates';
 import './App.css';
 
@@ -122,7 +122,7 @@ export default function App() {
     const handleCreateRoom = async (req: CreateRoomRequest) => {
         const room = await addRoom({ ...req, identity });
         if (room.adminSecret) {
-            localStorage.setItem(`lala_admin_${room.id}`, room.adminSecret);
+            saveAdminSecret(room.id, room.adminSecret);
         }
         if (req.password) {
             saveRoomPassword(room.id, req.password);

@@ -7,7 +7,7 @@ import { Avatar } from '../room/VideoGrid/Avatar';
 import { AvatarBadge } from '../../ui/AvatarBadge';
 import { getCachedAvatar } from '../../lib/avatarUtils';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
-import { getRoomPassword } from '../../lib/passwords';
+import { getRoomPassword, getAdminSecret } from '../../lib/passwords';
 import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { kickParticipant, banParticipant, muteParticipant } from '../../lib/api';
@@ -173,7 +173,7 @@ export function ChannelSidebar({
     }, []);
 
     const getAdminProps = (roomId: string, identity: string) => {
-        const secret = localStorage.getItem(`lala_admin_${roomId}`);
+        const secret = getAdminSecret(roomId);
         if (!secret) return undefined;
         const room = rooms.find(r => r.id === roomId);
         const serverMuted = room?.serverMutedParticipants?.includes(identity) ?? false;

@@ -10,7 +10,7 @@ import { MicTester } from './MicTester';
 import { getVoices, ttsSupported } from '../../lib/tts';
 import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS, screenShareBitrateLabel } from '../../lib/constants';
 import { compressAvatar } from '../../lib/avatarUtils';
-import { getPassPool, removeFromPool, clearPool } from '../../lib/passwords';
+import { getPassPool, removeFromPool, clearAllPasswords } from '../../lib/passwords';
 import { ICON_VARIANTS } from '../../lib/iconVariants';
 import './settings.css';
 import '../room/ScreenShareModal/screen-share-modal.css';
@@ -181,7 +181,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
 
   const clearPasswords = () => {
     setSavedPasswords([]);
-    clearPool();
+    clearAllPasswords();
   };
 
   const scrollTo = useCallback((id: Section) => {
