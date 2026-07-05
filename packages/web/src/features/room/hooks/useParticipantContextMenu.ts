@@ -4,6 +4,7 @@ import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { RemoteParticipant, Track } from 'livekit-client';
 import type { Participant, RemoteTrackPublication } from 'livekit-client';
 import type { AdminActions, ParticipantContextMenuProps } from '../VideoGrid/ParticipantContextMenu';
+import { useRoomUIContext } from '../RoomUIContext';
 
 /**
  * Admin-action wiring shared by VideoGrid and FocusLayout: both accept identity-scoped
@@ -32,12 +33,6 @@ export interface UseParticipantContextMenuOptions {
     participants: Participant[];
     /** Screen-share-audio track refs (from `useTracks([Track.Source.ScreenShareAudio])`). */
     screenAudioTracks: TrackReferenceOrPlaceholder[];
-    volumes: Map<string, number>;
-    onVolumeChange: (identity: string, vol: number) => void;
-    screenVolumes: Map<string, number>;
-    onScreenVolumeChange: (identity: string, vol: number) => void;
-    admin?: ParticipantAdminActions;
-    onOpenSettings?: () => void;
 }
 
 export interface UseParticipantContextMenuResult {
@@ -58,13 +53,8 @@ export interface UseParticipantContextMenuResult {
 export function useParticipantContextMenu({
     participants,
     screenAudioTracks,
-    volumes,
-    onVolumeChange,
-    screenVolumes,
-    onScreenVolumeChange,
-    admin,
-    onOpenSettings,
 }: UseParticipantContextMenuOptions): UseParticipantContextMenuResult {
+    const { volumes, onVolumeChange, screenVolumes, onScreenVolumeChange, admin, onOpenSettings } = useRoomUIContext();
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
     const openContextMenu = useCallback((participantOrIdentity: Participant | string, x: number, y: number) => {

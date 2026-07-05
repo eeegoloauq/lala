@@ -6,9 +6,9 @@ import { Track } from 'livekit-client';
 import { ParticipantTile } from '../VideoGrid/ParticipantTile';
 import { ParticipantContextMenu } from '../VideoGrid/ParticipantContextMenu';
 import { useParticipantContextMenu } from '../hooks/useParticipantContextMenu';
-import type { ParticipantAdminActions } from '../hooks/useParticipantContextMenu';
 import { useCameraFlip } from '../hooks/useCameraFlip';
 import { findTileIdentity } from '../lib/findTileIdentity';
+import { useRoomUIContext } from '../RoomUIContext';
 import './focus-layout.css';
 
 const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
@@ -24,19 +24,12 @@ function asActiveTrack(ref: TrackReferenceOrPlaceholder | undefined): TrackRefer
 interface FocusLayoutProps {
     initialIdentity?: string | null;
     onExit?: () => void;
-    audioMuted?: boolean;
-    avatarCache?: Map<string, string>;
-    volumes: Map<string, number>;
-    onVolumeChange: (identity: string, vol: number) => void;
-    screenVolumes: Map<string, number>;
-    onScreenVolumeChange: (identity: string, vol: number) => void;
-    ambientMode?: boolean;
-    admin?: ParticipantAdminActions;
-    onOpenSettings?: () => void;
 }
 
-export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, volumes, onVolumeChange, screenVolumes, onScreenVolumeChange, ambientMode = true, admin, onOpenSettings }: FocusLayoutProps) {
+export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
     const { t } = useTranslation();
+    const { audioMuted, avatarCache, settings } = useRoomUIContext();
+    const ambientMode = settings.ambientMode;
     const participants = useParticipants();
     const screenTracks = useTracks([Track.Source.ScreenShare]);
     const cameraTracks = useTracks([Track.Source.Camera]);
@@ -47,12 +40,6 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
     const { contextMenuProps, openContextMenu: openContextMenuForIdentity, closeContextMenu } = useParticipantContextMenu({
         participants,
         screenAudioTracks,
-        volumes,
-        onVolumeChange,
-        screenVolumes,
-        onScreenVolumeChange,
-        admin,
-        onOpenSettings,
     });
     const mainRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
