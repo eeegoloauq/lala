@@ -36,6 +36,9 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
     const screenAudioTracks = useTracks([Track.Source.ScreenShareAudio]);
     const { localParticipant } = useLocalParticipant();
     const [selectedIdentity, setSelectedIdentity] = useState<string | null>(initialIdentity ?? null);
+    // When the focused participant has BOTH an active screen share and camera, this
+    // flips which one is shown big (screen, by default) vs. as the PiP overlay.
+    const [preferCameraId, setPreferCameraId] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const { contextMenuProps, openContextMenu: openContextMenuForIdentity, closeContextMenu } = useParticipantContextMenu({
         participants,
@@ -61,19 +64,82 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
     const participantsRef = useRef(participants);
     useEffect(() => { participantsRef.current = participants; });
 
+    // Manual pin: set when the user explicitly clicks a strip tile. Blocks auto-focus
+    // from stealing the view until the pinned participant leaves, or (if they were
+    // pinned while sharing) their share ends.
+    const manualPinRef = useRef<{ identity: string; wasSharing: boolean } | null>(null);
+    // Tracks screen-share identities seen on the previous run, so we can tell which
+    // ones are brand new (for "newest share auto-focuses" below).
+    const prevScreenKeysRef = useRef<Set<string>>(new Set());
+    const mountedRef = useRef(false);
+
     const participantIds = participants.map((p) => p.identity).join(',');
     const screenKeys = [...screenMap.keys()].join(',');
     useEffect(() => {
-        const firstScreen = [...screenMap.keys()][0];
+        const fresh = participantsRef.current;
+        const currentScreenIds = [...screenMap.keys()];
+        const currentScreenSet = new Set(currentScreenIds);
+        const prevScreenSet = prevScreenKeysRef.current;
+        const isFirstRun = !mountedRef.current;
+        mountedRef.current = true;
+        // On mount, don't treat pre-existing shares as "newly appeared" — that would
+        // override an explicit initialIdentity (e.g. focusing a specific camera tile).
+        const newlyAppeared = isFirstRun ? [] : currentScreenIds.filter((id) => !prevScreenSet.has(id));
+        prevScreenKeysRef.current = currentScreenSet;
+
         setSelectedIdentity((current) => {
-            const fresh = participantsRef.current;
+            // Respect an active manual pin, unless the pinned participant left, or
+            // their pinned share just ended.
+            const pin = manualPinRef.current;
+            if (pin) {
+                const stillPresent = fresh.some((p) => p.identity === pin.identity);
+                const pinnedShareEnded = pin.wasSharing && !currentScreenSet.has(pin.identity);
+                if (stillPresent && !pinnedShareEnded) {
+                    return current;
+                }
+                manualPinRef.current = null;
+            }
+
+            if (!isFirstRun) {
+                // A brand-new REMOTE share always steals focus (newest wins if several
+                // appear at once). Your own new share only steals focus if nothing else
+                // is currently shared — you can already see your own screen.
+                const ownIdentity = localParticipant.identity;
+                const newRemoteShares = newlyAppeared.filter((id) => id !== ownIdentity);
+                const remoteShareExists = currentScreenIds.some((id) => id !== ownIdentity);
+                if (newRemoteShares.length > 0) {
+                    return newRemoteShares[newRemoteShares.length - 1];
+                }
+                if (newlyAppeared.includes(ownIdentity) && !remoteShareExists) {
+                    return ownIdentity;
+                }
+            }
+
             if (current && fresh.some((p) => p.identity === current)) {
                 return current;
             }
-            return firstScreen ?? initialIdentity ?? fresh[0]?.identity ?? null;
+            return currentScreenIds[0] ?? initialIdentity ?? fresh[0]?.identity ?? null;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [participantIds, screenKeys]);
+
+    // Reset the camera/screen swap preference whenever the focused participant changes —
+    // it's meaningless carried over to someone else.
+    useEffect(() => {
+        setPreferCameraId(null);
+    }, [selectedIdentity]);
+
+    // ...and when the preferred participant's share or camera ends.
+    const activeCameraKeys = [...cameraMap.entries()].filter(([, t]) => !!asActiveTrack(t)).map(([id]) => id).join(',');
+    useEffect(() => {
+        setPreferCameraId((current) => {
+            if (!current) return current;
+            const stillScreen = screenMap.has(current);
+            const stillCam = !!asActiveTrack(cameraMap.get(current));
+            return stillScreen && stillCam ? current : null;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [screenKeys, activeCameraKeys]);
 
     // Fullscreen
     useEffect(() => {
@@ -133,14 +199,17 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
         if (identity) openContextMenuForIdentity(identity, e.clientX, e.clientY);
     }, [openContextMenuForIdentity]);
 
-    // Resolve main track: prefer screen share for selected, fallback to camera
+    // Resolve main track: prefer screen share for selected, fallback to camera.
+    // When both are active, `preferCameraId` (set by clicking the PiP) swaps them.
     const resolveMainTrack = (): { track: TrackReference; type: 'screen' | 'camera' } | null => {
         const identity = selectedIdentity;
         if (identity) {
             const screen = screenMap.get(identity);
-            if (screen) return { track: screen, type: 'screen' };
-
             const cam = asActiveTrack(cameraMap.get(identity));
+            if (screen && cam) {
+                return preferCameraId === identity ? { track: cam, type: 'camera' } : { track: screen, type: 'screen' };
+            }
+            if (screen) return { track: screen, type: 'screen' };
             if (cam) return { track: cam, type: 'camera' };
         }
         const firstScreen = [...screenMap.values()][0];
@@ -149,6 +218,26 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
     };
 
     const focused = resolveMainTrack();
+
+    // Picture-in-picture: whichever of screen/camera ISN'T the main view, for the same
+    // participant — only relevant when they have both active at once.
+    const pip: { track: TrackReference; type: 'screen' | 'camera'; identity: string } | null = (() => {
+        if (!focused) return null;
+        const identity = focused.track.participant.identity;
+        if (focused.type === 'screen') {
+            const cam = asActiveTrack(cameraMap.get(identity));
+            return cam ? { track: cam, type: 'camera', identity } : null;
+        }
+        const screen = screenMap.get(identity);
+        return screen ? { track: screen, type: 'screen', identity } : null;
+    })();
+
+    // Clicking the PiP swaps it with the main view (and back again on a second click).
+    const handlePipClick = () => {
+        if (!focused) return;
+        const identity = focused.track.participant.identity;
+        setPreferCameraId((current) => (current === identity ? null : identity));
+    };
 
     // Touch devices: tap on main view opens context menu
     const handleMainTap = useCallback((e: React.MouseEvent) => {
@@ -183,6 +272,25 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
                     <>
                         <canvas ref={canvasRef} width={64} height={36} className={`fl-ambient-canvas${ambientMode ? '' : ' fl-ambient-hidden'}`} />
                         <VideoTrack trackRef={focused.track} />
+                        {pip && (
+                            <div
+                                className="fl-pip"
+                                role="button"
+                                tabIndex={0}
+                                title={pip.type === 'camera' ? t('focus.showCameraLarge') : t('focus.showScreenLarge')}
+                                aria-label={pip.type === 'camera' ? t('focus.showCameraLarge') : t('focus.showScreenLarge')}
+                                onClick={(e) => { e.stopPropagation(); handlePipClick(); }}
+                                onDoubleClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => {
+                                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handlePipClick();
+                                }}
+                            >
+                                <VideoTrack trackRef={pip.track} />
+                            </div>
+                        )}
                         <div className="fl-main-bar">
                             {onExit && (
                                 <button className="fl-back-btn" onClick={onExit} title={t('focus.backToGrid')}>
@@ -255,17 +363,24 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
                     const hasScreenShare = screenMap.has(p.identity);
                     const hasCamera = !!asActiveTrack(cameraMap.get(p.identity));
                     const hasContent = hasScreenShare || hasCamera;
+                    // Their camera is already visible inside .fl-main (as the main view or
+                    // the PiP overlay) — showing it again here would just be duplication.
+                    const cameraShownInMain = pip?.identity === p.identity;
                     return (
                         <div
                             key={p.identity}
                             className={`fl-strip-tile${isSelected ? ' fl-strip-active' : ''}${hasContent ? ' fl-strip-clickable' : ''}`}
-                            onClick={() => hasContent && setSelectedIdentity(p.identity)}
+                            onClick={() => {
+                                if (!hasContent) return;
+                                manualPinRef.current = { identity: p.identity, wasSharing: hasScreenShare };
+                                setSelectedIdentity(p.identity);
+                            }}
                             onContextMenu={(e) => handleStripContextMenu(e, p.identity)}
-                            title={hasContent ? t('focus.focusOn', { name: p.identity }) : undefined}
+                            title={hasContent ? t('focus.focusOn', { name: p.name || p.identity }) : undefined}
                         >
                             <ParticipantTile
                                 participant={p}
-                                trackRef={cameraMap.get(p.identity)}
+                                trackRef={cameraShownInMain ? undefined : cameraMap.get(p.identity)}
                                 audioMuted={p.identity === localParticipant.identity ? audioMuted : undefined}
                                 avatarUrl={avatarCache?.get(p.identity)}
                             />

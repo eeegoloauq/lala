@@ -55,6 +55,51 @@
     object-fit: contain;
 }
 
+/* Camera/screen picture-in-picture overlay (Zoom-style), shown when the focused
+   participant has both a screen share and a camera active at once. Sits above the
+   bottom bar, inside .fl-main so it survives fullscreen along with the main view. */
+.fl-pip {
+    position: absolute;
+    right: 12px;
+    bottom: 54px;
+    width: clamp(120px, 18%, 260px);
+    aspect-ratio: 16 / 9;
+    border-radius: var(--tile-radius);
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    z-index: 3;
+    background: #000;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.fl-pip:hover,
+.fl-pip:focus-visible {
+    transform: scale(1.03);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--accent);
+    outline: none;
+}
+
+/* Scoped override — `.fl-main video` sizes to letterbox-fit the main view; the PiP
+   video needs to simply fill its own small container instead. */
+.fl-main .fl-pip video {
+    position: static;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    z-index: auto;
+}
+
+@media (max-width: 640px) {
+    .fl-pip {
+        width: clamp(84px, 30%, 160px);
+        bottom: 46px;
+        right: 8px;
+    }
+}
+
 /* Bottom bar: back btn + label + fullscreen btn */
 .fl-main-bar {
     position: absolute;

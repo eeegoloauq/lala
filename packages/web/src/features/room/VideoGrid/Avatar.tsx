@@ -1,4 +1,4 @@
-import { colorForName } from '../../../lib/participantColor';
+import { avatarColorForIdentity } from '../../../lib/avatarUtils';
 
 interface AvatarProps {
     name: string;
@@ -8,7 +8,7 @@ interface AvatarProps {
 }
 
 export function Avatar({ name, identity, size = 36, avatarUrl }: AvatarProps) {
-    const color = colorForName(identity || name);
+    const color = avatarColorForIdentity(identity || name);
     const initial = (name || '?')[0].toUpperCase();
 
     return (

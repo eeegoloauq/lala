@@ -72,10 +72,15 @@
     border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Speaking: glow on the whole tile */
+/* Speaking: subtle tile outline (thin, not shouting) + a thin ring around the avatar.
+   --speaking-ring lets themes override the color; falls back to the semantic success var. */
 .p-tile.speaking {
-    border-color: #22c55e;
-    box-shadow: 0 0 0 1px #22c55e, 0 0 16px rgba(34, 197, 94, 0.2);
+    border-color: var(--speaking-ring, var(--color-success, #22c55e));
+    box-shadow: 0 0 0 1px var(--speaking-ring, var(--color-success, #22c55e));
+}
+
+.p-tile.speaking .p-avatar-circle {
+    box-shadow: 0 0 0 3px var(--speaking-ring, var(--color-success, #22c55e)), 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 /* Server-muted by admin: red mic icon */

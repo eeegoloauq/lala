@@ -82,6 +82,9 @@ export function useScreenShare() {
                     dtx: false,
                     red: false,
                     audioPreset: AudioPresets.musicHighQualityStereo,
+                    // Keep shared text/UI sharp under bandwidth pressure — drop fps instead
+                    // of resolution (the opposite of the browser's camera-oriented default).
+                    degradationPreference: 'maintain-resolution',
                 },
             );
         } finally {
