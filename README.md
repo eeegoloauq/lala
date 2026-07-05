@@ -98,9 +98,9 @@ cd packages/web && npm install && npm run dev   # :3000
 
 ## Contributing
 
-Issues and PRs are welcome. See [Local dev](#local-dev) for running the API and web app without
-Docker. Keep changes small and focused; for anything bigger than a fix, open an issue first so
-we can talk it over.
+Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, how to
+test changes (with a real call), and what to expect. Keep changes small and focused; for anything
+bigger than a fix, open an issue first so we can talk it over.
 
 ## License
 
