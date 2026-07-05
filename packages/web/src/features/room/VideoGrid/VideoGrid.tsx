@@ -6,9 +6,9 @@ import type { Participant, RemoteTrackPublication } from 'livekit-client';
 import { ParticipantTile } from './ParticipantTile';
 import { ParticipantContextMenu } from './ParticipantContextMenu';
 import { useParticipantContextMenu } from '../hooks/useParticipantContextMenu';
-import type { ParticipantAdminActions } from '../hooks/useParticipantContextMenu';
 import { useCameraFlip } from '../hooks/useCameraFlip';
 import { findTileIdentity } from '../lib/findTileIdentity';
+import { useRoomUIContext } from '../RoomUIContext';
 import './video-grid.css';
 
 const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
@@ -16,20 +16,13 @@ const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints 
 interface VideoGridProps {
     onFocusTile?: (identity: string) => void;
     onCamEnabled?: (identity: string) => void;
-    audioMuted?: boolean;
-    avatarCache?: Map<string, string>;
-    volumes: Map<string, number>;
-    onVolumeChange: (identity: string, vol: number) => void;
-    screenVolumes: Map<string, number>;
-    onScreenVolumeChange: (identity: string, vol: number) => void;
-    onOpenSettings?: () => void;
-    admin?: ParticipantAdminActions;
 }
 
 const CAMERA_TRACKS = [Track.Source.Camera];
 const SCREEN_AUDIO_TRACKS = [Track.Source.ScreenShareAudio];
 
-export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, volumes, onVolumeChange, screenVolumes, onScreenVolumeChange, admin, onOpenSettings }: VideoGridProps) {
+export function VideoGrid({ onFocusTile, onCamEnabled }: VideoGridProps) {
+    const { audioMuted, avatarCache } = useRoomUIContext();
     const rawParticipants = useParticipants();
     // Filter out participants that don't have an identity yet (e.g. local participant right before full connection)
     // This prevents the flickering "?" avatar entirely.
@@ -41,12 +34,6 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
     const { contextMenuProps, openContextMenu, closeContextMenu } = useParticipantContextMenu({
         participants,
         screenAudioTracks,
-        volumes,
-        onVolumeChange,
-        screenVolumes,
-        onScreenVolumeChange,
-        admin,
-        onOpenSettings,
     });
     const prevCamEnabled = useRef(isCameraEnabled);
     const gridRef = useRef<HTMLDivElement>(null);
