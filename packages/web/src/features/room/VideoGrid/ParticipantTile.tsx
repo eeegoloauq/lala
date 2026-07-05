@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VideoTrack, useIsSpeaking } from '@livekit/components-react';
 import type { TrackReference, TrackReferenceOrPlaceholder } from '@livekit/components-react';
@@ -9,6 +9,8 @@ import { ConnectionQuality, ParticipantEvent, Track } from 'livekit-client';
 import { Avatar } from './Avatar';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../icons/Icons';
 import { useConnectionQuality } from '../hooks/useConnectionQuality';
+import { useParticipantState } from '../hooks/useParticipantState';
+import { readDeafened } from '../lib/participantMeta';
 
 interface ParticipantTileProps {
     participant: Participant;
@@ -26,79 +28,44 @@ const QUALITY_LABEL_KEY: Record<string, string> = {
     poor: 'tile.qualityPoor',
 };
 
+const MIC_MUTED_EVENTS = [
+    ParticipantEvent.TrackMuted,
+    ParticipantEvent.TrackUnmuted,
+    ParticipantEvent.TrackPublished,
+    ParticipantEvent.TrackUnpublished,
+    ParticipantEvent.LocalTrackPublished,
+    ParticipantEvent.LocalTrackUnpublished,
+];
+
 /** Reactively tracks mic mute state by subscribing to participant events. */
 function useMicMuted(participant: Participant): boolean {
-    const [muted, setMuted] = useState(!participant.isMicrophoneEnabled);
-    useEffect(() => {
-        setMuted(!participant.isMicrophoneEnabled);
-        const update = () => {
-            setMuted(!participant.isMicrophoneEnabled);
-        };
-        participant.on(ParticipantEvent.TrackMuted, update);
-        participant.on(ParticipantEvent.TrackUnmuted, update);
-        participant.on(ParticipantEvent.TrackPublished, update);
-        participant.on(ParticipantEvent.TrackUnpublished, update);
-        participant.on(ParticipantEvent.LocalTrackPublished, update);
-        participant.on(ParticipantEvent.LocalTrackUnpublished, update);
-        return () => {
-            participant.off(ParticipantEvent.TrackMuted, update);
-            participant.off(ParticipantEvent.TrackUnmuted, update);
-            participant.off(ParticipantEvent.TrackPublished, update);
-            participant.off(ParticipantEvent.TrackUnpublished, update);
-            participant.off(ParticipantEvent.LocalTrackPublished, update);
-            participant.off(ParticipantEvent.LocalTrackUnpublished, update);
-        };
-    }, [participant]);
-    return muted;
+    return useParticipantState(participant, MIC_MUTED_EVENTS, (p) => !p.isMicrophoneEnabled);
 }
 
 /** Reads deafen state from participant metadata, reactively. */
 function useIsDeafenedFromMeta(participant: Participant): boolean {
-    const readMeta = () => {
-        try { return !!JSON.parse(participant.metadata || '{}').deafened; } catch { return false; }
-    };
-    const [deafened, setDeafened] = useState(readMeta);
-    useEffect(() => {
-        setDeafened(readMeta());
-        const update = () => setDeafened(readMeta());
-        participant.on(ParticipantEvent.ParticipantMetadataChanged, update);
-        return () => { participant.off(ParticipantEvent.ParticipantMetadataChanged, update); };
-    }, [participant]);
-    return deafened;
+    return useParticipantState(
+        participant,
+        [ParticipantEvent.ParticipantMetadataChanged],
+        (p) => readDeafened(p.metadata),
+    );
 }
 
 /** Detects server-muted state (admin mute = canPublish revoked). */
 function useIsServerMuted(participant: Participant): boolean {
-    const [serverMuted, setServerMuted] = useState(participant.permissions?.canPublish === false);
-    useEffect(() => {
-        setServerMuted(participant.permissions?.canPublish === false);
-        const update = () => {
-            setServerMuted(participant.permissions?.canPublish === false);
-        };
-        participant.on(ParticipantEvent.ParticipantPermissionsChanged, update);
-        return () => { participant.off(ParticipantEvent.ParticipantPermissionsChanged, update); };
-    }, [participant]);
-    return serverMuted;
+    return useParticipantState(
+        participant,
+        [ParticipantEvent.ParticipantPermissionsChanged],
+        (p) => p.permissions?.canPublish === false,
+    );
 }
 
 /** Reactively tracks screen share state. */
 function useIsScreenSharing(participant: Participant): boolean {
-    const [sharing, setSharing] = useState(participant.isScreenShareEnabled);
-    useEffect(() => {
-        setSharing(participant.isScreenShareEnabled);
-        const update = () => setSharing(participant.isScreenShareEnabled);
-        const publishedEvent = participant instanceof RemoteParticipant
-            ? ParticipantEvent.TrackPublished : ParticipantEvent.LocalTrackPublished;
-        const unpublishedEvent = participant instanceof RemoteParticipant
-            ? ParticipantEvent.TrackUnpublished : ParticipantEvent.LocalTrackUnpublished;
-        participant.on(publishedEvent, update);
-        participant.on(unpublishedEvent, update);
-        return () => {
-            participant.off(publishedEvent, update);
-            participant.off(unpublishedEvent, update);
-        };
-    }, [participant]);
-    return sharing;
+    const events = participant instanceof RemoteParticipant
+        ? [ParticipantEvent.TrackPublished, ParticipantEvent.TrackUnpublished]
+        : [ParticipantEvent.LocalTrackPublished, ParticipantEvent.LocalTrackUnpublished];
+    return useParticipantState(participant, events, (p) => p.isScreenShareEnabled);
 }
 
 export const ParticipantTile = memo(function ParticipantTile({ participant, trackRef, audioMuted, avatarUrl, onClick, onFlip, onContextMenu }: ParticipantTileProps) {

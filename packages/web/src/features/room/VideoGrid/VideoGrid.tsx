@@ -1,24 +1,17 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useTracks, useParticipants, useLocalParticipant, isTrackReference } from '@livekit/components-react';
 import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { Track, RemoteParticipant } from 'livekit-client';
-import type { LocalVideoTrack, Participant, RemoteTrackPublication } from 'livekit-client';
+import type { Participant, RemoteTrackPublication } from 'livekit-client';
 import { ParticipantTile } from './ParticipantTile';
 import { ParticipantContextMenu } from './ParticipantContextMenu';
-import type { AdminActions } from './ParticipantContextMenu';
+import { useParticipantContextMenu } from '../hooks/useParticipantContextMenu';
+import type { ParticipantAdminActions } from '../hooks/useParticipantContextMenu';
+import { useCameraFlip } from '../hooks/useCameraFlip';
+import { findTileIdentity } from '../lib/findTileIdentity';
 import './video-grid.css';
 
 const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
-
-/** Walk up the DOM from target to find the nearest element with data-identity. */
-function findTileIdentity(target: EventTarget | null, container: HTMLElement | null): string | null {
-    let el = target as HTMLElement | null;
-    while (el && el !== container) {
-        if (el.dataset.identity) return el.dataset.identity;
-        el = el.parentElement;
-    }
-    return null;
-}
 
 interface VideoGridProps {
     onFocusTile?: (identity: string) => void;
@@ -30,23 +23,7 @@ interface VideoGridProps {
     screenVolumes: Map<string, number>;
     onScreenVolumeChange: (identity: string, vol: number) => void;
     onOpenSettings?: () => void;
-    admin?: Omit<AdminActions, 'serverMuted' | 'onKick' | 'onBan' | 'onToggleMute'> & {
-        onKick: (identity: string) => void;
-        onBan: (identity: string) => void;
-        onToggleMute: (identity: string, serverMuted: boolean) => void;
-    };
-}
-
-interface ContextMenuState {
-    identity: string;
-    name: string;
-    isRemote: boolean;
-    hasScreenAudio: boolean;
-    hasScreenSharePub: boolean;
-    screenShareHidden: boolean;
-    serverMuted: boolean;
-    x: number;
-    y: number;
+    admin?: ParticipantAdminActions;
 }
 
 const CAMERA_TRACKS = [Track.Source.Camera];
@@ -61,8 +38,16 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
     const cameraTracks = useTracks(CAMERA_TRACKS);
     const screenAudioTracks = useTracks(SCREEN_AUDIO_TRACKS);
     const { localParticipant, isCameraEnabled } = useLocalParticipant();
-    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+    const { contextMenuProps, openContextMenu, closeContextMenu } = useParticipantContextMenu({
+        participants,
+        screenAudioTracks,
+        volumes,
+        onVolumeChange,
+        screenVolumes,
+        onScreenVolumeChange,
+        admin,
+        onOpenSettings,
+    });
     const prevCamEnabled = useRef(isCameraEnabled);
     const gridRef = useRef<HTMLDivElement>(null);
 
@@ -74,34 +59,7 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
         prevCamEnabled.current = isCameraEnabled;
     }, [isCameraEnabled, localParticipant.identity, onCamEnabled]);
 
-    const handleFlip = useCallback(async () => {
-        const next: 'user' | 'environment' = facingMode === 'user' ? 'environment' : 'user';
-        setFacingMode(next);
-        const pub = localParticipant.getTrackPublication(Track.Source.Camera);
-        const track = pub?.track as LocalVideoTrack | undefined;
-        if (track) await track.restartTrack({ facingMode: next });
-    }, [facingMode, localParticipant]);
-
-    /** Opens context menu for a participant at given coordinates. */
-    const openContextMenu = useCallback((participant: Participant, x: number, y: number) => {
-        const hasScreenAudio = screenAudioTracks.some(
-            (t: TrackReferenceOrPlaceholder) => isTrackReference(t) && t.participant.identity === participant.identity && t.publication.isSubscribed && !t.publication.isMuted
-        );
-        const screenPub = participant instanceof RemoteParticipant
-            ? participant.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined
-            : undefined;
-        setContextMenu({
-            identity: participant.identity,
-            name: participant.name || participant.identity,
-            isRemote: participant instanceof RemoteParticipant,
-            hasScreenAudio,
-            hasScreenSharePub: !!screenPub,
-            screenShareHidden: !!screenPub && !screenPub.isSubscribed,
-            serverMuted: participant.permissions?.canPublish === false,
-            x,
-            y,
-        });
-    }, []);
+    const handleFlip = useCameraFlip(localParticipant);
 
     const handleContextMenu = useCallback((e: React.MouseEvent, participant: Participant) => {
         e.preventDefault();
@@ -170,38 +128,8 @@ export function VideoGrid({ onFocusTile, onCamEnabled, audioMuted, avatarCache, 
                 })}
             </div>
 
-            {contextMenu && (
-                <ParticipantContextMenu
-                    identity={contextMenu.identity}
-                    name={contextMenu.name}
-                    isRemote={contextMenu.isRemote}
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    volume={volumes.get(contextMenu.identity) ?? 50}
-                    onVolumeChange={(vol) => onVolumeChange(contextMenu.identity, vol)}
-                    screenVolume={contextMenu.hasScreenAudio ? (screenVolumes.get(contextMenu.identity) ?? 100) : undefined}
-                    onScreenVolumeChange={contextMenu.hasScreenAudio ? (vol) => onScreenVolumeChange(contextMenu.identity, vol) : undefined}
-                    admin={admin && contextMenu.isRemote ? {
-                        adminSecret: admin.adminSecret,
-                        roomId: admin.roomId,
-                        serverMuted: contextMenu.serverMuted,
-                        onKick: () => admin.onKick(contextMenu.identity),
-                        onBan: () => admin.onBan(contextMenu.identity),
-                        onToggleMute: () => admin.onToggleMute(contextMenu.identity, contextMenu.serverMuted),
-                    } : undefined}
-                    screenShareHidden={contextMenu.screenShareHidden}
-                    onToggleScreenShare={contextMenu.hasScreenSharePub ? () => {
-                        const p = participants.find(p => p.identity === contextMenu.identity);
-                        if (!(p instanceof RemoteParticipant)) return;
-                        const pub = p.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined;
-                        const audioPub = p.getTrackPublication(Track.Source.ScreenShareAudio) as RemoteTrackPublication | undefined;
-                        const newSub = !pub?.isSubscribed;
-                        if (pub) pub.setSubscribed(newSub);
-                        if (audioPub) audioPub.setSubscribed(newSub);
-                    } : undefined}
-                    onOpenSettings={onOpenSettings}
-                    onClose={() => setContextMenu(null)}
-                />
+            {contextMenuProps && (
+                <ParticipantContextMenu {...contextMenuProps} onClose={closeContextMenu} />
             )}
         </div>
     );

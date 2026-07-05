@@ -2,24 +2,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTracks, useParticipants, useLocalParticipant, VideoTrack, isTrackReference } from '@livekit/components-react';
 import type { TrackReferenceOrPlaceholder, TrackReference } from '@livekit/components-react';
-import { Track, RemoteParticipant } from 'livekit-client';
-import type { LocalVideoTrack, RemoteTrackPublication } from 'livekit-client';
+import { Track } from 'livekit-client';
 import { ParticipantTile } from '../VideoGrid/ParticipantTile';
 import { ParticipantContextMenu } from '../VideoGrid/ParticipantContextMenu';
-import type { AdminActions } from '../VideoGrid/ParticipantContextMenu';
+import { useParticipantContextMenu } from '../hooks/useParticipantContextMenu';
+import type { ParticipantAdminActions } from '../hooks/useParticipantContextMenu';
+import { useCameraFlip } from '../hooks/useCameraFlip';
+import { findTileIdentity } from '../lib/findTileIdentity';
 import './focus-layout.css';
 
 const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
-
-/** Walk up the DOM from target to find the nearest element with data-identity. */
-function findTileIdentity(target: EventTarget | null, container: HTMLElement | null): string | null {
-    let el = target as HTMLElement | null;
-    while (el && el !== container) {
-        if (el.dataset.identity) return el.dataset.identity;
-        el = el.parentElement;
-    }
-    return null;
-}
 const fullscreenSupported = typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
 function asActiveTrack(ref: TrackReferenceOrPlaceholder | undefined): TrackReference | null {
@@ -39,24 +31,8 @@ interface FocusLayoutProps {
     screenVolumes: Map<string, number>;
     onScreenVolumeChange: (identity: string, vol: number) => void;
     ambientMode?: boolean;
-    admin?: Omit<AdminActions, 'serverMuted' | 'onKick' | 'onBan' | 'onToggleMute'> & {
-        onKick: (identity: string) => void;
-        onBan: (identity: string) => void;
-        onToggleMute: (identity: string, serverMuted: boolean) => void;
-    };
+    admin?: ParticipantAdminActions;
     onOpenSettings?: () => void;
-}
-
-interface ContextMenuState {
-    identity: string;
-    name: string;
-    isRemote: boolean;
-    hasScreenAudio: boolean;
-    hasScreenSharePub: boolean;
-    screenShareHidden: boolean;
-    serverMuted: boolean;
-    x: number;
-    y: number;
 }
 
 export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, volumes, onVolumeChange, screenVolumes, onScreenVolumeChange, ambientMode = true, admin, onOpenSettings }: FocusLayoutProps) {
@@ -68,18 +44,20 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
     const { localParticipant } = useLocalParticipant();
     const [selectedIdentity, setSelectedIdentity] = useState<string | null>(initialIdentity ?? null);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const { contextMenuProps, openContextMenu: openContextMenuForIdentity, closeContextMenu } = useParticipantContextMenu({
+        participants,
+        screenAudioTracks,
+        volumes,
+        onVolumeChange,
+        screenVolumes,
+        onScreenVolumeChange,
+        admin,
+        onOpenSettings,
+    });
     const mainRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    const handleFlip = useCallback(async () => {
-        const next: 'user' | 'environment' = facingMode === 'user' ? 'environment' : 'user';
-        setFacingMode(next);
-        const pub = localParticipant.getTrackPublication(Track.Source.Camera);
-        const track = pub?.track as LocalVideoTrack | undefined;
-        if (track) await track.restartTrack({ facingMode: next });
-    }, [facingMode, localParticipant]);
+    const handleFlip = useCameraFlip(localParticipant);
 
     // Build maps
     const screenMap = new Map<string, TrackReference>();
@@ -91,13 +69,6 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
     const cameraMap = new Map<string, TrackReferenceOrPlaceholder>();
     for (const t of cameraTracks) {
         cameraMap.set(t.participant.identity, t);
-    }
-
-    const screenAudioSet = new Set<string>();
-    for (const t of screenAudioTracks) {
-        if (isTrackReference(t) && t.publication.isSubscribed && !t.publication.isMuted) {
-            screenAudioSet.add(t.participant.identity);
-        }
     }
 
     const participantsRef = useRef(participants);
@@ -161,34 +132,7 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
         return () => cancelAnimationFrame(raf);
     }, [ambientMode, selectedIdentity]);
 
-    const getScreenSharePubInfo = (identity: string, p?: typeof participants[0]) => {
-        const participant = p ?? participants.find(p => p.identity === identity);
-        const screenPub = participant instanceof RemoteParticipant
-            ? participant.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined
-            : undefined;
-        return { hasScreenSharePub: !!screenPub, screenShareHidden: !!screenPub && !screenPub.isSubscribed };
-    };
-
     const stripRef = useRef<HTMLDivElement>(null);
-
-    const openContextMenuForIdentity = useCallback((identity: string, x: number, y: number) => {
-        const pts = participants;
-        const lp = localParticipant;
-        const sas = screenAudioSet;
-        const gsp = getScreenSharePubInfo;
-        const p = pts.find(p => p.identity === identity);
-        if (!p) return;
-        setContextMenu({
-            identity,
-            name: p.name || identity,
-            isRemote: identity !== lp.identity,
-            hasScreenAudio: sas.has(identity),
-            ...gsp(identity, p),
-            serverMuted: p?.permissions?.canPublish === false,
-            x,
-            y,
-        });
-    }, [participants, localParticipant, screenAudioSet, getScreenSharePubInfo]);
 
     const handleStripContextMenu = (e: React.MouseEvent, identity: string) => {
         e.preventDefault();
@@ -245,18 +189,7 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
                 onContextMenu={(e) => {
                     if (!focused) return;
                     e.preventDefault();
-                    const identity = focused.track.participant.identity;
-                    const p = participants.find(p => p.identity === identity);
-                    setContextMenu({
-                        identity,
-                        name: p?.name || identity,
-                        isRemote: identity !== localParticipant.identity,
-                        hasScreenAudio: screenAudioSet.has(identity),
-                        ...getScreenSharePubInfo(identity, p),
-                        serverMuted: p?.permissions?.canPublish === false,
-                        x: e.clientX,
-                        y: e.clientY,
-                    });
+                    openContextMenuForIdentity(focused.track.participant.identity, e.clientX, e.clientY);
                 }}
             >
                 {focused && (
@@ -354,38 +287,8 @@ export function FocusLayout({ initialIdentity, onExit, audioMuted, avatarCache, 
                 })}
             </div>
 
-            {contextMenu && (
-                <ParticipantContextMenu
-                    identity={contextMenu.identity}
-                    name={contextMenu.name}
-                    isRemote={contextMenu.isRemote}
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    volume={volumes.get(contextMenu.identity) ?? 50}
-                    onVolumeChange={(vol) => onVolumeChange(contextMenu.identity, vol)}
-                    screenVolume={contextMenu.hasScreenAudio ? (screenVolumes.get(contextMenu.identity) ?? 100) : undefined}
-                    onScreenVolumeChange={contextMenu.hasScreenAudio ? (vol) => onScreenVolumeChange(contextMenu.identity, vol) : undefined}
-                    admin={admin && contextMenu.isRemote ? {
-                        adminSecret: admin.adminSecret,
-                        roomId: admin.roomId,
-                        serverMuted: contextMenu.serverMuted,
-                        onKick: () => admin.onKick(contextMenu.identity),
-                        onBan: () => admin.onBan(contextMenu.identity),
-                        onToggleMute: () => admin.onToggleMute(contextMenu.identity, contextMenu.serverMuted),
-                    } : undefined}
-                    screenShareHidden={contextMenu.screenShareHidden}
-                    onToggleScreenShare={contextMenu.hasScreenSharePub ? () => {
-                        const p = participants.find(p => p.identity === contextMenu.identity);
-                        if (!(p instanceof RemoteParticipant)) return;
-                        const pub = p.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined;
-                        const audioPub = p.getTrackPublication(Track.Source.ScreenShareAudio) as RemoteTrackPublication | undefined;
-                        const newSub = !pub?.isSubscribed;
-                        if (pub) pub.setSubscribed(newSub);
-                        if (audioPub) audioPub.setSubscribed(newSub);
-                    } : undefined}
-                    onOpenSettings={onOpenSettings}
-                    onClose={() => setContextMenu(null)}
-                />
+            {contextMenuProps && (
+                <ParticipantContextMenu {...contextMenuProps} onClose={closeContextMenu} />
             )}
         </div>
     );
