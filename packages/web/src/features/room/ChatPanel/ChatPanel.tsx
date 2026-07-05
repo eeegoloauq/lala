@@ -4,12 +4,15 @@ import { useTranslation } from 'react-i18next';
 
 const EmojiPicker = lazy(() => import('./EmojiPicker').then(m => ({ default: m.EmojiPicker })));
 import type { ReceivedChatMessage } from '@livekit/components-react';
-import { colorForName } from '../../../lib/participantColor';
+import { avatarColorForIdentity } from '../../../lib/avatarUtils';
+import { MAX_FILE_SIZE, formatFileSize, type FileTransferItem } from '../../../lib/fileTransfer';
+import { FileBubble } from './FileBubble';
 import './chat-panel.css';
 
 export type ChatEntry =
     | { kind: 'chat'; msg: ReceivedChatMessage }
-    | { kind: 'system'; id: string; timestamp: number; order?: number; text: string };
+    | { kind: 'system'; id: string; timestamp: number; order?: number; text: string }
+    | { kind: 'file'; id: string; timestamp: number; order?: number; item: FileTransferItem };
 
 interface ChatPanelProps {
     entries: ChatEntry[];
@@ -17,22 +20,40 @@ interface ChatPanelProps {
     isSending: boolean;
     onClose?: () => void;
     overlay?: boolean;
+    /** Sends a File as a byte-stream chat attachment; resolves with an error tag on failure (e.g. too large). */
+    onSendFile?: (file: File) => Promise<{ ok: boolean; error?: 'tooLarge' }>;
+    /** Cancels an in-progress outgoing file transfer. */
+    onCancelFile?: (id: string) => void;
 }
 
 function formatTime(ts: number): string {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+type GroupChild =
+    | { kind: 'text'; id: string; text: string; timestamp: number }
+    | { kind: 'file'; id: string; timestamp: number; item: FileTransferItem };
+
 interface MessageGroup {
     identity: string;
     displayName: string;
     isOwn: boolean;
-    entries: Array<{ id: string; text: string; timestamp: number }>;
+    entries: GroupChild[];
 }
 
 function buildGroups(entries: ChatEntry[], localIdentity: string): Array<MessageGroup | { kind: 'system'; id: string; timestamp: number; text: string }> {
     const result: Array<MessageGroup | { kind: 'system'; id: string; timestamp: number; text: string }> = [];
     let currentGroup: MessageGroup | null = null;
+
+    const pushChild = (identity: string, displayName: string, child: GroupChild) => {
+        const isOwn = identity === localIdentity;
+        if (currentGroup && currentGroup.identity === identity) {
+            currentGroup.entries.push(child);
+        } else {
+            currentGroup = { identity, displayName, isOwn, entries: [child] };
+            result.push(currentGroup);
+        }
+    };
 
     for (const entry of entries) {
         if (entry.kind === 'system') {
@@ -41,16 +62,16 @@ function buildGroups(entries: ChatEntry[], localIdentity: string): Array<Message
             continue;
         }
 
+        if (entry.kind === 'file') {
+            const identity = entry.item.identity || 'Unknown';
+            const displayName = entry.item.displayName || identity;
+            pushChild(identity, displayName, { kind: 'file', id: entry.id, timestamp: entry.timestamp, item: entry.item });
+            continue;
+        }
+
         const identity = entry.msg.from?.identity || 'Unknown';
         const displayName = entry.msg.from?.name || identity;
-        const isOwn = identity === localIdentity;
-
-        if (currentGroup && currentGroup.identity === identity) {
-            currentGroup.entries.push({ id: entry.msg.id, text: entry.msg.message, timestamp: entry.msg.timestamp });
-        } else {
-            currentGroup = { identity, displayName, isOwn, entries: [{ id: entry.msg.id, text: entry.msg.message, timestamp: entry.msg.timestamp }] };
-            result.push(currentGroup);
-        }
+        pushChild(identity, displayName, { kind: 'text', id: entry.msg.id, text: entry.msg.message, timestamp: entry.msg.timestamp });
     }
 
     return result;
@@ -81,21 +102,27 @@ const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 3000;
 const RATE_LIMIT_COOLDOWN_MS = 2000;
 
-export function ChatPanel({ entries, send, isSending, onClose, overlay = false }: ChatPanelProps) {
+export function ChatPanel({ entries, send, isSending, onClose, overlay = false, onSendFile, onCancelFile }: ChatPanelProps) {
     const { t } = useTranslation();
     const { localParticipant } = useLocalParticipant();
     const [text, setText] = useState('');
     const [showEmoji, setShowEmoji] = useState(false);
     const [rateLimited, setRateLimited] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
+    const [fileError, setFileError] = useState<string | null>(null);
+    const [jumpToLatest, setJumpToLatest] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const messagesRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const emojiWrapRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const isNearBottomRef = useRef(true);
     const isFloating = useRef(false); // true after first drag/resize
     const sendTimestamps = useRef<number[]>([]);
     const rateLimitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const fileErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const dragCounter = useRef(0);
 
     const dragRef = useRef<{ startMX: number; startMY: number; startTop: number; startLeft: number } | null>(null);
     const resizeRef = useRef<{ startMX: number; startMY: number; startTop: number; startLeft: number; startW: number; startH: number; dir: ResizeDir } | null>(null);
@@ -194,23 +221,116 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false }
         return () => document.removeEventListener('mousedown', onDown);
     }, [showEmoji]);
 
-    // Track scroll position
+    // Track scroll position; clear the "jump to latest" pill once the user scrolls back down themselves
     useEffect(() => {
         const el = messagesRef.current;
         if (!el) return;
         const onScroll = () => {
-            isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            isNearBottomRef.current = nearBottom;
+            if (nearBottom) setJumpToLatest(false);
         };
         el.addEventListener('scroll', onScroll, { passive: true });
         return () => el.removeEventListener('scroll', onScroll);
     }, []);
 
-    // Auto-scroll only when near bottom
+    // Auto-scroll only when already near the bottom; otherwise surface a "jump to latest" pill
+    // instead of yanking the view out from under someone reading scrollback (standard chat UX).
     useEffect(() => {
         if (isNearBottomRef.current) {
             bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        } else if (entries.length > 0) {
+            setJumpToLatest(true);
         }
     }, [entries]);
+
+    const scrollToLatest = useCallback(() => {
+        isNearBottomRef.current = true;
+        setJumpToLatest(false);
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
+
+    const showFileError = useCallback((message: string) => {
+        setFileError(message);
+        if (fileErrorTimer.current) clearTimeout(fileErrorTimer.current);
+        fileErrorTimer.current = setTimeout(() => setFileError(null), 5000);
+    }, []);
+
+    // Clean up file-error timer on unmount
+    useEffect(() => {
+        return () => {
+            if (fileErrorTimer.current) clearTimeout(fileErrorTimer.current);
+        };
+    }, []);
+
+    const handleFiles = useCallback((files: Iterable<File>) => {
+        if (!onSendFile) return;
+        for (const file of files) {
+            if (file.size > MAX_FILE_SIZE) {
+                showFileError(t('chat.fileTooLarge', { max: formatFileSize(MAX_FILE_SIZE) }));
+                continue;
+            }
+            onSendFile(file).then((result) => {
+                if (!result.ok && result.error === 'tooLarge') {
+                    showFileError(t('chat.fileTooLarge', { max: formatFileSize(MAX_FILE_SIZE) }));
+                }
+            });
+        }
+    }, [onSendFile, showFileError, t]);
+
+    const handleAttachClick = useCallback(() => {
+        fileInputRef.current?.click();
+    }, []);
+
+    const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) handleFiles(e.target.files);
+        e.target.value = ''; // allow re-selecting the same file
+    }, [handleFiles]);
+
+    const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items || !onSendFile) return;
+        const pastedFiles: File[] = [];
+        for (const item of items) {
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                if (file) pastedFiles.push(file);
+            }
+        }
+        if (pastedFiles.length > 0) {
+            e.preventDefault();
+            handleFiles(pastedFiles);
+        }
+    }, [handleFiles, onSendFile]);
+
+    // Drag-and-drop onto the whole panel — counter-based so drag events over child
+    // elements (bubbling enter/leave pairs) don't cause the overlay to flicker.
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        if (!onSendFile || !e.dataTransfer?.types.includes('Files')) return;
+        e.preventDefault();
+        dragCounter.current += 1;
+        setDragActive(true);
+    }, [onSendFile]);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        if (!onSendFile || !e.dataTransfer?.types.includes('Files')) return;
+        e.preventDefault();
+    }, [onSendFile]);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        if (!onSendFile) return;
+        e.preventDefault();
+        dragCounter.current = Math.max(0, dragCounter.current - 1);
+        if (dragCounter.current === 0) setDragActive(false);
+    }, [onSendFile]);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        if (!onSendFile) return;
+        e.preventDefault();
+        dragCounter.current = 0;
+        setDragActive(false);
+        if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+    }, [onSendFile, handleFiles]);
 
     const insertEmoji = useCallback((emoji: string) => {
         const ta = inputRef.current;
@@ -266,7 +386,17 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false }
         <div
             ref={panelRef}
             className={`cp-panel${overlay ? ' cp-overlay' : ''}`}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
         >
+            {dragActive && (
+                <div className="cp-dropzone">
+                    <span>{t('chat.dropToSend')}</span>
+                </div>
+            )}
+
             {overlay && <>
                 <div className="cp-resize cp-resize-n" onMouseDown={e => startResize(e, 'n')} />
                 <div className="cp-resize cp-resize-s" onMouseDown={e => startResize(e, 's')} />
@@ -301,19 +431,31 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false }
                     return (
                         <div key={`${group.identity}-${group.entries[0].id}`} className={`cp-group${group.isOwn ? ' cp-group-own' : ''}`}>
                             <div className="cp-group-header">
-                                <span className="cp-sender" style={{ color: colorForName(group.displayName) }}>
+                                <span className="cp-sender" style={{ color: avatarColorForIdentity(group.identity || group.displayName) }}>
                                     {group.displayName}
                                 </span>
                                 <span className="cp-time">{formatTime(group.entries[0].timestamp)}</span>
                             </div>
                             {group.entries.map((e) => (
-                                <div key={e.id} className="cp-bubble">{e.text}</div>
+                                e.kind === 'file'
+                                    ? <FileBubble key={e.id} item={e.item} onCancel={onCancelFile} t={t} />
+                                    : <div key={e.id} className="cp-bubble">{e.text}</div>
                             ))}
                         </div>
                     );
                 })}
                 <div ref={bottomRef} />
+
+                {jumpToLatest && (
+                    <button className="cp-jump-latest" onClick={scrollToLatest}>
+                        {t('chat.jumpToLatest')}
+                    </button>
+                )}
             </div>
+
+            {fileError && (
+                <div className="cp-rate-limit">{fileError}</div>
+            )}
 
             {rateLimited && (
                 <div className="cp-rate-limit">{t('chat.tooFast')}</div>
@@ -329,8 +471,30 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false }
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    onPaste={onSendFile ? handlePaste : undefined}
                     rows={1}
                 />
+                {onSendFile && (
+                    <>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            className="cp-file-input-hidden"
+                            onChange={handleFileInputChange}
+                            tabIndex={-1}
+                        />
+                        <button
+                            className="cp-attach-btn"
+                            onClick={handleAttachClick}
+                            title={t('chat.attach')}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                            </svg>
+                        </button>
+                    </>
+                )}
                 <div className="cp-emoji-wrap" ref={emojiWrapRef}>
                     {showEmoji && (
                         <Suspense fallback={null}>

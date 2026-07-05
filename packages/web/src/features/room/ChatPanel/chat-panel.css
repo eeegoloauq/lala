@@ -7,6 +7,52 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Positioning context for the drag-drop overlay and the jump-to-latest pill —
+     both escape .cp-messages' own scroll clipping by being absolute to this ancestor. */
+  position: relative;
+}
+
+/* Stage/dock row rendered by RoomShell in desktop-chat mode (see .cp-dock below). */
+.cp-stage-row {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cp-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0; /* let the stage shrink below its content's natural width as the dock opens */
+}
+
+/* ─── Desktop docked chat (reflow, not overlay) ───
+ * RoomShell renders this wrapper (instead of the `overlay` ChatPanel) once the
+ * viewport is wide enough. Width is the only animated property: the wrapper starts
+ * at 0 and grows to a fixed panel width, so the stage (VideoGrid/FocusLayout) beside
+ * it reflows continuously as a natural side effect of flexbox — no separate stage
+ * animation needed. `overflow: hidden` on the wrapper clips the panel during the
+ * slide; the panel itself keeps a *fixed* width the whole time so its inner content
+ * (text, bubbles) never reflows mid-animation — only the visible slice grows/shrinks.
+ */
+.cp-dock {
+  width: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 200ms ease-out;
+}
+
+.cp-dock.cp-dock-open {
+  width: 340px;
+}
+
+.cp-dock .cp-panel {
+  width: 340px;
+  height: 100%;
 }
 
 /* Overlay — floats over video as a mini window, no layout shift */
@@ -381,4 +427,171 @@
   color: var(--text-primary);
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-primary));
+}
+
+/* Attach (paperclip) button — same visual language as the emoji button */
+.cp-attach-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.cp-attach-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-primary));
+}
+
+.cp-file-input-hidden {
+  display: none;
+}
+
+/* ─── Drag-and-drop overlay ─── */
+.cp-dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg-primary) 70%);
+  border: 2px dashed var(--accent);
+  border-radius: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+/* ─── Jump-to-latest pill ─── */
+.cp-jump-latest {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 5;
+  animation: cp-rate-limit-in 0.15s ease-out;
+}
+
+.cp-jump-latest:hover {
+  background: var(--accent-hover);
+}
+
+/* ─── File-transfer bubbles ─── */
+.cp-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--bubble-radius);
+  background: var(--bg-primary);
+  max-width: 100%;
+  align-self: flex-start;
+  color: var(--text-primary);
+}
+
+.cp-group-own .cp-file {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-primary));
+  align-self: flex-end;
+}
+
+.cp-file-error {
+  color: var(--text-muted);
+}
+
+.cp-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cp-file-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.cp-file-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cp-file-progress {
+  width: 100%;
+  min-width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+
+.cp-file-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s ease-out;
+}
+
+.cp-file-cancel {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.cp-file-cancel:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* Download chip — plain link styled as a bubble */
+.cp-file-chip {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cp-file-chip:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-primary));
+}
+
+/* Inline image thumbnail */
+.cp-file-thumb-link {
+  display: block;
+  align-self: flex-start;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.cp-file-thumb {
+  display: block;
+  max-height: 240px;
+  max-width: 100%;
+  border-radius: var(--bubble-radius);
+  object-fit: contain;
 }

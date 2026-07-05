@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
+import type { TransitionEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTracks, RoomAudioRenderer, useLocalParticipant, useRoomContext, useParticipants, useConnectionState } from '@livekit/components-react';
 import { isTrackReference } from '@livekit/components-react';
@@ -12,8 +13,10 @@ import { useMicSound, useTalkingWhileMuted } from './hooks/useMicSounds';
 import { playMuteSound, playUnmuteSound } from '../../lib/sounds';
 import { useIosAudioKeepAlive } from './hooks/useIosAudioKeepAlive';
 import { useRoomChat } from './hooks/useRoomChat';
+import { useFileTransfers } from './hooks/useFileTransfers';
 import { usePushToTalk } from './hooks/usePushToTalk';
 import { useAudioProcessor } from './hooks/useAudioProcessor';
+import { useCameraProcessor } from './hooks/useCameraProcessor';
 import { usePersistedVolumes } from '../../hooks/usePersistedVolumes';
 import { useRoomKeyboard } from '../../hooks/useRoomKeyboard';
 import { useLocalControls } from './hooks/useLocalControls';
@@ -44,6 +47,9 @@ interface RoomShellProps {
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
+/** Below this width the chat stays the existing floating/fullscreen overlay; at or above it, chat docks as a proper reflowing column. */
+const DESKTOP_CHAT_QUERY = '(min-width: 900px)';
+
 export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
@@ -53,6 +59,25 @@ export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSetting
     const [screenShareError, setScreenShareError] = useState(false);
     const screenShareErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const micWasEnabledRef = useRef(false);
+
+    // Desktop: chat docks as a reflowing column (animated width). Mobile/narrow: existing overlay.
+    const [isDesktopChat, setIsDesktopChat] = useState(() =>
+        typeof window !== 'undefined' && window.matchMedia(DESKTOP_CHAT_QUERY).matches);
+    useEffect(() => {
+        const mq = window.matchMedia(DESKTOP_CHAT_QUERY);
+        const onChange = () => setIsDesktopChat(mq.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+
+    // Keep the docked ChatPanel mounted through its ~200ms close animation so the slide-out
+    // shows real content sliding away, rather than the box shrinking around empty space.
+    const [chatMounted, setChatMounted] = useState(false);
+    useEffect(() => { if (chatOpen) setChatMounted(true); }, [chatOpen]);
+    const handleDockTransitionEnd = useCallback((e: TransitionEvent<HTMLDivElement>) => {
+        if (e.target !== e.currentTarget || e.propertyName !== 'width') return;
+        if (!chatOpen) setChatMounted(false);
+    }, [chatOpen]);
 
     const showScreenShareError = useCallback(() => {
         setScreenShareError(true);
@@ -93,8 +118,9 @@ export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSetting
     });
 
     const { messages, send, isSending } = useRoomChat();
+    const { fileTransfers, sendFile, cancelSend } = useFileTransfers(room, localParticipant);
 
-    const { chatEntries, addSystem, suppressLeave } = useRoomSystemMessages(room, t, settings, messages);
+    const { chatEntries, addSystem, suppressLeave } = useRoomSystemMessages(room, t, settings, messages, fileTransfers);
 
     const adminProps = useAdminActions({
         room,
@@ -108,6 +134,7 @@ export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSetting
 
     usePushToTalk(settings.pushToTalk, settings.pushToTalkKey);
     useAudioProcessor({ noiseSuppressionMode: settings.noiseSuppressionMode, silenceGate: settings.silenceGate });
+    useCameraProcessor(settings.cameraEffect);
 
     const { mic, cam } = useLocalControls();
     const { enabled: screenEnabled, start: startScreen, stop: stopScreen } = useScreenShare();
@@ -120,7 +147,7 @@ export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSetting
 
     useParticipantVolumeSync({ participants, volumes, onVolumeChange, screenVolumes });
 
-    const { unreadCount, resetUnread } = useChatNotifications(settings, messages, chatOpen, localParticipant.identity, t);
+    const { unreadCount, resetUnread } = useChatNotifications(settings, messages, chatOpen, localParticipant.identity, t, fileTransfers);
 
     const handleOpenChat = useCallback(() => {
         setChatOpen((v) => {
@@ -242,24 +269,61 @@ export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSetting
                 </div>
             )}
 
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
-                <RoomUIProvider value={roomUIValue}>
-                    {isScreenSharing || focusedIdentity
-                        ? <FocusLayout
-                            initialIdentity={focusedIdentity}
-                            onExit={focusedIdentity && !isScreenSharing ? () => setFocusedIdentity(null) : undefined}
-                        />
-                        : <VideoGrid onFocusTile={setFocusedIdentity} onCamEnabled={setFocusedIdentity} />
-                    }
-                </RoomUIProvider>
-            </div>
+            {isDesktopChat ? (
+                // Desktop: chat docks as a reflowing flex column beside the stage. Only the dock's
+                // width is animated (200ms ease-out); the stage reflows as a natural side effect of
+                // flexbox, and the fixed-width panel inside means its own content never reflows
+                // mid-slide. See chat-panel.css .cp-dock for the full rationale.
+                <div className="cp-stage-row" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+                    <div className="cp-stage">
+                        <RoomUIProvider value={roomUIValue}>
+                            {isScreenSharing || focusedIdentity
+                                ? <FocusLayout
+                                    initialIdentity={focusedIdentity}
+                                    onExit={focusedIdentity && !isScreenSharing ? () => setFocusedIdentity(null) : undefined}
+                                />
+                                : <VideoGrid onFocusTile={setFocusedIdentity} onCamEnabled={setFocusedIdentity} />
+                            }
+                        </RoomUIProvider>
+                    </div>
+                    <div
+                        className={`cp-dock${chatOpen ? ' cp-dock-open' : ''}`}
+                        onTransitionEnd={handleDockTransitionEnd}
+                    >
+                        {chatMounted && (
+                            <ChatPanel
+                                entries={chatEntries}
+                                send={send}
+                                isSending={isSending}
+                                onClose={() => setChatOpen(false)}
+                                onSendFile={sendFile}
+                                onCancelFile={cancelSend}
+                            />
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+                    <RoomUIProvider value={roomUIValue}>
+                        {isScreenSharing || focusedIdentity
+                            ? <FocusLayout
+                                initialIdentity={focusedIdentity}
+                                onExit={focusedIdentity && !isScreenSharing ? () => setFocusedIdentity(null) : undefined}
+                            />
+                            : <VideoGrid onFocusTile={setFocusedIdentity} onCamEnabled={setFocusedIdentity} />
+                        }
+                    </RoomUIProvider>
+                </div>
+            )}
 
-            {chatOpen && (
+            {!isDesktopChat && chatOpen && (
                 <ChatPanel
                     entries={chatEntries}
                     send={send}
                     isSending={isSending}
                     onClose={() => setChatOpen(false)}
+                    onSendFile={sendFile}
+                    onCancelFile={cancelSend}
                     overlay
                 />
             )}

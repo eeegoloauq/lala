@@ -78,10 +78,11 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
                     className={`cb-btn cb-anim-bounce${chatOpen ? ' cb-active' : ''}`}
                     onClick={onToggleChat}
                     title={t('controls.chat')}
+                    aria-label={t('controls.chat')}
                 >
                     <ChatIcon />
                     {unreadCount > 0 && (
-                        <span className="cb-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                        <span className="cb-badge" aria-hidden="true">{unreadCount > 9 ? '9+' : unreadCount}</span>
                     )}
                 </button>
 

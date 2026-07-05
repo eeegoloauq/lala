@@ -5,6 +5,7 @@ import { playChatSound } from '../../../lib/sounds';
 import { speak } from '../../../lib/tts';
 import { ttsOptsFromSettings } from '../lib/ttsOpts';
 import type { AppSettings } from '../../settings/types';
+import type { FileTransferItem } from '../../../lib/fileTransfer';
 
 export interface UseChatNotificationsResult {
     unreadCount: number;
@@ -14,7 +15,10 @@ export interface UseChatNotificationsResult {
 
 /**
  * Tracks unread chat messages (badge count, mirrored to the Electron dock badge),
- * plays the incoming-chat sound, and speaks new messages via TTS.
+ * plays the incoming-chat sound, and speaks new messages via TTS. Incoming file
+ * transfers are folded into the same notification pipeline — counted in the unread
+ * badge and announced by TTS as "<name> sent a file" (never the filename, which
+ * could be attacker-controlled text read aloud).
  */
 export function useChatNotifications(
     settings: AppSettings,
@@ -22,9 +26,11 @@ export function useChatNotifications(
     chatOpen: boolean,
     localParticipantIdentity: string,
     t: TFunction,
+    fileTransfers: FileTransferItem[] = [],
 ): UseChatNotificationsResult {
     const [unreadCount, setUnreadCount] = useState(0);
     const prevMsgCountRef = useRef(0);
+    const prevFileCountRef = useRef(0);
 
     // Keep settings in a ref so this effect doesn't need to re-run on every settings change
     const settingsRef = useRef(settings);
@@ -49,6 +55,25 @@ export function useChatNotifications(
         }
         prevMsgCountRef.current = messages.length;
     }, [messages, localParticipantIdentity, chatOpen]);
+
+    // Same pipeline for incoming file transfers, keyed off first appearance (not progress/status
+    // updates) so a single file only ever notifies once.
+    useEffect(() => {
+        const incomingFiles = fileTransfers.filter((f) => f.direction === 'in');
+        const newFiles = incomingFiles.slice(prevFileCountRef.current);
+        const s = settingsRef.current;
+
+        if (newFiles.length > 0) {
+            if (!chatOpen) setUnreadCount((c) => c + newFiles.length);
+            if (s.soundChat ?? true) playChatSound();
+            if (s.chatTTS) {
+                for (const f of newFiles) {
+                    speak(t('chat.fileSent', { name: f.displayName }), ttsOptsFromSettings(s));
+                }
+            }
+        }
+        prevFileCountRef.current = incomingFiles.length;
+    }, [fileTransfers, chatOpen, t]);
 
     // Sync unread count to Electron badge
     useEffect(() => {
