@@ -6,10 +6,33 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Typecheck gate — there are no tests yet, so this is the only thing standing
+  # between a broken build and prod. Runs before any image is built or pushed.
+  check:
+    runs-on: docker
+    container:
+      image: node:22-bookworm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Typecheck api
+        run: |
+          cd packages/api
+          npm ci --ignore-scripts
+          npx tsc --noEmit
+
+      - name: Typecheck web
+        run: |
+          cd packages/web
+          npm ci --ignore-scripts
+          npx tsc --noEmit
+
   build:
     runs-on: docker
     container:
       image: node:22-bookworm
+    needs: check
     env:
       REGISTRY: ${{ secrets.REGISTRY }}
       IMAGE_API: ${{ secrets.REGISTRY }}/homelab/lala-api

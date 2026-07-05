@@ -16,8 +16,10 @@ server {
     add_header Referrer-Policy           "same-origin"   always;
     # CSP: connect-src origins configurable via CSP_CONNECT_SRC env var
     # Default: wss: ws: (allows any WebSocket). Tighten in .env for your domain.
+    # script-src deliberately has no 'unsafe-inline': the Vite build emits no inline
+    # scripts, and allowing them would gut CSP's XSS protection.
     add_header Content-Security-Policy
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ${CSP_CONNECT_SRC}; media-src 'self' blob: data:; worker-src 'self' blob:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self';"
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ${CSP_CONNECT_SRC}; media-src 'self' blob: data:; worker-src 'self' blob:; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self';"
         always;
 
     location / {
