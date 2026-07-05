@@ -2,7 +2,7 @@ import { LiveKitRoom } from '@livekit/components-react';
 import { AudioPresets, VideoPresets, ScreenSharePresets, ExternalE2EEKeyProvider, isE2EESupported } from 'livekit-client';
 import type { AudioCaptureOptions, RoomOptions } from 'livekit-client';
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIVEKIT_URL } from '../../lib/constants';
 import { getToken } from '../../lib/api';
@@ -22,17 +22,12 @@ interface RoomViewProps {
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onLeave: () => void;
     onIdentityAssigned?: (identity: string) => void;
-    onAvatarReceived?: (identity: string, dataUrl: string | null) => void;
-    onSpeakersChange: (identities: string[]) => void;
-    onMutedChange: (mutedIds: Set<string>) => void;
-    onDeafenedChange: (deafenedIds: Set<string>) => void;
-    onLiveParticipantsChange: (participants: Map<string, string>) => void;
     onOpenSettings: () => void;
     volumes: Map<string, number>;
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onAvatarReceived, onSpeakersChange, onMutedChange, onDeafenedChange, onLiveParticipantsChange, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
+export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
     const [token, setToken] = useState<string | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -51,6 +46,57 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     useEffect(() => {
         return () => { e2eeSetup?.worker.terminate(); };
     }, [e2eeSetup]);
+
+    // Hoisted into useMemo (and placed before any early return below, so the hook
+    // itself always runs) so <LiveKitRoom> gets referentially-stable `audio`/`options`
+    // objects across re-renders instead of a fresh object every render — LiveKitRoom
+    // otherwise has no way to tell "same settings" from "settings changed".
+    //
+    // AEC is always on — disabling it in a voice room creates echo that every
+    // other listener hears, not just the muter. Speakerphone on phones is the
+    // worst case but laptops with built-in speakers have the same loop. Music
+    // / screen-share-audio uses a separate path with AEC explicitly off.
+    const audioOptions: AudioCaptureOptions = useMemo(() => ({
+        autoGainControl: settings.autoGainControl,
+        noiseSuppression: settings.noiseSuppressionMode === 'browser',
+        echoCancellation: true,
+        deviceId: settings.audioInputDeviceId || undefined,
+    }), [settings.autoGainControl, settings.noiseSuppressionMode, settings.audioInputDeviceId]);
+
+    const roomOptions: RoomOptions = useMemo(() => {
+        const videoResolutionMap: Record<string, typeof VideoPresets.h720.resolution> = {
+            h1080: VideoPresets.h1080.resolution,
+            h720: VideoPresets.h720.resolution,
+            vga: VideoPresets.h360.resolution,
+        };
+        return {
+            ...(e2eeSetup ? { e2ee: { keyProvider: e2eeSetup.keyProvider, worker: e2eeSetup.worker } } : {}),
+            audioOutput: settings.audioOutputDeviceId ? { deviceId: settings.audioOutputDeviceId } : undefined,
+            audioCaptureDefaults: audioOptions,
+            videoCaptureDefaults: {
+                resolution: videoResolutionMap[settings.videoResolution] ?? VideoPresets.h720.resolution,
+                deviceId: settings.videoInputDeviceId || undefined,
+            },
+            publishDefaults: {
+                audioPreset: AudioPresets[settings.audioQuality],
+                // DTX (discontinuous transmission) stops sending audio packets during
+                // silence. On the music-quality presets, receivers' Opus decoders fill
+                // those gaps with comfort noise — audible as hiss right after a silent
+                // participant joins. Only the speech preset (voice-tuned, mono, lower
+                // bitrate) is worth the tradeoff; music presets keep the stream live.
+                dtx: settings.audioQuality === 'speech',
+                forceStereo: settings.audioQuality.includes('Stereo'),
+                videoEncoding: {
+                    maxBitrate: 1_500_000,
+                    maxFramerate: 30,
+                },
+                screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+                simulcast: settings.simulcast,
+            },
+            adaptiveStream: true,
+            dynacast: true,
+        };
+    }, [e2eeSetup, audioOptions, settings.audioOutputDeviceId, settings.videoResolution, settings.videoInputDeviceId, settings.audioQuality, settings.simulcast]);
 
     const adminSecret = getAdminSecret(roomName) ?? undefined;
 
@@ -315,51 +361,6 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         return <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>{t('room.connecting')}</p></div>;
     }
 
-    // AEC is always on — disabling it in a voice room creates echo that every
-    // other listener hears, not just the muter. Speakerphone on phones is the
-    // worst case but laptops with built-in speakers have the same loop. Music
-    // / screen-share-audio uses a separate path with AEC explicitly off.
-    const audioOptions: AudioCaptureOptions = {
-        autoGainControl: settings.autoGainControl,
-        noiseSuppression: settings.noiseSuppressionMode === 'browser',
-        echoCancellation: true,
-        deviceId: settings.audioInputDeviceId || undefined,
-    };
-
-    const videoResolutionMap: Record<string, typeof VideoPresets.h720.resolution> = {
-        h1080: VideoPresets.h1080.resolution,
-        h720: VideoPresets.h720.resolution,
-        vga: VideoPresets.h360.resolution,
-    };
-
-    const roomOptions: RoomOptions = {
-        ...(e2eeSetup ? { e2ee: { keyProvider: e2eeSetup.keyProvider, worker: e2eeSetup.worker } } : {}),
-        audioOutput: settings.audioOutputDeviceId ? { deviceId: settings.audioOutputDeviceId } : undefined,
-        audioCaptureDefaults: audioOptions,
-        videoCaptureDefaults: {
-            resolution: videoResolutionMap[settings.videoResolution] ?? VideoPresets.h720.resolution,
-            deviceId: settings.videoInputDeviceId || undefined,
-        },
-        publishDefaults: {
-            audioPreset: AudioPresets[settings.audioQuality],
-            // DTX (discontinuous transmission) stops sending audio packets during
-            // silence. On the music-quality presets, receivers' Opus decoders fill
-            // those gaps with comfort noise — audible as hiss right after a silent
-            // participant joins. Only the speech preset (voice-tuned, mono, lower
-            // bitrate) is worth the tradeoff; music presets keep the stream live.
-            dtx: settings.audioQuality === 'speech',
-            forceStereo: settings.audioQuality.includes('Stereo'),
-            videoEncoding: {
-                maxBitrate: 1_500_000,
-                maxFramerate: 30,
-            },
-            screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
-            simulcast: settings.simulcast,
-        },
-        adaptiveStream: true,
-        dynacast: true,
-    };
-
     return (
         <div className="main-content">
             <LiveKitRoom
@@ -372,7 +373,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                 onDisconnected={onLeave}
                 style={{ height: '100%' }}
             >
-                <RoomShell name={name} myAvatarUrl={myAvatarUrl} onSpeakersChange={onSpeakersChange} onMutedChange={onMutedChange} onDeafenedChange={onDeafenedChange} onLiveParticipantsChange={onLiveParticipantsChange} onIdentityAssigned={onIdentityAssigned} onAvatarReceived={onAvatarReceived} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
+                <RoomShell name={name} myAvatarUrl={myAvatarUrl} onIdentityAssigned={onIdentityAssigned} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
             </LiveKitRoom>
         </div>
     );

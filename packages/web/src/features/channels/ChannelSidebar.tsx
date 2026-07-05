@@ -1,24 +1,24 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RoomInfo, CreateRoomRequest } from '../../lib/types';
 import { APP_NAME } from '../../lib/constants';
-import { colorForName } from '../../lib/participantColor';
 import { Avatar } from '../room/VideoGrid/Avatar';
-import { AvatarBadge } from '../../ui/AvatarBadge';
-import { getCachedAvatar } from '../../lib/avatarUtils';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { getRoomPassword, getAdminSecret } from '../../lib/passwords';
-import { SettingsIcon, MoonIcon, MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../room/icons/Icons';
+import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
-import { kickParticipant, banParticipant, muteParticipant } from '../../lib/api';
 import { CreateRoomModal } from './CreateRoomModal';
+import { ChannelUserRow } from './ChannelUserRow';
 import { useTheme } from '../settings/ThemeProvider';
 import type { Theme } from '../settings/ThemeProvider';
+import { useLiveParticipants } from '../../lib/roomStatusStore';
+import { getAdminBridge } from '../../lib/adminBridge';
+import { buildAdminActions } from '../room/hooks/useAdminActions';
 import '../settings/settings.css';
 import './channel-sidebar.css';
 import { IS_TOUCH as isTouchDevice } from '../../lib/env';
 
-const THEMES: Theme[] = ['dark', 'light', 'amoled', 'discord', 'retro', 'winxp'];
+const THEMES: Theme[] = ['dark', 'light', 'amoled', 'discord', 'winxp'];
 
 interface ChannelSidebarProps {
     rooms: RoomInfo[];
@@ -27,16 +27,11 @@ interface ChannelSidebarProps {
     identity: string;       // HMAC identity (or device UUID before room join) — for self-detection and admin ops
     displayName: string;    // display name shown in footer
     myAvatarUrl?: string | null;
-    liveParticipants: Map<string, string>;
     onRename: (name: string) => void;
-    speakingUsers: Set<string>;
-    mutedInRoom?: Set<string>;    // real-time mute state from LiveKit (active room only)
-    deafenedInRoom?: Set<string>; // real-time deafen state from LiveKit (active room only)
     onJoinRoom: (id: string) => void;
     onCreateRoom: (req: CreateRoomRequest) => Promise<void>;
     onOpenSettings: () => void;
     onClose?: () => void;
-    avatarCache?: Map<string, string>;
     volumes?: Map<string, number>;
     onVolumeChange?: (identity: string, vol: number) => void;
 }
@@ -61,27 +56,28 @@ function LockIcon({ title }: { title?: string }) {
 }
 
 
-export function ChannelSidebar({
+export const ChannelSidebar = memo(function ChannelSidebar({
     rooms,
     roomsError,
     activeRoom,
     identity,
     displayName,
     myAvatarUrl,
-    liveParticipants,
     onRename,
-    speakingUsers,
-    mutedInRoom,
-    deafenedInRoom,
     onJoinRoom,
     onCreateRoom,
     onOpenSettings,
     onClose,
-    avatarCache,
     volumes,
     onVolumeChange,
 }: ChannelSidebarProps) {
     const { t } = useTranslation();
+    // Live participant list for the active room — lives in the external room-status
+    // store (lib/roomStatusStore.ts) instead of being prop-drilled through
+    // App -> RoomView -> RoomShell -> useRoomStatusSync -> App -> here. Speaking/
+    // muted/deafened/avatar per participant are read individually by ChannelUserRow
+    // so a voice-activity change only re-renders that one row, not this component.
+    const liveParticipants = useLiveParticipants();
     const { theme, setTheme } = useTheme();
     const cycleTheme = () => {
         const idx = THEMES.indexOf(theme);
@@ -145,10 +141,10 @@ export function ChannelSidebar({
         });
     }, []);
 
-    const handleUserContextMenu = (e: React.MouseEvent, participantIdentity: string, participantName: string, roomId: string) => {
+    const handleUserContextMenu = useCallback((e: React.MouseEvent, participantIdentity: string, participantName: string, roomId: string) => {
         e.preventDefault();
         setContextMenu({ identity: participantIdentity, name: participantName, roomId, x: e.clientX, y: e.clientY });
-    };
+    }, []);
 
     // Keep room participants in a ref for the long-press callback
     const roomParticipantsRef = useRef(roomParticipants);
@@ -171,20 +167,37 @@ export function ChannelSidebar({
         }
     }, []);
 
-    const getAdminProps = (roomId: string, identity: string) => {
+    // Same buildAdminActions builder the tile context menu uses (useAdminActions.ts),
+    // so kick/ban/mute from the sidebar behave identically — HTTP call, broadcast,
+    // system message, TTS, suppressLeave — instead of re-implementing a partial
+    // version that skipped all but the HTTP call.
+    const getAdminProps = useCallback((roomId: string, participantIdentity: string) => {
         const secret = getAdminSecret(roomId);
         if (!secret) return undefined;
         const room = rooms.find(r => r.id === roomId);
-        const serverMuted = room?.serverMutedParticipants?.includes(identity) ?? false;
+        const serverMuted = room?.serverMutedParticipants?.includes(participantIdentity) ?? false;
+        // The sidebar can show participants of rooms we're NOT currently connected to
+        // (they come from the SSE room snapshot, not a live LiveKit connection) — only
+        // wire up the data-channel broadcast/system-message/TTS bridge when the target
+        // room is the one we actually have a live connection to (registered by
+        // useAdminActions while RoomShell is mounted for that room). Otherwise the
+        // HTTP admin call still goes through, it just can't announce itself over a
+        // data channel that doesn't exist from here.
+        const bridge = getAdminBridge();
+        const sameRoomBridge = bridge && bridge.roomId === roomId ? bridge : undefined;
+        const actions = buildAdminActions(roomId, secret, {
+            broadcast: sameRoomBridge?.broadcast,
+            onError: sameRoomBridge?.onError,
+        });
         return {
             adminSecret: secret,
             roomId,
             serverMuted,
-            onKick: () => kickParticipant(roomId, identity, secret),
-            onBan: () => banParticipant(roomId, identity, secret),
-            onToggleMute: () => muteParticipant(roomId, identity, secret, !serverMuted),
+            onKick: () => actions.onKick(participantIdentity),
+            onBan: () => actions.onBan(participantIdentity),
+            onToggleMute: () => actions.onToggleMute(participantIdentity, serverMuted),
         };
-    };
+    }, [rooms]);
 
     return (
         <div className="sidebar">
@@ -272,67 +285,25 @@ export function ChannelSidebar({
 
                         {(() => {
                             const participants = roomParticipants.get(room.id) ?? [];
+                            const isActiveRoom = room.id === activeRoom;
                             return participants.length > 0 && (
                             <div className="channel-users">
-                                {participants.map((p) => {
-                                        const displayName = p.name;
-                                        const participantAvatarUrl = (avatarCache?.get(p.identity) || getCachedAvatar(p.identity, displayName)) ?? undefined;
-                                        return (
-                                            <div
-                                                key={p.identity}
-                                                className="channel-user-card"
-                                                data-participant-identity={p.identity}
-                                                data-participant-name={displayName}
-                                                data-participant-room={room.id}
-                                                onContextMenu={(e) => handleUserContextMenu(e, p.identity, displayName, room.id)}
-                                            >
-                                                <AvatarBadge
-                                                    topCrown={p.identity === room.adminIdentity ? (
-                                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,1))' }}>
-                                                            <path d="M2 19l2-9 5 4 3-8 3 8 5-4 2 9H2z" />
-                                                        </svg>
-                                                    ) : undefined}
-                                                >
-                                                    <div
-                                                        className={`channel-user-avatar${speakingUsers.has(p.identity) ? ' speaking' : ''}`}
-                                                        style={{ background: participantAvatarUrl ? 'transparent' : colorForName(p.identity) }}
-                                                    >
-                                                        {participantAvatarUrl ? (
-                                                            <img src={participantAvatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} draggable={false} />
-                                                        ) : (
-                                                            displayName[0]?.toUpperCase() ?? '?'
-                                                        )}
-                                                    </div>
-                                                </AvatarBadge>
-                                                <span className="channel-user-name">{displayName}</span>
-                                                {p.identity === identity && (
-                                                    <span className="channel-user-you">{t('sidebar.you')}</span>
-                                                )}
-                                                <span className="channel-user-indicators">
-                                                    {(() => {
-                                                        const isServerMuted = room.serverMutedParticipants?.includes(p.identity);
-                                                        const isMuted = room.id === activeRoom && mutedInRoom
-                                                            ? mutedInRoom.has(p.identity)
-                                                            : room.mutedParticipants?.includes(p.identity);
-                                                        return (isMuted || isServerMuted) ? (
-                                                            <span className={`channel-user-indicator${isServerMuted ? ' server-muted' : ''}`} title={isServerMuted ? t('tile.serverMuted') : t('sidebar.micOff')}><MicOffIcon /></span>
-                                                        ) : null;
-                                                    })()}
-                                                    {(room.id === activeRoom && deafenedInRoom
-                                                        ? deafenedInRoom.has(p.identity)
-                                                        : room.deafenedParticipants?.includes(p.identity)
-                                                    ) && (
-                                                            <span className="channel-user-indicator" title={t('sidebar.soundOff')}><SpeakerOffIcon /></span>
-                                                        )}
-                                                </span>
-                                                {room.screenSharingParticipants?.includes(p.identity) && (
-                                                    <span className="channel-user-stream" title={t('sidebar.streaming')}>
-                                                        <ScreenShareStatusIcon size={11} />
-                                                    </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                {participants.map((p) => (
+                                    <ChannelUserRow
+                                        key={p.identity}
+                                        identity={p.identity}
+                                        name={p.name}
+                                        roomId={room.id}
+                                        isActiveRoom={isActiveRoom}
+                                        isSelf={p.identity === identity}
+                                        isRoomAdmin={p.identity === room.adminIdentity}
+                                        serverMuted={room.serverMutedParticipants?.includes(p.identity) ?? false}
+                                        staticMuted={room.mutedParticipants?.includes(p.identity) ?? false}
+                                        staticDeafened={room.deafenedParticipants?.includes(p.identity) ?? false}
+                                        isScreenSharing={room.screenSharingParticipants?.includes(p.identity) ?? false}
+                                        onContextMenu={(e) => handleUserContextMenu(e, p.identity, p.name, room.id)}
+                                    />
+                                ))}
                             </div>
                         );
                         })()}
@@ -436,4 +407,4 @@ export function ChannelSidebar({
             )}
         </div>
     );
-}
+});

@@ -15,6 +15,7 @@ import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
 import { saveRoomPassword, getRoomPassword, saveAdminSecret } from './lib/passwords';
 import { saveTemplate } from './lib/roomTemplates';
+import { resetRoomSession } from './lib/roomStatusStore';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
@@ -28,19 +29,6 @@ export default function App() {
     const route = useRoute();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
-    const [mutedInRoom, setMutedInRoom] = useState<Set<string>>(new Set());
-    const [deafenedInRoom, setDeafenedInRoom] = useState<Set<string>>(new Set());
-    const [liveParticipants, setLiveParticipants] = useState<Map<string, string>>(new Map());
-    const [liveAvatarCache, setLiveAvatarCache] = useState<Map<string, string>>(new Map());
-    const handleRoomAvatarReceived = useCallback((identity: string, dataUrl: string | null) => {
-        setLiveAvatarCache(prev => {
-            const next = new Map(prev);
-            if (dataUrl) next.set(identity, dataUrl);
-            else next.delete(identity);
-            return next;
-        });
-    }, []);
     const { volumes, handleVolumeChange } = usePersistedVolumes();
     const [myAvatar, setMyAvatar] = useState(getMyAvatar);
     const [liveIdentity, setLiveIdentity] = useState<string | null>(() => getCachedHmacIdentity(identity));
@@ -111,11 +99,11 @@ export default function App() {
 
     const handleLeave = () => {
         route.navigate('/');
-        setSpeakingUsers(new Set());
-        setMutedInRoom(new Set());
-        setDeafenedInRoom(new Set());
-        setLiveParticipants(new Map());
-        setLiveAvatarCache(new Map());
+        // Clears speakingUsers/mutedInRoom/deafenedInRoom/liveParticipants/avatarCache —
+        // these now live in the external room-status store (lib/roomStatusStore.ts)
+        // instead of App state, so ChannelSidebar reads them directly and App no longer
+        // re-renders on voice activity.
+        resetRoomSession();
         // Clear session for crash recovery
         window.electronAPI?.saveSession?.(null);
     };
@@ -183,14 +171,9 @@ export default function App() {
                     roomsError={roomsError}
                     activeRoom={activeRoom}
                     identity={liveIdentity || identity}
-                    avatarCache={liveAvatarCache}
                     displayName={displayName}
                     myAvatarUrl={myAvatar}
-                    liveParticipants={liveParticipants}
                     onRename={setDisplayName}
-                    speakingUsers={speakingUsers}
-                    mutedInRoom={mutedInRoom}
-                    deafenedInRoom={deafenedInRoom}
                     onJoinRoom={handleJoinRoom}
                     onCreateRoom={handleCreateRoom}
                     onOpenSettings={() => { setSettingsOpen(true); setSidebarOpen(false); }}
@@ -224,11 +207,6 @@ export default function App() {
                         onUpdateSettings={updateSettings}
                         onLeave={handleLeave}
                         onIdentityAssigned={handleIdentityAssigned}
-                        onAvatarReceived={handleRoomAvatarReceived}
-                        onSpeakersChange={(ids) => setSpeakingUsers(new Set(ids))}
-                        onMutedChange={setMutedInRoom}
-                        onDeafenedChange={setDeafenedInRoom}
-                        onLiveParticipantsChange={setLiveParticipants}
                         onOpenSettings={() => setSettingsOpen(true)}
                         volumes={volumes}
                         onVolumeChange={handleVolumeChange}

@@ -70,7 +70,9 @@
     "bannedDesc": "You are banned from this channel",
     "errorCode": "Error: {{code}}",
     "connecting": "Connecting...",
-    "reconnecting": "Reconnecting..."
+    "reconnecting": "Reconnecting...",
+    "screenShareFailed": "Screen share failed or was cancelled. On Linux/Wayland make sure xdg-desktop-portal and PipeWire are installed.",
+    "dismiss": "Dismiss"
   },
   "ctx": {
     "unmute": "Unmute",
@@ -99,7 +101,6 @@
     "light": "Light",
     "amoled": "AMOLED",
     "discord": "Discord",
-    "retro": "Retro",
     "winxp": "Windows XP"
   },
   "welcome": {
@@ -107,7 +108,8 @@
     "subtitle": "Select a voice channel on the left to get started",
     "enterName": "Enter your name to start talking",
     "namePlaceholder": "Your name...",
-    "pressEnter": "Press Enter to continue"
+    "pressEnter": "Press Enter to continue",
+    "lobbyHint": "Select a channel to join, or create one"
   },
   "chat": {
     "title": "Chat",
@@ -135,7 +137,9 @@
     "flipCamera": "Flip camera",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
-    "focusOn": "Focus on {{name}}"
+    "focusOn": "Focus on {{name}}",
+    "showCameraLarge": "Show camera large",
+    "showScreenLarge": "Show screen large"
   },
   "tile": {
     "screenSharing": "Sharing screen",
@@ -217,7 +221,6 @@
     "themeLight": "Light",
     "themeAmoled": "Amoled (Pitch Black)",
     "themeDiscord": "Discord",
-    "themeRetro": "Terminal (CRT)",
     "themeWinXP": "Windows XP",
     "language": "Language",
     "ambientMode": "Ambient mode",
