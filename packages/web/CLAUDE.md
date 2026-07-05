@@ -118,4 +118,5 @@ Processed by envsubst. CSP headers, `X-Forwarded-For` = `$remote_addr`, hashed a
 ## Static Files (`public/`)
 - `lala-audio-worklet.js` -- RNNoise + silence gate AudioWorklet
 - `rnnoise-sync.js` -- RNNoise WASM (base64 inlined)
-- `lala-e2ee-worker.js` -- E2EE worker (copy from livekit-client)
+
+(E2EE worker is NOT here -- it's bundled by Vite from `livekit-client/e2ee-worker?worker` in `RoomView.tsx`.)

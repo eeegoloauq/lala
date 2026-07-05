@@ -70,7 +70,7 @@ Browser -> Nginx (:80 -> :3000)
 - `dtx: true` applies globally to voice; screen share explicitly sets `dtx: false, red: false`.
 - Ban by identity persists per device but only within room's lifetime.
 - Electron screen share `audio: 'loopbackWithoutChrome'` only works on Windows.
-- E2EE worker loaded from `public/lala-e2ee-worker.js` -- must be manually copied from `node_modules/livekit-client/dist/livekit-client.e2ee.worker.mjs` when updating livekit-client.
+- E2EE worker bundled by Vite via `livekit-client/e2ee-worker?worker` import in `RoomView.tsx` -- stays in sync with the installed livekit-client automatically.
 
 ## Agentic Workflow
 
