@@ -12,6 +12,7 @@ services:
           -e 's|$${LIVEKIT_DOMAIN}|'"$$LIVEKIT_DOMAIN"'|g' \
           -e 's|$${LIVEKIT_API_KEY}|'"$$LIVEKIT_API_KEY"'|g' \
           -e 's|$${LIVEKIT_API_SECRET}|'"$$LIVEKIT_API_SECRET"'|g' \
+          -e 's|$${REDIS_PASSWORD}|'"$$REDIS_PASSWORD"'|g' \
           /etc/livekit-template.yaml > /etc/livekit.yaml \
         && /livekit-server --config /etc/livekit.yaml --node-ip $$NODE_IP
     environment:
@@ -19,6 +20,8 @@ services:
       - LIVEKIT_DOMAIN=${LIVEKIT_DOMAIN}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    mem_limit: 2g
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -42,20 +45,23 @@ services:
     image: redis:7-alpine
     container_name: lala-redis
     restart: unless-stopped
-    command: redis-server --save 60 1 --loglevel warning --requirepass lala_redis_internal
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     security_opt:
       - no-new-privileges:true
+    mem_limit: 512m
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "lala_redis_internal", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 5
 
   # ─── API Server (token + rooms) ───
   api:
-    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-api:${LALA_TAG:-latest}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-api:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
     container_name: lala-api
     restart: unless-stopped
     expose:
@@ -68,8 +74,10 @@ services:
       - API_PORT=3001
       - LIVEKIT_HOST=lala-livekit:7880
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@lala-redis:6379
     security_opt:
       - no-new-privileges:true
+    mem_limit: 512m
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/api/rooms"]
       interval: 15s
@@ -80,13 +88,14 @@ services:
 
   # ─── Web Frontend ───
   web:
-    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-web:${LALA_TAG:-latest}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-web:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
     container_name: lala-web
     restart: unless-stopped
     environment:
       CSP_CONNECT_SRC: "${CSP_CONNECT_SRC:-wss: ws:}"
     security_opt:
       - no-new-privileges:true
+    mem_limit: 256m
     ports:
       - "3000:80"
     healthcheck:

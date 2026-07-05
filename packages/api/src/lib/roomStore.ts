@@ -12,7 +12,14 @@ let redis: Redis | null = null;
  * the API degrades gracefully (admin features won't survive restart).
  */
 export async function connectRedis(): Promise<void> {
-    const url = process.env.REDIS_URL || 'redis://:lala_redis_internal@lala-redis:6379';
+    // No default URL on purpose: a hardcoded fallback would embed a credential
+    // in the codebase. In Docker, compose supplies REDIS_URL; without it the
+    // API runs cache-less (fine for local dev).
+    const url = process.env.REDIS_URL;
+    if (!url) {
+        console.warn('[roomStore] REDIS_URL not set — running without cache persistence (admin secrets will not survive restarts)');
+        return;
+    }
     try {
         redis = new Redis(url, {
             maxRetriesPerRequest: 3,
