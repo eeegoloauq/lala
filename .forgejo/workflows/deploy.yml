@@ -65,6 +65,20 @@ jobs:
             -t "$IMAGE_WEB:${{ github.sha }}" .
           docker push "$IMAGE_WEB:${{ github.sha }}"
 
+      # The runner disk is 10G and every push leaves ~320MB of SHA-tagged
+      # images behind; without cleanup they pile up until docker build dies
+      # with ENOSPC (happened 2026-07-05). Keep only the just-built pair — it
+      # doubles as layer cache for the next build; older tags live in the
+      # registry anyway.
+      - name: Drop superseded local images
+        if: always()
+        run: |
+          docker images --format '{{.Repository}}:{{.Tag}}' \
+            | { grep -E "^$REGISTRY/homelab/lala-(api|web):" || true; } \
+            | grep -v "${{ github.sha }}" \
+            | xargs -r docker rmi || true
+          docker image prune -f
+
   deploy:
     runs-on: docker
     container:
