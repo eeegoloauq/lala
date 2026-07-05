@@ -7,6 +7,7 @@ import { useEscapeKey } from '../../../hooks/useEscapeKey';
 import { Select } from '../../../ui/Select';
 import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS, screenShareBitrateLabel } from '../../../lib/constants';
 import './screen-share-modal.css';
+import { IS_ELECTRON as isElectron } from '../../../lib/env';
 
 interface ScreenShareModalProps {
     settings: AppSettings;
@@ -38,7 +39,6 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
     const [skipDialog, setSkipDialog] = useState(settings.screenShareSkipDialog);
     const [audio, setAudio] = useState(settings.screenShareAudio ?? true);
 
-    const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
     // On Wayland (skipSourcePicker), show settings-only mode like browser — portal handles source selection.
     const showSourcePicker = isElectron && !skipSourcePicker;
     const [sources, setSources] = useState<DesktopSource[]>([]);

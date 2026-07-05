@@ -4,6 +4,7 @@ import { useLocalParticipant, useTracks, isTrackReference } from '@livekit/compo
 import { Track, AudioPresets } from 'livekit-client';
 import type { AudioCaptureOptions, VideoEncoding, VideoResolution } from 'livekit-client';
 import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS } from '../../../lib/constants';
+import { IS_ELECTRON as isElectron } from '../../../lib/env';
 
 /**
  * Audio constraints for screen share — disable all voice processing
@@ -60,7 +61,6 @@ export function useScreenShare() {
     const start = async (quality: ScreenShareQuality, sourceId?: string, audio = true) => {
         setPending(true);
         try {
-            const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
             if (isElectron && sourceId) {
                 console.log('[Lala] Screen share: setting source via IPC:', sourceId);
                 await window.electronAPI!.setScreenShareSource(sourceId);

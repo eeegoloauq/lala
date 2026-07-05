@@ -10,8 +10,8 @@ import { useCameraFlip } from '../hooks/useCameraFlip';
 import { findTileIdentity } from '../lib/findTileIdentity';
 import { useRoomUIContext } from '../RoomUIContext';
 import './focus-layout.css';
+import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
 
-const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
 const fullscreenSupported = typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
 function asActiveTrack(ref: TrackReferenceOrPlaceholder | undefined): TrackReference | null {

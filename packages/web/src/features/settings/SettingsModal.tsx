@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppSettings } from './types';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { IS_ELECTRON as isElectron, IS_TOUCH as isTouchDevice } from '../../lib/env';
 import './settings.css';
 import '../room/ScreenShareModal/screen-share-modal.css';
 import { ProfileSection } from './sections/ProfileSection';
@@ -28,8 +29,6 @@ interface SettingsModalProps {
   onAvatarChange?: (dataUrl: string | null) => void;
 }
 
-const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
-const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
 
 export function SettingsModal({ settings, onUpdate, onClose, displayName, onRename, myAvatar, onAvatarChange }: SettingsModalProps) {
   const { t } = useTranslation();

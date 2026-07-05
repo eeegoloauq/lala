@@ -13,10 +13,9 @@ import {
     PhoneOffIcon,
 } from '../icons/Icons';
 import './control-bar.css';
+import { IS_ELECTRON as isElectron } from '../../../lib/env';
 
-const isTouchDevice = () => navigator.maxTouchPoints > 0;
 const canScreenShare = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
 
 interface ControlBarProps {
     audioMuted: boolean;
