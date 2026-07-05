@@ -907,18 +907,60 @@ function clearPendingScreenShare() {
 
 /**
  * Gate for setDisplayMediaRequestHandler: only the top-level frame of the
- * currently trusted server origin may capture the screen. Silent screen
- * capture from a page that isn't the connected server (e.g. one the window
- * got redirected to) is exactly the vector this closes.
+ * page the window is currently displaying may capture the screen. Silent
+ * screen capture from a third-party frame/origin (e.g. an embedded iframe)
+ * is exactly the vector this closes.
+ *
+ * Trust is derived from mainWindow.webContents.getURL() at request time:
+ * the will-navigate lock already guarantees that URL is either our local
+ * file:// connection page or the server the user picked, so a capture
+ * request coming from the window's own loaded page is exactly as trusted
+ * as the page itself. We deliberately do NOT compare against a separately
+ * maintained value (the old check against `trustedOrigin` broke because
+ * Electron's request.securityOrigin is a Chromium-serialized URL with a
+ * trailing slash — "https://host/" — which never string-equals a bare
+ * URL.origin, so every request was denied).
+ *
+ * Returns null when the request is trusted, otherwise a deny reason that
+ * names both the requesting and the expected origin so reports are
+ * self-diagnosing.
  */
-function isDisplayCaptureRequestTrusted(request) {
-    if (trustedOrigin === null) return false;
-    if (request.securityOrigin !== trustedOrigin) return false;
-    if (mainWindow && !mainWindow.isDestroyed() && request.frame &&
-        request.frame !== mainWindow.webContents.mainFrame) {
-        return false; // deny sub-frame capture requests
+function getDisplayCaptureDenyReason(request) {
+    if (!mainWindow || mainWindow.isDestroyed()) return 'no window';
+
+    // Only the top-level frame may capture — never a sub-frame/iframe.
+    if (request.frame && request.frame !== mainWindow.webContents.mainFrame) {
+        return `sub-frame capture request (frame url: ${request.frame.url})`;
     }
-    return true;
+
+    // Expected origin = whatever page the window itself is showing. The
+    // file:// connection page (or an empty window) never captures.
+    let expectedOrigin;
+    const currentUrl = mainWindow.webContents.getURL();
+    try {
+        const parsed = new URL(currentUrl);
+        if (!ALLOWED_URL_PROTOCOLS.has(parsed.protocol)) {
+            return `window is not showing a server page (current url: ${currentUrl || '<none>'})`;
+        }
+        expectedOrigin = parsed.origin;
+    } catch {
+        return `window url is unparseable (current url: ${currentUrl || '<none>'})`;
+    }
+
+    // request.securityOrigin is a serialized URL (usually with a trailing
+    // slash), not a bare origin — normalize via new URL().origin before
+    // comparing, same as the permission check handler does.
+    const rawRequesting = request.securityOrigin || (request.frame && request.frame.url) || '';
+    let requestingOrigin;
+    try {
+        requestingOrigin = new URL(rawRequesting).origin;
+    } catch {
+        requestingOrigin = rawRequesting || '<unknown>';
+    }
+    if (requestingOrigin !== expectedOrigin) {
+        return `untrusted origin (requesting: ${requestingOrigin}, expected: ${expectedOrigin})`;
+    }
+    return null;
 }
 
 // Deny a display-media request the way Electron actually supports: only
@@ -952,8 +994,9 @@ function setupScreenShareHandler() {
         // to invoke the portal, then pass the user-selected source to the callback.
         console.log('[Lala] Wayland detected — using XDG portal for screen share');
         session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
-            if (!isDisplayCaptureRequestTrusted(request)) {
-                denyDisplayMediaRequest(callback, 'untrusted origin (Wayland)');
+            const denyReason = getDisplayCaptureDenyReason(request);
+            if (denyReason) {
+                denyDisplayMediaRequest(callback, `${denyReason} (Wayland)`);
                 return;
             }
             // Once the callback has been invoked, Electron has consumed the
@@ -994,8 +1037,9 @@ function setupScreenShareHandler() {
     }
 
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-        if (!isDisplayCaptureRequestTrusted(request)) {
-            denyDisplayMediaRequest(callback, 'untrusted origin');
+        const denyReason = getDisplayCaptureDenyReason(request);
+        if (denyReason) {
+            denyDisplayMediaRequest(callback, denyReason);
             return;
         }
         if (pendingScreenShareSourceId) {
@@ -1019,6 +1063,29 @@ function setupScreenShareHandler() {
         } else {
             denyDisplayMediaRequest(callback, 'no pre-selected source (picker not used or source timed out)');
         }
+    });
+}
+
+// ─── Downloads ───────────────────────────────────────────────────────────────
+// File downloads (chat file sharing uses <a download href="blob:..."> anchors).
+// We deliberately do NOT call item.setSavePath(): leaving the save path unset
+// keeps Electron's default behavior of showing the native "Save As" dialog.
+// The handler exists so that interrupted/cancelled/failed downloads are logged
+// to stderr instead of vanishing silently. Note: window.open(blobUrl) is NOT a
+// download path — setWindowOpenHandler denies it (blob: is not an allowed
+// external protocol); the renderer must use download-attribute anchors.
+function setupDownloadHandler() {
+    session.defaultSession.on('will-download', (_event, item) => {
+        const filename = item.getFilename() || '<unnamed>';
+        console.log(`[Lala] Download started: ${filename} (${item.getTotalBytes()} bytes) from ${item.getURL()}`);
+        item.on('done', (_e, state) => {
+            if (state === 'completed') {
+                console.log(`[Lala] Download completed: ${item.getSavePath()}`);
+            } else {
+                // 'cancelled' (incl. user dismissing the save dialog) or 'interrupted'
+                console.error(`[Lala] Download ${state}: ${filename} from ${item.getURL()}`);
+            }
+        });
     });
 }
 
@@ -1502,6 +1569,7 @@ app.whenReady().then(() => {
     registerIpcHandlers();
     createWindow();
     setupScreenShareHandler();
+    setupDownloadHandler();
 
     // Restrict permissions — only allow what a voice/video chat app needs, and
     // only for the currently trusted server origin. The local file://
