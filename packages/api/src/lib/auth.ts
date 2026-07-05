@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { getRoomService } from './livekit';
 import { parseRoomMeta } from './roomMeta';
 import type { RoomMeta } from './roomMeta';
-import { getCachedMeta } from './roomStore';
+import { getCachedMeta, touchRoomMeta } from './roomStore';
 
 /** Constant-time comparison that handles buffers of different length safely */
 export function verifyAdminSecret(provided: string | undefined, stored: string | undefined): boolean {
@@ -32,20 +32,8 @@ export async function getAuthedRoom(
         return null;
     }
 
-    let meta = parseRoomMeta(rooms[0].metadata);
-
-    // If room lost metadata (e.g. LiveKit restarted and recreated the room),
-    // restore from Redis cache and re-attach to the room (without adminSecret)
-    if (!meta) {
-        const cached = await getCachedMeta(roomId);
-        if (cached) {
-            const { adminSecret: _secret, ...publicMeta } = cached;
-            await roomService.updateRoomMetadata(roomId, JSON.stringify(publicMeta));
-            meta = cached;
-        }
-    }
-
-    // adminSecret lives only in the Redis cache — never in LiveKit metadata
+    // Fetch the Redis cache once — it's the only place adminSecret is stored (never in
+    // LiveKit metadata), and also the fallback source of truth if LiveKit metadata was lost.
     const cached = await getCachedMeta(roomId);
     const storedSecret = cached?.adminSecret;
 
@@ -54,8 +42,25 @@ export async function getAuthedRoom(
         return null;
     }
 
+    let meta = parseRoomMeta(rooms[0].metadata);
+
+    // If room lost metadata (e.g. LiveKit restarted and recreated the room),
+    // restore from Redis cache and re-attach to the room (without adminSecret).
+    // This write happens only AFTER auth succeeds above — an unauthenticated caller
+    // must never be able to trigger a LiveKit metadata write.
+    if (!meta && cached) {
+        const { adminSecret: _secret, ...publicMeta } = cached;
+        await roomService.updateRoomMetadata(roomId, JSON.stringify(publicMeta));
+        meta = cached;
+    }
+
     // Merge cached adminSecret into meta for downstream use
     if (meta) meta.adminSecret = storedSecret;
+
+    // Successful admin auth proves the room is still in active use — refresh the Redis
+    // TTL so long-lived rooms (occupied >24h) don't lose their adminSecret and lock the
+    // creator out.
+    await touchRoomMeta(roomId);
 
     return { roomService, meta: meta ?? cached! };
 }

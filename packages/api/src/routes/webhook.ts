@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { WebhookReceiver } from 'livekit-server-sdk';
 import { broadcastSse } from '../lib/sse';
 import { evictRoomMeta } from '../lib/roomStore';
+import { invalidateRoomsCache } from './rooms';
 
 // LiveKit webhook events that change the room list visible to users.
 // Note: track mute/unmute and metadata changes are NOT webhook events in LiveKit —
@@ -38,6 +39,9 @@ export function createWebhookRouter(): Router {
             const event = await receiver.receive(body, req.get('Authorization') ?? '');
 
             if (ROOM_EVENTS.has(event.event)) {
+                // Invalidate before broadcasting so clients that refetch GET /api/rooms
+                // in response to the SSE event don't race the cache's own 2s TTL.
+                invalidateRoomsCache();
                 broadcastSse('rooms_updated', { trigger: event.event });
             }
 

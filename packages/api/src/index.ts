@@ -48,8 +48,13 @@ app.get('/api/health', (_req, res) => {
 
 // Routes — limits per 15s window (≈ same requests/min as before)
 app.use('/api/token', limiter(25), createTokenRouter());   // ~100/min (password pool can send up to 20 in burst)
-app.use('/api/rooms', limiter(30), createRoomsRouter());   // 120/min
+// Admin routes MUST be mounted before the broader '/api/rooms' mount: Express matches
+// mount paths by prefix, so '/api/rooms/:id/admin/*' also matches '/api/rooms'. Mounting
+// admin first means its requests are fully handled (and rate-limited) here and never
+// fall through to the rooms(30) limiter below — avoiding double-counting a single
+// admin action against both rate-limit windows.
 app.use('/api/rooms/:id/admin', limiter(20), createAdminRouter()); // 80/min — admin actions are authed, need headroom for mute toggling
+app.use('/api/rooms', limiter(30), createRoomsRouter());   // 120/min
 app.use('/api/events', limiter(5), createEventsRouter());
 
 // 404 handler — don't leak Express default page
@@ -69,6 +74,18 @@ app.use((err: Error & { type?: string }, _req: express.Request, res: express.Res
     }
     console.error('Unhandled error:', err.message);
     res.status(500).json({ error: 'server_error' });
+});
+
+// Unhandled promise rejections shouldn't crash the process — log and keep serving.
+process.on('unhandledRejection', (reason) => {
+    console.error('[lala-api] Unhandled rejection:', reason);
+});
+
+// Uncaught exceptions leave the process in an undefined state — log and exit so
+// Docker's restart policy can bring up a clean instance.
+process.on('uncaughtException', (err) => {
+    console.error('[lala-api] Uncaught exception:', err);
+    process.exit(1);
 });
 
 // Start
