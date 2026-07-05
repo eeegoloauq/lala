@@ -28,6 +28,17 @@ turn:
   enabled: true
   domain: ${LIVEKIT_DOMAIN}
   udp_port: 3478
+  # TTL of the TURN credentials in seconds (server default: 300).
+  # Since v1.12 credentials expire and are validated when a relay
+  # allocation is created; expired ones are rejected (hard since v1.13.1).
+  # ttl_seconds: 300
+  # Since v1.12 TURN refuses to relay to restricted peer CIDRs (private,
+  # loopback, link-local, multicast) by default. If node_ip above is a
+  # private address (LAN-only deployment), allow it explicitly here,
+  # otherwise clients that need TURN will fail to connect:
+  # allow_restricted_peer_cidrs:
+  #   - 10.0.0.0/8
+  #   - 192.168.0.0/16
 
 room:
   # Max participants per room
