@@ -80,6 +80,21 @@ export async function getCachedMeta(roomId: string): Promise<RoomMeta | undefine
 }
 
 /**
+ * Refresh the 24h TTL of an existing cached room meta entry without rewriting its value.
+ * Call this on every successful admin auth so long-lived rooms (occupied >24h) don't
+ * silently lose their adminSecret and lock the creator out.
+ * Graceful fallback: logs error if Redis is down, does not throw.
+ */
+export async function touchRoomMeta(roomId: string): Promise<void> {
+    if (!redis) return;
+    try {
+        await redis.expire(key(roomId), TTL_SECONDS);
+    } catch (err) {
+        console.error('[roomStore] Failed to refresh TTL for', roomId, (err as Error).message);
+    }
+}
+
+/**
  * Remove cached room metadata from Redis.
  * Graceful fallback: logs error if Redis is down, does not throw.
  */

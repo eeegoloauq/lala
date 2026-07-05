@@ -5,6 +5,7 @@ import { getRoomService } from '../lib/livekit';
 import { parseRoomMeta, verifyPassword } from '../lib/roomMeta';
 import { verifyAdminSecret } from '../lib/auth';
 import { getCachedMeta } from '../lib/roomStore';
+import { sanitizeDisplayText } from '../lib/sanitize';
 
 export function createTokenRouter(): Router {
     const router = Router();
@@ -42,7 +43,7 @@ export function createTokenRouter(): Router {
             const apiSecret = process.env.LIVEKIT_API_SECRET;
 
             if (!apiKey || !apiSecret) {
-                res.status(500).json({ error: 'LiveKit credentials not configured' });
+                res.status(500).json({ error: 'server_error' });
                 return;
             }
 
@@ -99,9 +100,14 @@ export function createTokenRouter(): Router {
                 }
             }
 
+            // Sanitize: strip null bytes, RTL/LTR override chars, and control characters
+            // (same treatment as room displayName — a hostile participant name shouldn't
+            // be able to spoof other UI text via bidi override tricks).
+            const sanitizedName = name ? sanitizeDisplayText(name, 50) : undefined;
+
             const token = new AccessToken(apiKey, apiSecret, {
                 identity,
-                name: name || identity,
+                name: sanitizedName || identity,
                 ttl: '24h',
             });
 
@@ -119,7 +125,7 @@ export function createTokenRouter(): Router {
             res.json({ token: jwt, identity });
         } catch (error) {
             console.error('Token generation failed:', error);
-            res.status(500).json({ error: 'Failed to generate token' });
+            res.status(500).json({ error: 'server_error' });
         }
     });
 
