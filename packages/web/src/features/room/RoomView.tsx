@@ -52,16 +52,18 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     // objects across re-renders instead of a fresh object every render — LiveKitRoom
     // otherwise has no way to tell "same settings" from "settings changed".
     //
-    // AEC is always on — disabling it in a voice room creates echo that every
-    // other listener hears, not just the muter. Speakerphone on phones is the
-    // worst case but laptops with built-in speakers have the same loop. Music
-    // / screen-share-audio uses a separate path with AEC explicitly off.
+    // AEC defaults on — disabling it in a voice room creates echo that every
+    // other listener hears (speakerphone/laptop speakers), so the settings UI
+    // warns to only turn it off with headphones. Exposing the toggle matters on
+    // Linux/PipeWire, where inserting the echo-cancel module at capture start
+    // can produce an audible glitch, and headphone users gain quality with it
+    // off. Music / screen-share-audio uses a separate path with AEC always off.
     const audioOptions: AudioCaptureOptions = useMemo(() => ({
         autoGainControl: settings.autoGainControl,
         noiseSuppression: settings.noiseSuppressionMode === 'browser',
-        echoCancellation: true,
+        echoCancellation: settings.echoCancellation,
         deviceId: settings.audioInputDeviceId || undefined,
-    }), [settings.autoGainControl, settings.noiseSuppressionMode, settings.audioInputDeviceId]);
+    }), [settings.autoGainControl, settings.noiseSuppressionMode, settings.echoCancellation, settings.audioInputDeviceId]);
 
     const roomOptions: RoomOptions = useMemo(() => {
         const videoResolutionMap: Record<string, typeof VideoPresets.h720.resolution> = {

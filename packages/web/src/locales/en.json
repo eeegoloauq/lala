@@ -211,6 +211,8 @@
     "agcHint": "Automatically adjusts mic volume",
     "noiseSuppression": "Noise Suppression",
     "noiseSuppressionHint": "RNNoise uses AI, browser uses WebRTC built-in",
+    "aec": "Echo Cancellation",
+    "aecHint": "Only disable with headphones — on speakers everyone else hears your echo",
     "disabled": "Disabled",
     "browserWebRTC": "Browser (WebRTC)",
     "rnnoiseAI": "RNNoise (AI)",

@@ -104,6 +104,7 @@ IndexedDB (`lala-secure`); ciphertext lives under `lala_enc_<logical-key>`.
 |-------|---------|-------------|
 | audioQuality | musicHighQuality | speech/music/musicHighQuality/musicHighQualityStereo |
 | noiseSuppressionMode | browser | disabled/browser/rnnoise |
+| echoCancellation | true | AEC toggle; UI warns to disable only with headphones |
 | silenceGate | 0 | 0=off, dBFS threshold |
 | pushToTalk | false | |
 | pushToTalkKey | Space | |

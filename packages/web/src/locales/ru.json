@@ -211,6 +211,8 @@
     "agcHint": "Автоматически регулирует громкость микрофона",
     "noiseSuppression": "Шумоподавление",
     "noiseSuppressionHint": "RNNoise использует ИИ, браузер — встроенный WebRTC",
+    "aec": "Эхоподавление",
+    "aecHint": "Выключай только в наушниках — на колонках собеседники услышат твоё эхо",
     "disabled": "Выключено",
     "browserWebRTC": "Браузер (WebRTC)",
     "rnnoiseAI": "RNNoise (ИИ)",
