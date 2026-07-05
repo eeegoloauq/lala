@@ -1,6 +1,7 @@
 import { LiveKitRoom } from '@livekit/components-react';
 import { AudioPresets, VideoPresets, ScreenSharePresets, ExternalE2EEKeyProvider, isE2EESupported } from 'livekit-client';
 import type { AudioCaptureOptions, RoomOptions } from 'livekit-client';
+import E2EEWorker from 'livekit-client/e2ee-worker?worker';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIVEKIT_URL } from '../../lib/constants';
@@ -68,7 +69,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
             const keyProvider = new ExternalE2EEKeyProvider();
             await keyProvider.setKey(pw);
             if (connectGenRef.current !== gen) return;
-            const worker = new Worker('/lala-e2ee-worker.js', { type: 'module' });
+            const worker = new E2EEWorker();
             setE2eeSetup({ keyProvider, worker });
         }
         if (connectGenRef.current !== gen) return;
