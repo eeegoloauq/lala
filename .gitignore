@@ -38,3 +38,4 @@ packages/desktop/release/
 
 # Local scripts
 release.sh
+.playwright-mcp/
