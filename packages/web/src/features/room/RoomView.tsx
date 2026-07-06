@@ -1,8 +1,8 @@
 import { LiveKitRoom } from '@livekit/components-react';
-import { AudioPresets, VideoPresets, ScreenSharePresets, ExternalE2EEKeyProvider, isE2EESupported, Room } from 'livekit-client';
-import type { AudioCaptureOptions, RoomOptions } from 'livekit-client';
+import { AudioPresets, VideoPresets, ScreenSharePresets, ExternalE2EEKeyProvider, isE2EESupported, Room, createLocalAudioTrack, Track } from 'livekit-client';
+import type { AudioCaptureOptions, RoomOptions, LocalAudioTrack } from 'livekit-client';
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIVEKIT_URL } from '../../lib/constants';
 import { getToken } from '../../lib/api';
@@ -54,9 +54,16 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     //
     // AEC defaults on — disabling it in a voice room creates echo that every
     // other listener hears (speakerphone/laptop speakers), so the settings UI
-    // warns to only turn it off with headphones. Exposing the toggle matters on
-    // Linux/PipeWire, where inserting the echo-cancel module at capture start
-    // can produce an audible glitch, and headphone users gain quality with it
+    // warns to only turn it off with headphones. Exposing the toggle matters
+    // because starting/stopping an echoCancellation:true capture retriggers
+    // Chromium's ChromeWideEchoCancellation feature: the audio service stops
+    // and reopens ALL of Chrome's currently-playing output streams as one
+    // mixed stream (OutputDeviceMixerImpl::StartListening), then switches back
+    // ~1s after the last AEC capture stops. On Linux/PipeWire that close/reopen
+    // is audible as a harsh ~0.5-1s glitch in whatever's playing. The join-time
+    // occurrence of this is mitigated below by pre-acquiring the mic track
+    // before any call audio plays; toggling AEC or switching the mic device
+    // mid-call still pays this cost, and headphone users gain quality with it
     // off. Music / screen-share-audio uses a separate path with AEC always off.
     const audioOptions: AudioCaptureOptions = useMemo(() => ({
         autoGainControl: settings.autoGainControl,
@@ -131,6 +138,27 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     // switch), so a late token/E2EE worker can't attach to an abandoned attempt.
     const connectGenRef = useRef(0);
 
+    // Pre-acquired mic track for the CWAEC join-glitch mitigation (see the
+    // audioOptions comment above). Populated by the join-flow effect below as
+    // soon as a join attempt starts, consumed once by handleConnected on the
+    // first real connect. `micPublishedRef` gates that one-time hand-off:
+    // once true, later Connected events (e.g. the Room-recreation-on-settings-
+    // change path — see the `room` useMemo comment) fall back to the normal
+    // acquire+publish path instead of re-touching this ref.
+    const micTrackRef = useRef<LocalAudioTrack | null>(null);
+    const micPublishedRef = useRef(false);
+    // Guards against handling the same Room's Connected event twice (e.g. a
+    // stray duplicate event) — only re-runs the publish/fallback logic when
+    // Connected fires for a *different* Room instance than last time.
+    const handledRoomRef = useRef<Room | null>(null);
+
+    // Settings mirrored into a ref so handleConnected (registered once per
+    // `room`/`audioOptions` identity) can read the *current* push-to-talk
+    // setting without becoming a dependency that would recreate the callback
+    // (and re-fire LiveKitRoom's onConnected wiring) on every settings change.
+    const settingsRef = useRef(settings);
+    useEffect(() => { settingsRef.current = settings; });
+
     const fetchToken = (pw?: string) => {
         return getToken({ room: roomName, name, deviceId: identity, password: pw, adminSecret });
     };
@@ -164,6 +192,28 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         setPassword('');
         setPasswordError(null);
         setE2eeSetup(null);
+        micPublishedRef.current = false;
+
+        // Pre-acquire the mic track for this join attempt now, in parallel with
+        // the token fetch below (see the audioOptions comment above for why this
+        // timing matters — CWAEC's output-mixer reroute needs to happen while
+        // the app is still silent). Not awaited: acquisition races the token
+        // fetch/password flow, and the track is only actually published once
+        // <LiveKitRoom> reports a real connection, in handleConnected. Reads
+        // `audioOptions` from the enclosing closure rather than as a dependency
+        // (see the eslint-disable below) — if settings change between mount and
+        // this connect, the track may end up with stale constraints, which is
+        // acceptable; the existing settings-change path (the `room` useMemo
+        // recreating on `roomOptions` change) fixes that up after connect.
+        createLocalAudioTrack(audioOptions).then(track => {
+            if (!mounted()) { track.stop(); return; }
+            micTrackRef.current = track;
+        }).catch(err => {
+            // Mic permission denied or no device — join proceeds without a
+            // pre-published mic, exactly as it would if getUserMedia had
+            // instead failed at LiveKitRoom's normal (later) publish time.
+            console.warn('[RoomView] Pre-acquiring microphone track failed:', err instanceof Error ? err.message : err);
+        });
 
         // Fatal (non-password) error — rate limit gets its own countdown UI.
         const handleFatalError = (err: unknown) => {
@@ -233,9 +283,34 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
             connectGenRef.current++;
             // Release power save blocker on leave/unmount
             window.electronAPI?.setInCall?.(false);
+            // Never leak a live capture: if this attempt's pre-acquired track
+            // never made it to a real publish (attempt aborted, room switched,
+            // or component unmounted/left), stop it here. Once published,
+            // LiveKit's own disconnect handling owns the track's lifecycle,
+            // same as it always has for a normally-published mic track.
+            if (micTrackRef.current && !micPublishedRef.current) {
+                micTrackRef.current.stop();
+                micTrackRef.current = null;
+            }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomName, retryKey]);
+
+    // A join failure (including a rate-limit backoff, which parks us here for
+    // up to 60s) means we're not about to connect for a while — release the
+    // pre-acquired, unpublished mic rather than holding a live capture with
+    // nothing happening. The next attempt (new retryKey/roomName, handled by
+    // the join-flow effect above) re-acquires a fresh track. `needsPassword`
+    // is deliberately NOT treated the same way here: that's an interactive
+    // prompt, not a failure, and the whole point is for the track acquired at
+    // the start of this attempt to still be there once the password succeeds.
+    useEffect(() => {
+        if (!errorCode) return;
+        if (micTrackRef.current && !micPublishedRef.current) {
+            micTrackRef.current.stop();
+            micTrackRef.current = null;
+        }
+    }, [errorCode]);
 
     // Countdown + auto-retry for rate limiting
     useEffect(() => {
@@ -248,6 +323,53 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         const id = setTimeout(() => setCountdown(c => c - 1), 1000);
         return () => clearTimeout(id);
     }, [errorCode, countdown]);
+
+    // Called once <LiveKitRoom> reports a real connection (RoomEvent.Connected,
+    // not just SignalConnected) — hands the pre-acquired track off to the now-
+    // live Room. `audio={false}` on <LiveKitRoom> below means its own internal
+    // auto-publish logic never touches the microphone, so this is the sole
+    // publisher for it.
+    const handleConnected = useCallback(() => {
+        // Guard against a stray duplicate Connected event for the same Room —
+        // there's nothing new to do for it either way.
+        if (handledRoomRef.current === room) return;
+        handledRoomRef.current = room;
+
+        const track = micTrackRef.current;
+        if (track && !micPublishedRef.current) {
+            micPublishedRef.current = true;
+            room.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
+                .then(() => {
+                    // Push-to-talk starts muted: usePushToTalk's mount-time
+                    // setMicrophoneEnabled(false) call may already have run (and
+                    // no-op'd, since no publication existed yet) before this
+                    // publish landed, so enforce the muted start here too.
+                    if (settingsRef.current.pushToTalk) track.mute().catch(() => {});
+                })
+                .catch(err => {
+                    console.warn('[RoomView] Failed to publish pre-acquired microphone track:', err instanceof Error ? err.message : err);
+                    micPublishedRef.current = false;
+                    // Fall back to the normal acquire+publish path so this
+                    // connect isn't left silently mic-less because of it.
+                    room.localParticipant.setMicrophoneEnabled(true, audioOptions).catch(() => {});
+                });
+        } else if (!track) {
+            // No pre-acquired track available for this connect — either mic
+            // permission was denied/no device at acquisition time (join
+            // proceeds mic-less, as before this change), or this Connected
+            // event belongs to a Room recreated by a mid-call settings change
+            // (see the `room` useMemo above): that Room's own pre-acquired
+            // track was already consumed by the previous Room. Acquire+publish
+            // the normal way so device/setting changes keep working exactly as
+            // they did before this change.
+            room.localParticipant.setMicrophoneEnabled(true, audioOptions).catch(err => {
+                console.warn('[RoomView] Microphone publish failed:', err instanceof Error ? err.message : err);
+            });
+        }
+        // `track && micPublishedRef.current` (both true) falls through with no
+        // action: a reconnect on the *same* Room, whose already-published
+        // track LiveKit keeps alive/republishes on its own.
+    }, [room, audioOptions]);
 
     const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -395,7 +517,12 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                 serverUrl={LIVEKIT_URL}
                 connect={true}
                 video={false}
-                audio={audioOptions}
+                // Mic publish is handled entirely by handleConnected below (the
+                // pre-acquired-track hand-off, falling back to a normal publish
+                // when there's no pre-acquired track) — LiveKitRoom itself must
+                // never auto-publish the microphone, hence `false` here.
+                audio={false}
+                onConnected={handleConnected}
                 onDisconnected={onLeave}
                 style={{ height: '100%' }}
             >
