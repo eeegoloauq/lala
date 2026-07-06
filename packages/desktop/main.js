@@ -28,10 +28,25 @@ app.setAppUserModelId('app.lala.desktop');
 // ─── Platform Flags ──────────────────────────────────────────────────────────
 // Wayland screen capture (PipeWire) — must be set before app is ready.
 app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
-// Merge audio service into the renderer process — prevents duplicate entries
-// in the Windows volume mixer (Chromium spawns a separate audio utility process
-// that gets its own mixer entry with the baked-in .exe icon).
-app.commandLine.appendSwitch('disable-features', 'AudioServiceOutOfProcess');
+// Chromium only honors the *last* --disable-features switch on the command
+// line — repeated appendSwitch('disable-features', ...) calls don't merge,
+// the later one wins and silently drops the earlier features. So every
+// disable-features flag we need lives in this single comma-separated call:
+//  - AudioServiceOutOfProcess: merge audio service into the renderer process —
+//    prevents duplicate entries in the Windows volume mixer (Chromium spawns a
+//    separate audio utility process that gets its own mixer entry with the
+//    baked-in .exe icon).
+//  - ChromeWideEchoCancellation: when an echoCancellation:true capture starts,
+//    this feature makes the audio service stop and reopen ALL of Chrome's
+//    currently-playing output streams as one mixed stream, then switch back
+//    ~1s after the last AEC capture stops (OutputDeviceMixerImpl::
+//    StartListening) — on Linux/PipeWire that close/reopen is audible as a
+//    harsh glitch in whatever's playing (see packages/web's RoomView.tsx
+//    audioOptions comment for the full writeup and the web-side mitigations).
+//    Lala is a single-window voice app, so the renderer-local APM already
+//    cancels our own playout without needing the audio-service-wide reroute —
+//    disabling it here removes the glitch at the source for the desktop client.
+app.commandLine.appendSwitch('disable-features', 'AudioServiceOutOfProcess,ChromeWideEchoCancellation');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
