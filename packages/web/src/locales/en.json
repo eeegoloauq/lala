@@ -125,6 +125,7 @@
     "dropToSend": "Drop to send",
     "fileCanceled": "Transfer canceled",
     "fileFailed": "Failed to receive file",
+    "fileQueued": "Queued…",
     "fileSent": "{{name}} sent a file",
     "fileTooLarge": "File is too large (max {{max}})",
     "jumpToLatest": "Jump to latest",

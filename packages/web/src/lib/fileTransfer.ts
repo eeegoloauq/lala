@@ -15,8 +15,17 @@ export const FILE_STREAM_TOPIC = 'files';
 /** Hard cap on file size we'll attempt to send or accept. */
 export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
-export type FileTransferStatus = 'active' | 'done' | 'error' | 'canceled';
+/**
+ * Outgoing transfers are sent one at a time over the shared reliable data channel (see
+ * useFileTransfers' send queue) -- all `streamBytes()` writers otherwise funnel through the
+ * same underlying SCTP channel, and running several concurrently floods its send buffer.
+ * 'queued' is the wait state for files added while another transfer is still active.
+ */
+export type FileTransferStatus = 'queued' | 'active' | 'done' | 'error' | 'canceled';
 export type FileTransferErrorReason = 'tooLarge' | 'other';
+
+/** No incoming-transfer progress for this long -> treat the stream as stalled and fail it. */
+export const STALL_TIMEOUT_MS = 30_000;
 
 export interface FileTransferItem {
     /** LiveKit stream id -- unique per transfer, stable across progress updates. */

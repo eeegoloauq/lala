@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 
@@ -236,9 +236,25 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
         return () => el.removeEventListener('scroll', onScroll);
     }, []);
 
+    // ChatPanel remounts fresh every time it's opened (docked variant unmounts after its close
+    // transition, overlay/fullscreen variants are conditionally rendered) — so the very first
+    // commit always has a full backlog of `entries` already in place. Jump straight to the
+    // bottom before paint so opening the panel never visibly animates scrolling through the
+    // whole history; smooth scrolling is reserved for messages arriving after that.
+    const skipNextAutoScrollRef = useRef(true);
+    useLayoutEffect(() => {
+        const el = messagesRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+    }, []);
+
     // Auto-scroll only when already near the bottom; otherwise surface a "jump to latest" pill
     // instead of yanking the view out from under someone reading scrollback (standard chat UX).
     useEffect(() => {
+        if (skipNextAutoScrollRef.current) {
+            // Initial position was already handled instantly by the layout effect above.
+            skipNextAutoScrollRef.current = false;
+            return;
+        }
         if (isNearBottomRef.current) {
             bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
         } else if (entries.length > 0) {
