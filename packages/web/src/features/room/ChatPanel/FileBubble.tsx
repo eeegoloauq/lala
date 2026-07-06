@@ -39,6 +39,23 @@ export function FileBubble({ item, onCancel, onOpenImage, t }: FileBubbleProps) 
         );
     }
 
+    if (item.status === 'queued') {
+        return (
+            <div className="cp-file cp-file-queued">
+                <FileIcon />
+                <div className="cp-file-info">
+                    <span className="cp-file-name" title={item.fileName}>{item.fileName}</span>
+                    <span className="cp-file-status">{t('chat.fileQueued')}</span>
+                </div>
+                {item.direction === 'out' && onCancel && (
+                    <button className="cp-file-cancel" onClick={() => onCancel(item.id)} title={t('chat.cancelTransfer')}>
+                        ✕
+                    </button>
+                )}
+            </div>
+        );
+    }
+
     if (item.status === 'active') {
         const pct = item.progress !== undefined ? Math.round(item.progress * 100) : null;
         return (

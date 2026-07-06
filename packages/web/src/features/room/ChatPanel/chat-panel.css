@@ -523,6 +523,10 @@
   color: var(--text-muted);
 }
 
+.cp-file-queued {
+  opacity: 0.65;
+}
+
 .cp-file-info {
   display: flex;
   flex-direction: column;
