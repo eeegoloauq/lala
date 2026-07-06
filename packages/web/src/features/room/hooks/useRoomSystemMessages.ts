@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
-import { RoomEvent, Track } from 'livekit-client';
-import type { Participant, RemoteParticipant, RemoteTrackPublication, Room } from 'livekit-client';
+import { ConnectionState, ParticipantEvent, RoomEvent, Track } from 'livekit-client';
+import type { LocalTrackPublication, Participant, RemoteParticipant, RemoteTrackPublication, Room } from 'livekit-client';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 import { playJoinSound } from '../../../lib/sounds';
 import { speak } from '../../../lib/tts';
@@ -72,15 +72,60 @@ export function useRoomSystemMessages(
     // Self-join sound + initial system message.
     // Not covered by the room.on(ParticipantConnected) listener below — LiveKit never
     // fires that event for the local participant connecting.
+    //
+    // Played only once the room is actually connected AND (if a mic is
+    // available at all) our own mic publish has landed — not at mount time,
+    // which can be well before either. This rides the chime through the
+    // output-mixer switch that Chromium's ChromeWideEchoCancellation already
+    // triggers when our AEC-enabled capture starts (see RoomView.tsx's
+    // audioOptions comment), instead of the chime itself being the sound that
+    // gets mangled by that switch. If no mic publish arrives within ~300ms of
+    // connecting (permission denied / no device), play anyway rather than
+    // waiting forever.
     useEffect(() => {
-        playJoinSound();
-        setSystemEntries([{
-            kind: 'system',
-            id: 'self-join',
-            timestamp: Date.now(),
-            order: orderCounterRef.current++,
-            text: t('system.youJoined'),
-        }]);
+        let played = false;
+        let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const playSelfJoin = () => {
+            if (played) return;
+            played = true;
+            if (fallbackTimer) clearTimeout(fallbackTimer);
+            playJoinSound();
+            setSystemEntries([{
+                kind: 'system',
+                id: 'self-join',
+                timestamp: Date.now(),
+                order: orderCounterRef.current++,
+                text: t('system.youJoined'),
+            }]);
+        };
+
+        const onMicPublished = (pub: LocalTrackPublication) => {
+            if (pub.source === Track.Source.Microphone) playSelfJoin();
+        };
+
+        // Called once we know we're connected — either immediately (already
+        // connected by the time this effect ran) or via RoomEvent.Connected.
+        const armMicWait = () => {
+            if (room.localParticipant.isMicrophoneEnabled) {
+                playSelfJoin();
+                return;
+            }
+            room.localParticipant.on(ParticipantEvent.LocalTrackPublished, onMicPublished);
+            fallbackTimer = setTimeout(playSelfJoin, 300);
+        };
+
+        if (room.state === ConnectionState.Connected) {
+            armMicWait();
+        } else {
+            room.once(RoomEvent.Connected, armMicWait);
+        }
+
+        return () => {
+            room.off(RoomEvent.Connected, armMicWait);
+            room.localParticipant.off(ParticipantEvent.LocalTrackPublished, onMicPublished);
+            if (fallbackTimer) clearTimeout(fallbackTimer);
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
