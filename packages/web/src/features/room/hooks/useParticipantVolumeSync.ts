@@ -79,7 +79,13 @@ export function useParticipantVolumeSync({
         const start = performance.now();
         let raf = 0;
         const tick = (now: number) => {
-            fadeRef.current = Math.min(1, (now - start) / FADE_MS);
+            // Clamp BOTH ends: the rAF timestamp is the frame-start time, which
+            // can be a few ms BEFORE `start` (captured mid-frame in the effect),
+            // so (now - start) may be slightly negative on the first tick. Without
+            // the lower clamp that negative reaches setVolume -> el.volume, and the
+            // browser throws "volume ... outside the range [0, 1]", crashing to the
+            // error boundary.
+            fadeRef.current = Math.max(0, Math.min(1, (now - start) / FADE_MS));
             applyMicVolumes();
             applyScreenVolumes();
             if (fadeRef.current < 1) raf = requestAnimationFrame(tick);
