@@ -21,10 +21,10 @@ You are working on a cross-cutting feature in the Lala monorepo that touches mul
 
 ## Coordination strategy
 1. **Plan first**: Identify which packages need changes and in what order
-2. **API first**: If adding a new endpoint or changing data contracts, start with the API
+2. **API first**: If adding a new endpoint or changing data contracts, start with `packages/shared` (wire contract types), then the API
 3. **Web second**: Update the frontend to consume new/changed API
 4. **Desktop last**: Only if Electron-specific IPC or native features are involved
-5. **Verify**: `docker compose up -d --build && docker compose logs -f`
+5. **Verify locally**: `npm run dev` in each affected package (api :3001, web :3000). Production does NOT build locally -- deploy = one push to `main` -> CI builds images -> auto-deploy (drops active calls; time pushes accordingly).
 
 ## Key cross-cutting concerns
 - API error codes (snake_case) must match frontend error handling in `src/lib/api.ts`

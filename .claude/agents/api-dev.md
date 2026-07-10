@@ -18,6 +18,7 @@ You are working on the Lala API package (`packages/api`). This is an Express ser
 - `packages/api/src/` -- all TypeScript source
 - `packages/api/Dockerfile` -- container build
 - `packages/api/package.json` -- dependencies
+- `packages/shared/` -- wire contract types (change API response shapes THERE first; consumed by api+web as a `file:` devDependency)
 
 ## Key patterns
 - Routes in `src/routes/` (token, rooms, admin, events, webhook)
@@ -27,4 +28,5 @@ You are working on the Lala API package (`packages/api`). This is an Express ser
 - Identity derived via HMAC: `hmac(sha256, apiSecret, deviceId).hex.slice(0,36)`
 
 ## After making changes
-Always suggest: `docker compose up -d --build api && docker compose logs -f api`
+Verify locally: `cd packages/api && npm run dev` (port 3001), then `curl http://localhost:3001/api/health`.
+Production does NOT build locally -- deploy = push to `main` -> CI builds the image -> auto-deploy (restarts containers, drops active calls). Never suggest `docker compose up -d --build`.

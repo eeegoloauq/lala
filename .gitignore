@@ -28,9 +28,12 @@ Thumbs.db
 *.swo
 *~
 
-# Claude Code — local settings (personal, not shared)
+# Claude Code — local settings & state (personal, not shared)
 .claude/settings.local.json
 .claude/hooks-config.local.json
+.claude/scheduled_tasks.lock
+.claude/agent-memory-local/
+CLAUDE.local.md
 
 # Electron build output
 packages/desktop/out/
