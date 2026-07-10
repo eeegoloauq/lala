@@ -1,7 +1,6 @@
 ---
 name: full-stack
 description: "Use this agent for features that span multiple packages (API + Web + Desktop) -- coordinates changes across the stack"
-model: opus
 tools:
   - Read
   - Edit
