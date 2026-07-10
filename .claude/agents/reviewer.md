@@ -1,7 +1,6 @@
 ---
 name: reviewer
 description: "Use this agent to review code changes for security, correctness, and consistency with project patterns"
-model: opus
 tools:
   - Read
   - Glob

@@ -1,7 +1,6 @@
 ---
 name: web-dev
 description: "PROACTIVELY use this agent for tasks involving the React frontend (packages/web) -- components, hooks, styles, themes, LiveKit UI"
-model: sonnet
 tools:
   - Read
   - Edit

@@ -1,7 +1,6 @@
 ---
 name: api-dev
 description: "PROACTIVELY use this agent for tasks involving the Express API package (packages/api) -- routes, middleware, LiveKit SDK, Redis, webhooks"
-model: sonnet
 tools:
   - Read
   - Edit

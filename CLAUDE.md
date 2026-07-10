@@ -12,6 +12,8 @@ Production does NOT build. CI is the only build path:
 push to `main` -> CI builds `api`+`web` images -> container registry
 (SHA-tagged) -> auto-deploy pulls images and restarts.
 A deploy restarts containers and drops active calls -- time pushes accordingly.
+Day-to-day work goes on the `dev` branch; merging `dev` into `main` and pushing
+IS the deploy action -- keep them separate on purpose.
 
 ```bash
 # Deploy = push

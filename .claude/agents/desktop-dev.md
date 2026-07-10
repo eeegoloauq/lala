@@ -1,7 +1,6 @@
 ---
 name: desktop-dev
 description: "Use this agent for tasks involving the Electron desktop client (packages/desktop) -- main process, IPC, preload, auto-updater, screen share"
-model: sonnet
 tools:
   - Read
   - Edit

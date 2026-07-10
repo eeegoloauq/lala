@@ -1,6 +1,7 @@
 ---
 name: deploy
 description: Deploy Lala to production. Use when the user says "deploy", "задеплой", "выкати", or after changes are ready to ship.
+disable-model-invocation: true
 ---
 
 # Deploy
