@@ -38,7 +38,7 @@ Browser → Nginx (:80→:3000): /) static SPA, /api/* → API (:3001)
 - UI strings in Russian + English via `react-i18next` (`src/locales/`); code comments in English.
 - API error codes snake_case: `server_error`, `invalid_input`, `wrong_password`, `rate_limited`.
 - localStorage keys prefixed `lala_`/`lala-` (full list in `packages/web/CLAUDE.md`).
-- CSS: 6 themes via `[data-theme]` variable overrides in `globals.css`; new components auto-themed via structural vars.
+- CSS: 5 themes via `[data-theme]` variable overrides in `globals.css`; new components auto-themed via structural vars.
 - Security: HMAC-derived stable identity, scrypt password hashing, E2EE for password rooms,
   admin secrets in Redis only. See Security in `packages/api/CLAUDE.md`.
 - Parallel agents: API and Web changes are independent — one agent per package; push once at the end.
