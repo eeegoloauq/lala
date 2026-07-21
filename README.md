@@ -14,7 +14,7 @@ Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are 
 - Screen sharing with quality/FPS controls and system audio (Windows)
 - Chat over data channels with emoji picker and TTS
 - Room admin — kick, ban, mute; passwords hashed with scrypt
-- 6 themes — dark, light, AMOLED, Discord, retro, Windows XP
+- 5 themes — dark, light, AMOLED, Discord, Windows XP
 - RNNoise noise suppression (AudioWorklet)
 - Desktop app with auto-updates, tray, native screen share picker
 
