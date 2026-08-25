@@ -41,9 +41,8 @@ Works in any browser, but there's a native client too:
 
 You need: Docker, a server with a public IP, a domain.
 
-Idle, the four containers together hold about 75 MB — web 6, api 22, LiveKit 43,
-Redis 4 — on a 1 GB, 2-core VM. A call grows LiveKit and nothing else: it carries
-the media, the API only signals.
+Idle, all four containers together hold about 75 MB. A call grows LiveKit and
+nothing else — it carries the media, the API only signals.
 
 There are no prebuilt public images — build the two images from the repo root
 (the root is the build context so `packages/shared` is reachable), then point
