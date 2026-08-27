@@ -41,8 +41,8 @@ Works in any browser, but there's a native client too:
 
 You need: Docker, a server with a public IP, a domain.
 
-Idle, all four containers together hold about 75 MB. A call grows LiveKit and
-nothing else — it carries the media, the API only signals.
+Idle, all four containers together hold about 75 MB; a call grows LiveKit,
+which carries the media.
 
 There are no prebuilt public images — build the two images from the repo root
 (the root is the build context so `packages/shared` is reachable), then point
@@ -108,7 +108,7 @@ Four packages:
 - `packages/desktop` — Electron. Native screen share, tray, auto-updates.
 - `packages/shared` — types-only wire contract between api and web.
 
-No database. Identity = HMAC of a stable device UUID — same device, same participant, always.
+No database. Identity = HMAC of a stable device UUID — same device, same participant.
 
 ## Security
 
@@ -116,10 +116,8 @@ No database. Identity = HMAC of a stable device UUID — same device, same parti
 - HMAC identity — unforgeable without the API secret
 - Passwords stored as scrypt hashes, constant-time comparison
 - Admin secrets: 128-bit random, Redis-only (never in room metadata)
-- Rate limiting: nginx + Express, client-side chat throttle
-- Input sanitization: null bytes, RTL overrides, control chars stripped
-- CSP without inline scripts, X-Frame-Options, X-Content-Type-Options, HSTS
-- Containers run as non-root with `no-new-privileges` and memory limits
+- Rate limiting in nginx and Express; null bytes, RTL overrides and control chars stripped from input
+- CSP without inline scripts, HSTS, containers non-root with `no-new-privileges` and memory limits
 
 Found a vulnerability? See [SECURITY.md](SECURITY.md).
 
@@ -132,9 +130,8 @@ cd packages/web && npm install && npm run dev   # :3000
 
 ## Contributing
 
-Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, how to
-test changes (with a real call), and what to expect. Keep changes small and focused; for anything
-bigger than a fix, open an issue first so we can talk it over.
+Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup and how to
+test changes with a real call. For anything bigger than a fix, open an issue first.
 
 ## License
 
