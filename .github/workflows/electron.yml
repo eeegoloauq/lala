@@ -86,7 +86,13 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="v${VERSION}"
-          cat > /tmp/release-notes.md <<EOF
+          # What changed comes from the annotated tag; the tables below are boilerplate.
+          git config --global --add safe.directory "$PWD"
+          : > /tmp/release-notes.md
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null || true
+          git tag -l --format='%(contents)' "$TAG" > /tmp/release-notes.md
+          if [ -s /tmp/release-notes.md ]; then printf '\n' >> /tmp/release-notes.md; fi
+          cat >> /tmp/release-notes.md <<EOF
           ## Downloads
 
           | Platform | File | Description |
