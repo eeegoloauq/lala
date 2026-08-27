@@ -1,0 +1,29 @@
+# Runs in Forgejo, where the pull requests are. GitHub keeps its own workflows:
+# a repository with .forgejo/workflows/ makes Forgejo ignore .github/workflows
+# entirely, so this cannot live there.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+      - name: api
+        run: |
+          cd packages/api
+          npm ci
+          npm run build
+      - name: web
+        env:
+          # Baked in at build time; any syntactically valid URL builds.
+          VITE_LIVEKIT_URL: wss://livekit.invalid
+        run: |
+          cd packages/web
+          npm ci
+          npm run lint
+          npm run build
