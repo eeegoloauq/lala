@@ -52,19 +52,3 @@ Browser → Nginx (:80→:3000): /) static SPA, /api/* → API (:3001)
 - Electron screen-share `audio: 'loopbackWithoutChrome'` works only on Windows.
 - E2EE worker bundled by Vite via `livekit-client/e2ee-worker?worker` import in `RoomView.tsx` —
   stays in sync with installed livekit-client automatically.
-
-## Releases
-
-A release is a tag. Pushing `vX.Y.Z` runs `.github/workflows/electron.yml`, which
-builds the desktop artifacts and then sets the release body to the annotated tag's
-message with a fixed downloads-and-install table appended. No commit list is
-generated, so whatever is not in the tag message is not in the release, and a
-lightweight tag or `-m ""` ships nothing but the table.
-
-Write it for someone installing this, not for someone reading the diff: what
-changed in behaviour, and what they have to do on upgrade — auto-update means they
-get it whether or not they read the note.
-
-Nothing spans versions on its own. A major does not roll its minors up: if `v2.0.0`
-should read as a summary of the whole line rather than of the last step, that
-summary has to be written into the tag message by hand.
