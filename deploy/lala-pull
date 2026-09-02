@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Pull-based deploy. CI publishes the images and nothing more; this host decides
+# when to move, so no key of ours lives on the build machine and nothing there
+# can reach in here. The branch is read from GitHub and the images from GHCR:
+# this host sits outside the home network and reaches neither Forgejo nor its
+# registry.
+#
+# What is running is read off the container rather than out of a file, so a run
+# that dies half way leaves nothing to repair. A release that does not come up
+# is put back, and its commit is remembered: without that the timer would try
+# the same broken release every five minutes for as long as it is at the tip.
+set -euo pipefail
+
+cd /opt/lala
+REGISTRY=$(grep -E '^LALA_REGISTRY=' .env | cut -d= -f2-)
+DEADLINE=120   # seconds to come up before this counts as a bad release
+SKIP=/var/lib/lala-pull/rejected
+
+running() { docker inspect -f '{{.Config.Image}}' lala-api 2>/dev/null | sed 's/.*://'; }
+
+alive() {
+  local until=$((SECONDS + DEADLINE))
+  while [ $SECONDS -lt $until ]; do
+    curl -fsS -o /dev/null --max-time 5 http://127.0.0.1:3000/api/health && return 0
+    sleep 5
+  done
+  return 1
+}
+
+# Rollback cannot go through the deploy script: that one only fast-forwards.
+back_to() {
+  git -c advice.detachedHead=false checkout --quiet --detach "$1"
+  sed -i "s/^LALA_TAG=.*/LALA_TAG=$1/" .env
+  LALA_TAG="$1" docker compose up -d
+}
+
+mkdir -p "$(dirname "$SKIP")"
+have=$(running)
+git fetch --quiet origin main
+want=$(git rev-parse origin/main)
+[ "$want" = "$have" ] && exit 0
+[ -f "$SKIP" ] && [ "$(cat "$SKIP")" = "$want" ] && exit 0
+
+# The image is built after the commit lands, so a fresh commit usually has none
+# yet. That is not an error — wait for the next tick.
+if ! docker pull -q "$REGISTRY/lala-api:$want" >/dev/null 2>&1 \
+   || ! docker pull -q "$REGISTRY/lala-web:$want" >/dev/null 2>&1; then
+  echo "$(date -Is) nothing published for ${want:0:12} yet"
+  exit 0
+fi
+
+echo "$(date -Is) moving ${have:0:12} -> ${want:0:12}"
+/usr/local/bin/lala-deploy.sh "$want"
+
+if alive; then
+  echo "$(date -Is) ${want:0:12} is up"
+  rm -f "$SKIP"
+  exit 0
+fi
+
+echo "$(date -Is) ${want:0:12} did not come up, going back to ${have:0:12}" >&2
+echo "$want" > "$SKIP"
+back_to "$have"
+alive && echo "$(date -Is) back on ${have:0:12}" >&2
+exit 1

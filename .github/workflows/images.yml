@@ -1,0 +1,61 @@
+# Prod runs on an arm64 box that cannot reach the Forgejo registry, so the
+# images are built here, on GitHub's native arm64 runners, and published to
+# GHCR. Forgejo still owns the code and the pull requests; this repo is its
+# mirror, and a mirror push fires this workflow like any other push.
+name: images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_API: ghcr.io/${{ github.repository_owner }}/lala-api
+  IMAGE_WEB: ghcr.io/${{ github.repository_owner }}/lala-web
+
+jobs:
+  # There are still no tests, so the typecheck is the only thing between a
+  # broken build and prod. It gates the images, as it did in Forgejo.
+  check:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Typecheck api
+        run: cd packages/api && npm ci --ignore-scripts && npx tsc --noEmit
+      - name: Typecheck web
+        run: cd packages/web && npm ci --ignore-scripts && npx tsc --noEmit
+
+  build:
+    runs-on: ubuntu-24.04-arm
+    needs: check
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Build context is the repo root so packages/shared (types-only file:
+      # dependency of api and web) is reachable inside the builds. Images are
+      # SHA-tagged only — no mutable :latest, so what runs in prod is pinned
+      # and a rollback is unambiguous.
+      - name: Build & push api
+        run: |
+          docker build -f packages/api/Dockerfile -t "$IMAGE_API:${{ github.sha }}" .
+          docker push "$IMAGE_API:${{ github.sha }}"
+
+      - name: Build & push web
+        run: |
+          docker build -f packages/web/Dockerfile \
+            --build-arg VITE_LIVEKIT_URL=wss://rtc.egor-solovev.dev \
+            -t "$IMAGE_WEB:${{ github.sha }}" .
+          docker push "$IMAGE_WEB:${{ github.sha }}"
+
+# There is no deploy job on purpose: the machine that runs this service watches
+# the branch and the registry itself and updates when they move. CI publishes
+# an image and holds no way in.
