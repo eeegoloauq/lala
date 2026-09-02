@@ -30,10 +30,13 @@ services:
       timeout: 5s
       retries: 3
     ports:
-      - "7880:7880"       # API + WebSocket signaling
+      - "127.0.0.1:7880:7880" # API + WebSocket signaling (public via the proxy)
       - "7881:7881"       # ICE/TCP fallback
       - "50000:50000/udp" # WebRTC media (UDP mux)
       - "3478:3478/udp"   # TURN (UDP) — for clients behind strict NAT
+    networks:
+      - default
+      - edge
     volumes:
       - ./livekit.yaml.example:/etc/livekit-template.yaml:ro
     depends_on:
@@ -61,7 +64,7 @@ services:
 
   # ─── API Server (token + rooms) ───
   api:
-    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-api:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/lala-api:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
     container_name: lala-api
     restart: unless-stopped
     expose:
@@ -88,7 +91,7 @@ services:
 
   # ─── Web Frontend ───
   web:
-    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/homelab/lala-web:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/lala-web:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
     container_name: lala-web
     restart: unless-stopped
     environment:
@@ -97,7 +100,10 @@ services:
       - no-new-privileges:true
     mem_limit: 256m
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
+    networks:
+      - default
+      - edge
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
       interval: 15s
@@ -105,6 +111,10 @@ services:
       retries: 3
     depends_on:
       - api
+
+networks:
+  edge:
+    external: true
 
 volumes:
   redis_data:

@@ -1,0 +1,9 @@
+[Unit]
+Description=Deploy lala when main moves
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/usr/local/bin/lala-pull
