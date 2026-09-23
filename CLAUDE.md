@@ -11,7 +11,7 @@ Lala is a self-hosted voice and video chat app for people who want a Mumble/Disc
 
 ## Delivery and rollback
 
-Work normally lands on `dev`. A mirrored push to `main` starts CI image builds; the pull-based production deploy picks up SHA-tagged images and restarts containers. Active calls drop during a deploy. Production does not build images. A failed health check restores the previous image tag and records the rejected commit so the timer does not retry it. See `deploy/README.md` and `deploy/lala-pull` for the current deploy and rollback procedure. Desktop releases use `release.sh` and a `v*` tag.
+Work lands on `main`. A mirrored push to `main` starts CI image builds; the pull-based production deploy picks up SHA-tagged images and restarts containers. Active calls drop during a deploy. Production does not build images. A failed health check restores the previous image tag and records the rejected commit so the timer does not retry it. `deploy/lala-pull` is the deploy and rollback procedure. Desktop releases use `release.sh` and a `v*` tag.
 
 ## Decisions and gotchas
 
