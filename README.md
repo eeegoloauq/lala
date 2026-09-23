@@ -44,9 +44,8 @@ You need: Docker, a server with a public IP, a domain.
 Idle, all four containers together hold about 75 MB; a call grows LiveKit,
 which carries the media.
 
-There are no prebuilt public images — build the two images from the repo root
-(the root is the build context so `packages/shared` is reachable), then point
-compose at them:
+To build images locally, use the repo root as the build context so
+`packages/shared` is reachable, then point compose at them:
 
 ```bash
 git clone https://github.com/eeegoloauq/lala.git
