@@ -1,28 +1,26 @@
-<div align="center">
-
 # Lala
 
-**Self-hosted voice & video chat inspired by Mumble and Discord.**
+Self-hosted voice and video chat inspired by Mumble and Discord, built on
+[LiveKit](https://livekit.io/). No database: rooms are ephemeral, chat goes over data channels, and
+state lives in LiveKit and Redis.
 
 [![Release](https://img.shields.io/github/v/release/eeegoloauq/lala?label=release)](https://github.com/eeegoloauq/lala/releases/latest)
+[![Images](https://github.com/eeegoloauq/lala/actions/workflows/images.yml/badge.svg?branch=main)](https://github.com/eeegoloauq/lala/actions/workflows/images.yml)
+[![Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/package/lala-desktop/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are ephemeral, chat goes
-over data channels, state lives in LiveKit + Redis.
+Demo: [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
 
-**Try it:** [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
-
-<img src="screenshots/stream.png" alt="Screen sharing in Lala" width="85%">
-
-</div>
+![Screen sharing in Lala](screenshots/stream.png)
 
 ## What it does
 
 - Voice and video with configurable audio quality (speech / music / high-quality stereo)
-- E2EE for password-protected rooms (AES-GCM, server never sees plaintext)
+- End-to-end encryption for password-protected rooms in browsers that support it (AES-GCM)
 - Screen sharing with quality/FPS controls and system audio (Windows)
 - Chat over data channels with emoji picker and TTS
-- Room admin — kick, ban, mute; passwords hashed with scrypt
-- 5 themes — dark, light, AMOLED, Discord, Windows XP
+- Room admin: kick, ban, mute; passwords hashed with scrypt
+- 5 themes: dark, light, AMOLED, Discord, Windows XP
 - RNNoise noise suppression (AudioWorklet)
 - Desktop app with auto-updates, tray, native screen share picker
 
@@ -33,27 +31,26 @@ over data channels, state lives in LiveKit + Redis.
 
 ## Desktop app
 
-Works in any browser, but there's a native client too:
+Lala works in the browser. There is also a desktop client:
 
-- **Windows** — installer from [Releases](https://github.com/eeegoloauq/lala/releases), auto-updates itself.
-- **Fedora** — via [Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/), updates come with `dnf upgrade`:
+- **Windows**: installer from [Releases](https://github.com/eeegoloauq/lala/releases), auto-updates itself.
+- **Fedora**: [Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/), updated with `dnf upgrade`:
 
   ```bash
   sudo dnf copr enable eeegoloauq/lala
   sudo dnf install lala-desktop
   ```
 
-- **Other Linux** — AppImage / rpm / tar.gz from [Releases](https://github.com/eeegoloauq/lala/releases).
+- **Other Linux**: AppImage / rpm / tar.gz from [Releases](https://github.com/eeegoloauq/lala/releases).
 
 ## Self-hosting
 
 You need: Docker, a server with a public IP, a domain.
 
-Idle, all four containers together hold about 75 MB; a call grows LiveKit,
-which carries the media.
+The four containers use about 75 MB of RAM when idle; LiveKit grows during calls.
 
-To build images locally, use the repo root as the build context so
-`packages/shared` is reachable, then point compose at them:
+The web image has the LiveKit URL built in, so build the images yourself. Use the repo root as the
+build context so `packages/shared` is included:
 
 ```bash
 git clone https://github.com/eeegoloauq/lala.git
@@ -67,14 +64,13 @@ docker build -f packages/web/Dockerfile \
   --build-arg VITE_LIVEKIT_URL=wss://rtc.example.com \
   -t local/homelab/lala-web:dev .
 
+docker network create edge   # compose attaches web and LiveKit to it for your reverse proxy
 docker compose up -d
 ```
 
-Web UI runs on port 3000. Put a reverse proxy in front for TLS — both for the
-UI and for LiveKit signaling (`wss://rtc.example.com` → `:7880`).
-
-> Note: `LIVEKIT_URL` is baked into the web image at build time
-> (`VITE_LIVEKIT_URL`), so rebuild `lala-web` if it changes.
+The web UI runs on port 3000. Put a reverse proxy with TLS in front of it and of LiveKit
+signaling (`wss://rtc.example.com` → `:7880`). If `LIVEKIT_URL` changes, rebuild `lala-web` with
+the new `VITE_LIVEKIT_URL`.
 
 ### Environment
 
@@ -110,17 +106,17 @@ Browser → Nginx (:3000)
 
 Four packages:
 
-- `packages/api` — Express. Token generation, room CRUD, admin actions, SSE. Uses `livekit-server-sdk` v2.
-- `packages/web` — Vite + React. `livekit-client` v2, custom UI.
-- `packages/desktop` — Electron. Native screen share, tray, auto-updates.
-- `packages/shared` — types-only wire contract between api and web.
+- `packages/api`: Express. Token generation, room CRUD, admin actions, SSE. Uses `livekit-server-sdk` v2.
+- `packages/web`: Vite and React. `livekit-client` v2, custom UI.
+- `packages/desktop`: Electron. Native screen share, tray, auto-updates.
+- `packages/shared`: shared types for the api and web wire format.
 
-No database. Identity = HMAC of a stable device UUID — same device, same participant.
+Identity is an HMAC of a stable device UUID, so the same device is always the same participant.
 
 ## Security
 
-- E2EE via WebCrypto AES-GCM (password = encryption key)
-- HMAC identity — unforgeable without the API secret
+- End-to-end encryption with LiveKit's E2EE (AES-GCM), keyed from the room password
+- HMAC identity that cannot be forged without the API secret
 - Passwords stored as scrypt hashes, constant-time comparison
 - Admin secrets: 128-bit random, Redis-only (never in room metadata)
 - Rate limiting in nginx and Express; null bytes, RTL overrides and control chars stripped from input
@@ -132,13 +128,13 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md).
 
 ```bash
 cd packages/api && npm install && npm run dev   # :3001
-cd packages/web && npm install && npm run dev   # :3000
+cd packages/web && npm install && VITE_LIVEKIT_URL=wss://rtc.example.com npm run dev   # :3000
 ```
 
 ## Contributing
 
-Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup and how to
-test changes with a real call. For anything bigger than a fix, open an issue first.
+Issues and PRs are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the dev setup and testing
+with a real call. For anything bigger than a fix, open an issue first.
 
 ## License
 
