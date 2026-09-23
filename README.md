@@ -1,11 +1,19 @@
+<div align="center">
+
 # Lala
 
-Self-hosted voice & video chat inspired by Mumble and Discord.
-Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are ephemeral, chat goes over data channels, state lives in LiveKit + Redis.
+**Self-hosted voice & video chat inspired by Mumble and Discord.**
 
-![Screen sharing in Lala](screenshots/stream.png)
+[![Release](https://img.shields.io/github/v/release/eeegoloauq/lala?label=release)](https://github.com/eeegoloauq/lala/releases/latest)
+
+Built on [LiveKit](https://livekit.io/) (WebRTC SFU). No database — rooms are ephemeral, chat goes
+over data channels, state lives in LiveKit + Redis.
 
 **Try it:** [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
+
+<img src="screenshots/stream.png" alt="Screen sharing in Lala" width="85%">
+
+</div>
 
 ## What it does
 
