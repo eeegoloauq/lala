@@ -19,6 +19,11 @@ async function enter(browser: Browser, name: string, settings?: object): Promise
     return { page, errors };
 }
 
+// Participants of one test must not linger in the next one's rooms.
+test.afterEach(async ({ browser }) => {
+    await Promise.all(browser.contexts().map(c => c.close()));
+});
+
 /** Live remote audio elements and decoded video sizes on the page. */
 const media = (page: Page) => page.evaluate(() => ({
     audio: [...document.querySelectorAll('audio')]
@@ -71,4 +76,74 @@ test('two people talk in a password room', async ({ browser }) => {
 
     expect(alice.errors).toEqual([]);
     expect(bob.errors).toEqual([]);
+});
+
+test('a viewer receives a screen share', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    await alice.page.getByRole('button', { name: 'Create channel' }).click();
+    await alice.page.getByPlaceholder('e.g. "General"').fill('Screen room');
+    await alice.page.getByRole('button', { name: 'Create', exact: true }).click();
+    await alice.page.waitForURL(/\/room\//);
+
+    const bob = await enter(browser, 'Bob');
+    await bob.page.goto(alice.page.url());
+    await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);
+
+    await alice.page.getByRole('button', { name: 'Share screen' }).click();
+    await alice.page.getByRole('button', { name: 'Start', exact: true }).click();
+    // Bob decodes the screen track: frames have a size and keep advancing.
+    await expect.poll(async () => (await media(bob.page)).videos.some(v => v.width > 0 && v.time > 1), { timeout: 20_000 }).toBe(true);
+
+    await alice.page.getByRole('button', { name: 'Stop screen share' }).click();
+    await expect.poll(async () => (await media(bob.page)).videos.length, { timeout: 20_000 }).toBe(0);
+
+    expect(alice.errors).toEqual([]);
+    expect(bob.errors).toEqual([]);
+});
+
+test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    await alice.page.getByRole('button', { name: 'Create channel' }).click();
+    await alice.page.getByPlaceholder('e.g. "General"').fill('Admin room');
+    await alice.page.getByRole('button', { name: 'Create', exact: true }).click();
+    await alice.page.waitForURL(/\/room\//);
+    const roomUrl = alice.page.url();
+
+    const bob = await enter(browser, 'Bob');
+    const join = async () => {
+        await bob.page.goto(roomUrl);
+        await expect.poll(async () => (await media(alice.page)).audio, { timeout: 20_000 }).toBe(1);
+    };
+    const adminAction = async (action: string) => {
+        await alice.page.locator('.p-tile', { hasText: 'Bob' }).click({ button: 'right' });
+        await alice.page.getByRole('button', { name: action }).click();
+    };
+    await join();
+
+    // Server mute revokes Bob's publish permission, so his microphone track goes away.
+    await adminAction('Server mute');
+    await expect(alice.page.locator('.p-tile', { hasText: 'Bob' }).getByTitle('Muted by admin')).toBeVisible({ timeout: 10_000 });
+    await expect.poll(async () => (await media(alice.page)).audio, { timeout: 10_000 }).toBe(0);
+    await adminAction('Allow microphone');
+    await expect(alice.page.locator('.p-tile', { hasText: 'Bob' }).getByTitle('Muted by admin')).toBeHidden({ timeout: 10_000 });
+
+    // A kicked participant lands back on the lobby and may rejoin.
+    await adminAction('Kick');
+    await bob.page.waitForURL(url => !url.pathname.startsWith('/room/'), { timeout: 10_000 });
+    await join();
+
+    // A banned one may not.
+    await adminAction('Ban');
+    await bob.page.waitForURL(url => !url.pathname.startsWith('/room/'), { timeout: 10_000 });
+    await bob.page.goto(roomUrl);
+    await expect(bob.page.getByText('You are banned from this channel')).toBeVisible();
+
+    // Deleting the room drops Alice's own connection, which the SDK logs as data channel errors.
+    expect(alice.errors).toEqual([]);
+    await alice.page.locator('.channel-item', { hasText: 'Admin room' }).click({ button: 'right' });
+    await alice.page.getByRole('button', { name: 'Delete room' }).click();
+    const deleted = alice.page.waitForResponse(r => r.request().method() === 'DELETE');
+    await alice.page.getByRole('button', { name: 'Click again to delete' }).click();
+    expect((await deleted).status()).toBe(200);
+    await expect(bob.page.locator('.channel-item', { hasText: 'Admin room' })).toBeHidden({ timeout: 10_000 });
 });

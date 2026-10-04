@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export const SERVER_PASSWORD = 'e2e-server-password';
 
-// Builds and starts the real stack: LiveKit, the API and the production web bundle
+// Builds and starts the real stack: LiveKit, Redis, the API and the production web bundle
 // served by `vite preview` (which proxies /api to :3001 like nginx does).
 export default defineConfig({
     testDir: './tests',
@@ -24,6 +24,12 @@ export default defineConfig({
             timeout: 120_000,
         },
         {
+            command: './redis.sh',
+            port: 6380,
+            reuseExistingServer: false,
+            timeout: 300_000,
+        },
+        {
             command: 'npm ci && npm run build && node dist/index.js',
             cwd: '../packages/api',
             url: 'http://127.0.0.1:3001/api/health',
@@ -34,6 +40,7 @@ export default defineConfig({
                 LIVEKIT_URL: 'ws://127.0.0.1:7880',
                 LIVEKIT_API_KEY: 'e2e-key',
                 LIVEKIT_API_SECRET: 'e2e-secret-not-used-outside-tests-000',
+                REDIS_URL: 'redis://127.0.0.1:6380',
             },
         },
         {
