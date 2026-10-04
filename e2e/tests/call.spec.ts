@@ -14,7 +14,7 @@ async function enter(browser: Browser, name: string, settings?: object): Promise
     await page.getByLabel('Server password').fill(SERVER_PASSWORD);
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByPlaceholder('Your name...').fill(name);
-    await page.getByPlaceholder('Your name...').press('Enter');
+    await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.getByText('Voice Channels')).toBeVisible();
     return { page, errors };
 }

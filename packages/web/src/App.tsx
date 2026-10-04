@@ -28,6 +28,7 @@ export default function App() {
     const { settings, updateSettings } = useSettings();
     const route = useRoute();
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [nameDraft, setNameDraft] = useState('');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { volumes, handleVolumeChange } = usePersistedVolumes();
     const [myAvatar, setMyAvatar] = useState(getMyAvatar);
@@ -128,7 +129,13 @@ export default function App() {
     if (!displayName) {
         return (
             <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
-                <div className="home-card">
+                <form
+                    className="home-card"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (nameDraft.trim()) setDisplayName(nameDraft.trim());
+                    }}
+                >
                     <div className="sidebar-header" style={{ border: 'none', justifyContent: 'center', marginBottom: '16px' }}>
                         <span className="logo" style={{ fontSize: '32px' }}>lala</span>
                     </div>
@@ -137,20 +144,17 @@ export default function App() {
                         <input
                             className="input"
                             placeholder={t('welcome.namePlaceholder')}
+                            aria-label={t('welcome.namePlaceholder')}
                             autoFocus
                             maxLength={MAX_NAME_LENGTH}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    const val = (e.target as HTMLInputElement).value.trim();
-                                    if (val) setDisplayName(val);
-                                }
-                            }}
+                            value={nameDraft}
+                            onChange={e => setNameDraft(e.target.value)}
                         />
                     </div>
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        {t('welcome.pressEnter')}
-                    </p>
-                </div>
+                    <button className="btn btn-primary" type="submit" disabled={!nameDraft.trim()}>
+                        {t('welcome.continue')}
+                    </button>
+                </form>
             </div>
         );
     }

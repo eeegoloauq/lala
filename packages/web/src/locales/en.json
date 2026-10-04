@@ -108,7 +108,7 @@
     "subtitle": "Select a voice channel on the left to get started",
     "enterName": "Enter your name to start talking",
     "namePlaceholder": "Your name...",
-    "pressEnter": "Press Enter to continue",
+    "continue": "Continue",
     "lobbyHint": "Select a channel to join, or create one"
   },
   "chat": {
