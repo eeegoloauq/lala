@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { createHmac, timingSafeEqual } from 'crypto';
-import type { AccessStatus } from '@lala/shared';
+import type { AccessStatus, InviteResponse } from '@lala/shared';
 
 /**
  * Optional instance-wide password (LALA_ACCESS_PASSWORD). LiveKit only admits
@@ -11,10 +11,18 @@ import type { AccessStatus } from '@lala/shared';
  * The session is a stateless cookie: `<expiry>.<hmac(expiry)>`. The HMAC key mixes
  * the LiveKit API secret with the password, so changing the password signs everyone
  * out, and a stolen cookie can't be used to brute-force the password offline.
+ *
+ * An invite is signed the same way under its own label, so it can't pass for a cookie
+ * or the other way round. Until it expires it lets anyone holding the link in without
+ * the password, as often as they use it; changing the password voids every invite
+ * along with every session.
  */
 const COOKIE = 'lala_access';
 const MAX_AGE_S = 30 * 24 * 60 * 60;
 const RENEW_AFTER_S = 24 * 60 * 60;
+// Long enough for an invite to wait in a chat over a weekend, short enough that an
+// old link left lying around stops working on its own.
+const INVITE_MAX_AGE_S = 7 * 24 * 60 * 60;
 const MIN_PASSWORD_LENGTH = 12;
 
 const password = process.env.LALA_ACCESS_PASSWORD ?? '';
@@ -35,17 +43,21 @@ const signingKey = createHmac('sha256', process.env.LIVEKIT_API_SECRET ?? '')
     .digest();
 
 const sign = (expiry: number) => createHmac('sha256', signingKey).update(String(expiry)).digest('base64url');
+const signInvite = (expiry: number) => createHmac('sha256', signingKey).update(`invite\0${expiry}`).digest('base64url');
 
 function safeEqual(a: Buffer, b: Buffer): boolean {
     return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** Expiry (unix seconds) of a valid session cookie, or null. */
-function validCookieExpiry(req: Request): number | null {
-    const value = req.headers.cookie?.match(/(?:^|;\s*)lala_access=([^;]+)/)?.[1];
+/** Expiry (unix seconds) of an unexpired `<expiry>.<signature>` value, or null. */
+function validExpiry(value: string | undefined, signer: (expiry: number) => string): number | null {
     const [expiry, sig] = value?.split('.') ?? [];
     if (!expiry || !sig || !(Number(expiry) > Date.now() / 1000)) return null;
-    return safeEqual(Buffer.from(sig), Buffer.from(sign(Number(expiry)))) ? Number(expiry) : null;
+    return safeEqual(Buffer.from(sig), Buffer.from(signer(Number(expiry)))) ? Number(expiry) : null;
+}
+
+function validCookieExpiry(req: Request): number | null {
+    return validExpiry(req.headers.cookie?.match(/(?:^|;\s*)lala_access=([^;]+)/)?.[1], sign);
 }
 
 function setCookie(res: Response) {
@@ -87,19 +99,35 @@ export function createAccessRouter(): Router {
         standardHeaders: true,
         legacyHeaders: false,
     }), (req, res) => {
-        const provided = req.body?.password;
-        if (typeof provided !== 'string') {
+        const { password: provided, invite } = req.body ?? {};
+        if (typeof provided !== 'string' && typeof invite !== 'string') {
             res.status(400).json({ error: 'invalid_input' });
             return;
         }
         // Compare HMACs so the comparison is constant-time regardless of length.
         const digest = (s: string) => createHmac('sha256', signingKey).update(s).digest();
-        if (!required || !safeEqual(digest(provided), digest(password))) {
+        if (typeof invite === 'string') {
+            if (!required || validExpiry(invite, signInvite) === null) {
+                res.status(401).json({ error: 'invalid_invite' });
+                return;
+            }
+        } else if (!required || !safeEqual(digest(provided), digest(password))) {
             res.status(401).json({ error: 'wrong_password' });
             return;
         }
         setCookie(res);
         res.json({ ok: true });
+    });
+
+    // POST /api/access/invite — an expiring stand-in for the password, for someone already in.
+    router.post('/invite', requireAccess, (_req, res) => {
+        if (!required) {
+            res.status(404).json({ error: 'not_found' });
+            return;
+        }
+        const expiry = Math.floor(Date.now() / 1000) + INVITE_MAX_AGE_S;
+        const response: InviteResponse = { invite: `${expiry}.${signInvite(expiry)}` };
+        res.json(response);
     });
 
     return router;

@@ -1,4 +1,4 @@
-import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus } from './types';
+import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse } from './types';
 import { ApiError } from './types';
 
 const API_BASE = '/api';
@@ -45,6 +45,14 @@ export function getAccess(): Promise<AccessStatus> {
 
 export function submitAccessPassword(password: string): Promise<void> {
     return request<void>('/access', jsonBody({ password }));
+}
+
+export function submitAccessInvite(invite: string): Promise<void> {
+    return request<void>('/access', jsonBody({ invite }));
+}
+
+export async function createAccessInvite(): Promise<string> {
+    return (await request<InviteResponse>('/access/invite', { method: 'POST' })).invite;
 }
 
 export function getToken(req: TokenRequest): Promise<TokenResponse> {

@@ -10,8 +10,6 @@ COPY packages/web/package.json packages/web/package-lock.json packages/web/.npmr
 RUN npm ci
 
 COPY packages/web/ ./
-ARG VITE_LIVEKIT_URL
-ENV VITE_LIVEKIT_URL=$VITE_LIVEKIT_URL
 RUN npm run build
 
 # Production stage - Serve with Nginx

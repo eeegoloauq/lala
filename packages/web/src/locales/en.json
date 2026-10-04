@@ -355,6 +355,7 @@
   },
   "access": {
     "prompt": "This server is private. Enter the server password to continue",
+    "inviteExpired": "This invite link has expired. Ask for a new one or enter the server password",
     "placeholder": "Server password",
     "submit": "Continue",
     "wrongPassword": "Wrong password",

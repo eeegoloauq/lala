@@ -1,6 +1,3 @@
-/** LiveKit WebSocket URL — injected at build time, falls back to hardcoded value */
-export const LIVEKIT_URL = import.meta.env.VITE_LIVEKIT_URL as string;
-
 /** App name */
 export const APP_NAME = 'Lala';
 

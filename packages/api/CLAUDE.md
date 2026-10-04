@@ -7,7 +7,7 @@ Express server for token generation, room management, and admin actions. Uses `l
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/health` | `{ status: 'ok', service: 'lala-api' }` |
-| POST | `/api/token` | HMAC-derived identity, password/ban check, returns `{ token, identity }` |
+| POST | `/api/token` | HMAC-derived identity, password/ban check, returns `{ token, identity, url }` (`url` = `LIVEKIT_URL`, required at startup) |
 | GET | `/api/rooms` | List rooms |
 | POST | `/api/rooms` | Create room (returns `adminSecret`) |
 | DELETE | `/api/rooms/:id` | Delete room (requires `adminSecret` in body) |
@@ -18,7 +18,8 @@ Express server for token generation, room management, and admin actions. Uses `l
 | GET | `/api/rooms/:id/admin/bans` | List banned identities (`adminSecret` via `X-Admin-Secret` header) |
 | GET | `/api/events` | SSE stream for room updates |
 | GET | `/api/access` | `{ required, granted }`; renews a valid session cookie |
-| POST | `/api/access` | `{ password }` -> sets the `lala_access` cookie |
+| POST | `/api/access` | `{ password }` or `{ invite }` -> sets the `lala_access` cookie |
+| POST | `/api/access/invite` | `{ invite }`: 7-day stand-in for the password; needs a session |
 
 With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access answers `401 access_required` without a valid cookie.
 
@@ -29,7 +30,7 @@ With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access a
 - `src/routes/rooms.ts` -- CRUD; room name sanitized (null bytes, RTL, control chars stripped); `maxParticipants` 1-100
 - `src/routes/admin.ts` -- kick/ban/mute/unban; requires `adminSecret`; strips adminSecret before writing metadata
 - `src/routes/events.ts` -- SSE endpoint
-- `src/routes/access.ts` -- optional instance password: `requireAccess` gate; stateless cookie `<expiry>.<hmac>` keyed from `LIVEKIT_API_SECRET` + password (changing either signs everyone out); fails startup if the password is under 12 chars or the secret is missing
+- `src/routes/access.ts` -- optional instance password: `requireAccess` gate; stateless cookie `<expiry>.<hmac>` keyed from `LIVEKIT_API_SECRET` + password (changing either signs everyone out); invites are `<expiry>.<hmac>` under a separate label so they can't pass for cookies; fails startup if the password is under 12 chars or the secret is missing
 - `src/routes/webhook.ts` -- LiveKit webhook (signature-verified); broadcasts SSE; evicts Redis on `room_finished`
 - `src/lib/roomMeta.ts` -- `RoomMeta` interface; `hashPassword`/`verifyPassword` (scrypt); `generateRoomId()` (16 hex, 64-bit entropy)
 - `src/lib/auth.ts` -- `verifyAdminSecret()` (timingSafeEqual), `getAuthedRoom()` (Redis + LK metadata fallback)
@@ -45,7 +46,7 @@ With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access a
 ### Room Passwords
 - Stored as scrypt hash in LiveKit room metadata (`passwordHash: "salt:hash"`). Plain text never stored.
 - Password pool: client tries saved passwords automatically before prompting.
-- Invite links: password in URL hash fragment (`#pw=...`).
+- Invite links: password in URL hash fragment (`#pw=...`), plus `#invite=...` on a private server.
 
 ### E2EE
 - Enabled automatically for password-protected rooms via `ExternalE2EEKeyProvider`.

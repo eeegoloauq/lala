@@ -71,7 +71,7 @@ services:
       - "3001"
     environment:
       - NODE_ENV=production
-      - LIVEKIT_URL=${LIVEKIT_URL}
+      - LIVEKIT_URL=${LIVEKIT_URL:?set LIVEKIT_URL in .env to the public wss:// URL clients connect to}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
       - API_PORT=3001

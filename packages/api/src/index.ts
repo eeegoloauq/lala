@@ -19,6 +19,7 @@ import { connectRedis } from './lib/roomStore';
  * - POST /api/webhook         — LiveKit webhook receiver (raw body, must be before express.json)
  * - GET  /api/events          — SSE stream for real-time room updates
  * - GET/POST /api/access       — Optional instance password (LALA_ACCESS_PASSWORD)
+ * - POST /api/access/invite     — Expiring invite that stands in for that password
  */
 const app = express();
 app.set('trust proxy', 1);
@@ -107,7 +108,7 @@ process.on('uncaughtException', (err) => {
     await connectRedis();
     app.listen(port, '0.0.0.0', () => {
         console.log(`[lala-api] listening on port ${port}`);
-        console.log(`[lala-api] LiveKit: ${process.env.LIVEKIT_URL || 'not configured'}`);
+        console.log(`[lala-api] LiveKit: ${process.env.LIVEKIT_URL}`);
     });
 })().catch(err => {
     console.error('[Lala] Fatal startup error:', err);

@@ -4,9 +4,9 @@ import type { AudioCaptureOptions, RoomOptions, LocalAudioTrack } from 'livekit-
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIVEKIT_URL } from '../../lib/constants';
 import { getToken } from '../../lib/api';
 import { ApiError } from '../../lib/types';
+import type { TokenResponse } from '../../lib/types';
 import { getPassPool, saveToPool, saveRoomPassword, getRoomPassword, getAdminSecret } from '../../lib/passwords';
 import type { AppSettings } from '../settings/types';
 import { RoomShell } from './RoomShell';
@@ -29,7 +29,7 @@ interface RoomViewProps {
 
 export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
-    const [token, setToken] = useState<string | null>(null);
+    const [connection, setConnection] = useState<{ token: string; url: string } | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
     const [countdown, setCountdown] = useState(0);
     const countdownInitRef = useRef(0);
@@ -108,9 +108,8 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     }, [e2eeSetup, audioOptions, settings.audioOutputDeviceId, settings.videoResolution, settings.videoInputDeviceId, settings.audioQuality, settings.simulcast]);
 
     // We construct the Room ourselves (instead of letting <LiveKitRoom> do it via
-    // `options`) so we can call `prepareConnection` on it before the token even
-    // arrives — warming up DNS/TLS while the token fetch (and password/E2EE setup)
-    // is still in flight. Passing a `room` instance makes the `options` prop a
+    // `options`) so we can call `prepareConnection` on it as soon as the token
+    // arrives — warming up DNS/TLS while the E2EE setup is still in flight. Passing a `room` instance makes the `options` prop a
     // no-op (per @livekit/components-react's LiveKitRoomProps doc), so options
     // must be — and are, via roomOptions above — set at construction time here.
     // Recreating the Room when roomOptions changes is correct: e2ee must be
@@ -119,17 +118,6 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     // identity. <LiveKitRoom> handles disconnecting the previous Room instance
     // when the `room` prop changes, so no manual disconnect is needed here.
     const room = useMemo(() => new Room(roomOptions), [roomOptions]);
-
-    // Warm up the connection (DNS + TLS) as soon as we have a Room instance,
-    // without waiting for the token — prepareConnection accepts just a URL.
-    // Safe to call multiple times (e.g. React StrictMode double-invoke): it's
-    // idempotent on the Room side, and since `room` is memoized we don't leak
-    // instances by calling it again.
-    useEffect(() => {
-        room.prepareConnection(LIVEKIT_URL).catch(err => {
-            console.warn('[RoomView] prepareConnection failed:', err instanceof Error ? err.message : err);
-        });
-    }, [room]);
 
     const adminSecret = getAdminSecret(roomName) ?? undefined;
 
@@ -163,8 +151,11 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         return getToken({ room: roomName, name, deviceId: identity, password: pw, adminSecret });
     };
 
-    const applyToken = async (tokenStr: string, pw?: string) => {
+    const applyToken = async ({ token, url }: TokenResponse, pw?: string) => {
         const gen = connectGenRef.current;
+        room.prepareConnection(url, token).catch(err => {
+            console.warn('[RoomView] prepareConnection failed:', err instanceof Error ? err.message : err);
+        });
         if (pw && isE2EESupported()) {
             const keyProvider = new ExternalE2EEKeyProvider();
             await keyProvider.setKey(pw);
@@ -175,7 +166,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         if (connectGenRef.current !== gen) return;
         // Remember working password for this room (for invite links)
         if (pw) saveRoomPassword(roomName, pw);
-        setToken(tokenStr);
+        setConnection({ token, url });
         // Save session for crash recovery
         window.electronAPI?.saveSession?.({ serverUrl: window.location.origin, roomId: roomName });
         // Activate power save blocker
@@ -186,7 +177,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         connectGenRef.current++;
         const gen = connectGenRef.current;
         const mounted = () => connectGenRef.current === gen;
-        setToken(null);
+        setConnection(null);
         setErrorCode(null);
         setNeedsPassword(false);
         setPassword('');
@@ -239,7 +230,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                     const data = await fetchToken(pw);
                     if (!mounted()) return;
                     onIdentityAssigned?.(data.identity);
-                    await applyToken(data.token, pw);
+                    await applyToken(data, pw);
                     return;
                 } catch (err) {
                     if (!mounted()) return;
@@ -266,7 +257,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                 const data = await fetchToken(knownPassword);
                 if (!mounted()) return;
                 onIdentityAssigned?.(data.identity);
-                await applyToken(data.token, knownPassword);
+                await applyToken(data, knownPassword);
             } catch (err) {
                 if (!mounted()) return;
                 if (err instanceof ApiError && (err.code === 'password_required' || err.code === 'wrong_password')) {
@@ -380,7 +371,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
             const data = await fetchToken(password);
             if (savePassword) saveToPool(password);
             onIdentityAssigned?.(data.identity);
-            await applyToken(data.token, password);
+            await applyToken(data, password);
             setNeedsPassword(false);
         } catch (err) {
             if (err instanceof ApiError && err.code === 'wrong_password') {
@@ -505,7 +496,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         );
     }
 
-    if (!token) {
+    if (!connection) {
         return <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>{t('room.connecting')}</p></div>;
     }
 
@@ -513,8 +504,8 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         <div className="main-content">
             <LiveKitRoom
                 room={room}
-                token={token}
-                serverUrl={LIVEKIT_URL}
+                token={connection.token}
+                serverUrl={connection.url}
                 connect={true}
                 video={false}
                 // Mic publish is handled entirely by handleConnected below (the

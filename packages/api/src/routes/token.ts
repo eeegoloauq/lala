@@ -9,6 +9,10 @@ import { getCachedMeta } from '../lib/roomStore';
 import { sanitizeDisplayText } from '../lib/sanitize';
 
 export function createTokenRouter(): Router {
+    // Clients learn where LiveKit is from here, so one web image serves any deployment.
+    const livekitUrl = process.env.LIVEKIT_URL;
+    if (!livekitUrl) throw new Error('LIVEKIT_URL must be set');
+
     const router = Router();
 
     router.post('/', async (req: Request, res: Response): Promise<void> => {
@@ -119,7 +123,7 @@ export function createTokenRouter(): Router {
             });
 
             const jwt = await token.toJwt();
-            const response: TokenResponse = { token: jwt, identity };
+            const response: TokenResponse = { token: jwt, identity, url: livekitUrl };
             res.json(response);
         } catch (error) {
             console.error('Token generation failed:', error);

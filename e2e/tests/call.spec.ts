@@ -41,6 +41,11 @@ test('server password keeps the app closed', async ({ page }) => {
     expect((await page.request.get('/api/rooms')).status()).toBe(401);
     expect((await page.request.get('/api/health')).status()).toBe(200);
 
+    // An invite has to carry the server's signature.
+    await page.goto('/room/abc#invite=9999999999.forged');
+    await expect(page.getByRole('alert')).toHaveText(/invite link has expired/);
+    expect(new URL(page.url()).hash).toBe('');
+
     await page.getByLabel('Server password').fill(SERVER_PASSWORD);
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.getByPlaceholder('Your name...')).toBeVisible();
@@ -51,15 +56,27 @@ test('server password keeps the app closed', async ({ page }) => {
 test('two people talk in a password room', async ({ browser }) => {
     // Alice publishes her camera through the background blur processor.
     const alice = await enter(browser, 'Alice', { cameraEffect: 'blur' });
+    await alice.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     await alice.page.getByRole('button', { name: 'Create channel' }).click();
     await alice.page.getByPlaceholder('e.g. "General"').fill('E2E room');
     await alice.page.getByPlaceholder('No password — open channel').fill('room-password');
     await alice.page.getByRole('button', { name: 'Create', exact: true }).click();
     await alice.page.waitForURL(/\/room\//);
 
-    // Bob joins through an invite link, which carries the room password (and E2EE key).
-    const bob = await enter(browser, 'Bob');
-    await bob.page.goto(alice.page.url() + '#pw=room-password');
+    // Alice copies the invite link: it carries the room password (the E2EE key) and a server invite.
+    const room = alice.page.locator('.channel-item', { hasText: 'E2E room' });
+    await room.hover();
+    await room.getByTitle('Copy invite link').click();
+    await expect(room.locator('.channel-copy-btn.copied')).toBeVisible();
+    const link = await alice.page.evaluate(() => navigator.clipboard.readText());
+    expect(link).toMatch(/#pw=room-password&invite=\d+\.[\w-]+$/);
+
+    // Bob has never entered the server password: the link alone lets him in.
+    const bob = { page: await (await browser.newContext()).newPage(), errors: [] as string[] };
+    bob.page.on('pageerror', e => bob.errors.push(e.message));
+    await bob.page.goto(link);
+    await bob.page.getByPlaceholder('Your name...').fill('Bob');
+    await bob.page.getByRole('button', { name: 'Continue' }).click();
 
     await expect.poll(async () => (await media(alice.page)).audio, { timeout: 20_000 }).toBe(1);
     await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);

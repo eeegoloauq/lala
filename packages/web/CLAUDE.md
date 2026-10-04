@@ -10,15 +10,16 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 - `src/lib/identity.ts` -- stable device UUID + HMAC cache
 - `src/lib/types.ts` -- `RoomInfo`, `TokenResponse`, `ApiError`, `ApiErrorCode`
 - `src/lib/i18n.ts` -- i18next setup (en/ru), localStorage key `lala_language`
-- `src/lib/constants.ts` -- `LIVEKIT_URL`, screen share FPS/bitrate steps
+- `src/lib/constants.ts` -- app name, screen share FPS/bitrate steps
 
 ## Features
 
 ### Access (`features/access/`)
-- `AccessGate.tsx` -- wraps `App` in `main.tsx`; asks `GET /api/access` and shows the instance password screen when needed; any API `access_required` (dispatched by `lib/api.ts` as `lala:access-required`) brings it back
+- `AccessGate.tsx` -- wraps `App` in `main.tsx`; asks `GET /api/access` and shows the instance password screen when needed; any API `access_required` (dispatched by `lib/api.ts` as `lala:access-required`) brings it back. Redeems `#invite=` from the URL at load, leaving `#pw=` to `useRoute`
+- `accessContext.ts` -- `useAccessRequired()`; the sidebar adds a server invite to copied room links when true
 
 ### Room (`features/room/`)
-- `RoomView.tsx` -- token fetch + E2EE setup + `<LiveKitRoom>`; password pool auto-try; rate limit countdown
+- `RoomView.tsx` -- token fetch (it carries the LiveKit URL) + E2EE setup + `<LiveKitRoom>`; password pool auto-try; rate limit countdown
 - `RoomShell.tsx` -- orchestrates everything; mic/screen sounds; keyboard shortcuts; reconnecting banner
 - `VideoGrid/` -- participant tiles, context menu (volume, hide screen share, admin actions), Avatar component
 - `FocusLayout/` -- screen share focused view

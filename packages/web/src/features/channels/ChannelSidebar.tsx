@@ -5,6 +5,8 @@ import { APP_NAME } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { getRoomPassword, getAdminSecret } from '../../lib/passwords';
+import { createAccessInvite } from '../../lib/api';
+import { useAccessRequired } from '../access/accessContext';
 import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { CreateRoomModal } from './CreateRoomModal';
@@ -143,20 +145,25 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         setRenaming(false);
     };
 
+    const accessRequired = useAccessRequired();
     const handleCopyInvite = useCallback((e: React.MouseEvent, roomId: string, hasPassword?: boolean) => {
         e.stopPropagation();
-        let url = `${window.location.origin}/room/${roomId}`;
-        // Include password in hash fragment for password-protected rooms
-        // Hash is never sent to the server (HTTP spec), so this is safe
-        if (hasPassword) {
-            const pw = getRoomPassword(roomId);
-            if (pw) url += `#pw=${encodeURIComponent(pw)}`;
-        }
-        navigator.clipboard.writeText(url).then(() => {
+        // The room password and the server invite go in the fragment, which browsers never send to a server.
+        const buildUrl = async () => {
+            const params = new URLSearchParams();
+            const pw = hasPassword ? getRoomPassword(roomId) : null;
+            if (pw) params.set('pw', pw);
+            if (accessRequired) params.set('invite', await createAccessInvite());
+            const hash = params.toString();
+            return `${window.location.origin}/room/${roomId}${hash ? `#${hash}` : ''}`;
+        };
+        // Handing the clipboard a promise keeps the click's permission to write while the invite loads.
+        const text = buildUrl().then(url => new Blob([url], { type: 'text/plain' }));
+        navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]).then(() => {
             setCopiedRoom(roomId);
             setTimeout(() => setCopiedRoom(null), 1500);
-        });
-    }, []);
+        }).catch(err => console.warn('[ChannelSidebar] Copying the invite failed:', err));
+    }, [accessRequired]);
 
     const handleUserContextMenu = useCallback((e: React.MouseEvent, participantIdentity: string, participantName: string, roomId: string) => {
         e.preventDefault();

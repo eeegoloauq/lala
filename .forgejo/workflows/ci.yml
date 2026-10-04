@@ -22,9 +22,6 @@ jobs:
           npm ci
           npm run build
       - name: web
-        env:
-          # Baked in at build time; any syntactically valid URL builds.
-          VITE_LIVEKIT_URL: wss://livekit.invalid
         run: |
           cd packages/web
           npm ci

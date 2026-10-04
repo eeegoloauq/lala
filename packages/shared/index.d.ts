@@ -51,12 +51,18 @@ export interface TokenRequest {
 export interface TokenResponse {
     token: string;
     identity: string; // HMAC-derived from deviceId — stable per device, cannot be forged without server secret
+    url: string;      // LiveKit WebSocket URL to connect with this token
 }
 
-/** Response from GET /api/access. POST /api/access takes `{ password }` and sets the session cookie. */
+/** Response from GET /api/access. POST /api/access takes `{ password }` or `{ invite }` and sets the session cookie. */
 export interface AccessStatus {
     required: boolean; // the instance has LALA_ACCESS_PASSWORD set
     granted: boolean;  // this client has a valid session (always true when not required)
+}
+
+/** Response from POST /api/access/invite: `<expiry>.<signature>`, valid for 7 days. */
+export interface InviteResponse {
+    invite: string;
 }
 
 /**
@@ -70,6 +76,7 @@ export type ApiErrorCode =
     | 'banned'
     | 'forbidden'
     | 'invalid_input'
+    | 'invalid_invite'
     | 'invalid_json'
     | 'invalid_signature'
     | 'not_found'
