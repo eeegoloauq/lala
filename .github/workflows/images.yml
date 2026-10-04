@@ -9,28 +9,32 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Jobs that need more ask for it themselves.
+permissions:
+  contents: read
+
 env:
   IMAGE_API: ghcr.io/${{ github.repository_owner }}/lala-api
   IMAGE_WEB: ghcr.io/${{ github.repository_owner }}/lala-web
 
 jobs:
-  # There are still no tests, so the typecheck is the only thing between a
-  # broken build and prod. It gates the images, as it did in Forgejo.
-  check:
+  # The e2e suite builds both packages (which typechecks them) and runs real calls
+  # against a local LiveKit and Redis. It gates the images.
+  e2e:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Typecheck api
-        run: cd packages/api && npm ci --ignore-scripts && npx tsc --noEmit
-      - name: Typecheck web
-        run: cd packages/web && npm ci --ignore-scripts && npx tsc --noEmit
+      - name: Install Playwright
+        run: cd e2e && npm ci && npx playwright install --with-deps chromium
+      - name: Run e2e
+        run: cd e2e && npm test
 
   build:
     runs-on: ubuntu-24.04-arm
-    needs: check
+    needs: e2e
     permissions:
       contents: read
       packages: write

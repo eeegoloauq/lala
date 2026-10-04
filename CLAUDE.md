@@ -7,7 +7,7 @@ Lala is a self-hosted voice and video chat app for people who want a Mumble/Disc
 - API: `cd packages/api && npm ci && npm run dev` (port 3001); check with `curl http://localhost:3001/api/health`.
 - Web: `cd packages/web && npm ci && npm run dev` (port 3000).
 - Desktop: `cd packages/desktop && npm ci && npm start`.
-- Before shipping, run `npm run build` in API and web and `npm run lint` in web. For call, auth or dependency changes run `cd e2e && npm test` (two-person call against a local LiveKit, API and web build; first `npm ci && npm run setup`). Screen share and the desktop app still need a manual call.
+- Before shipping, run `npm run build` in API and web and `npm run lint` in web. For call, auth or dependency changes run `cd e2e && npm test` (two-person calls, screen share and room admin actions against a local LiveKit, Redis, API and web build; first `npm ci && npm run setup`). The same suite gates the image builds in CI. The desktop app still needs a manual call.
 
 ## Delivery and rollback
 
