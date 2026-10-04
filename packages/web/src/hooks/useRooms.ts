@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { RoomInfo, CreateRoomRequest } from '../lib/types';
 import { getRooms, createRoom } from '../lib/api';
 
@@ -7,16 +7,31 @@ export function useRooms() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchRooms = useCallback(async () => {
-        try {
-            const data = await getRooms();
-            setRooms(data);
-            setError(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch rooms');
-        } finally {
-            setLoading(false);
+    // A burst of room events must not become a burst of requests: while one fetch is in
+    // flight, later calls share it and trigger a single refetch once it settles.
+    const pending = useRef<Promise<void> | null>(null);
+    const stale = useRef(false);
+
+    const fetchRooms = useCallback((): Promise<void> => {
+        if (pending.current) {
+            stale.current = true;
+            return pending.current;
         }
+        const run = async () => {
+            do {
+                stale.current = false;
+                try {
+                    setRooms(await getRooms());
+                    setError(null);
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to fetch rooms');
+                }
+            } while (stale.current);
+            setLoading(false);
+            pending.current = null;
+        };
+        pending.current = run();
+        return pending.current;
     }, []);
 
     const addRoom = useCallback(async (request: CreateRoomRequest): Promise<RoomInfo> => {

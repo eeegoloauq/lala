@@ -30,9 +30,10 @@ app.use(cors({
     methods: ['GET', 'POST', 'DELETE'],
 }));
 
-const limiter = (max: number) => rateLimit({
+const limiter = (max: number, skip?: (req: express.Request) => boolean) => rateLimit({
     windowMs: 15 * 1000,
     max,
+    skip,
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -61,7 +62,13 @@ app.use('/api/token', limiter(25), createTokenRouter());   // ~100/min (password
 // fall through to the rooms(30) limiter below — avoiding double-counting a single
 // admin action against both rate-limit windows.
 app.use('/api/rooms/:id/admin', limiter(20), createAdminRouter()); // 80/min — admin actions are authed, need headroom for mute toggling
-app.use('/api/rooms', limiter(30), createRoomsRouter());   // 120/min
+// Every client refetches the room list when anyone joins or leaves, so list reads get
+// their own budget: otherwise a busy room behind one IP locks it out of creating and
+// deleting rooms. The list is served from a 2s cache.
+app.use('/api/rooms',
+    limiter(60, req => req.method !== 'GET'),
+    limiter(30, req => req.method === 'GET'),   // 120/min
+    createRoomsRouter());
 app.use('/api/events', limiter(5), createEventsRouter());
 
 // 404 handler — don't leak Express default page

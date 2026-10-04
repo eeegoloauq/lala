@@ -57,7 +57,7 @@ With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access a
 - Broadcast via LiveKit data channel (`lala_admin` type).
 
 ### Rate Limiting
-- `express-rate-limit` with 15s windows: token 25, rooms 30, admin 20, SSE 5, access 30.
+- `express-rate-limit` with 15s windows: token 25, room list 60, room create/delete 30, admin 20, SSE 5, access 30.
 - Instance password: 10 failed attempts per IP per 15 min (successful ones don't count).
 - Nginx defense-in-depth: `limit_req` 10r/s burst=20.
 - `X-Forwarded-For` overwritten by nginx with `$remote_addr`.
