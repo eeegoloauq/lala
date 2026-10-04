@@ -63,7 +63,7 @@ With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access a
 - `X-Forwarded-For` overwritten by nginx with `$remote_addr`.
 
 ### Security Hardening
-- CSP: `script-src 'self' 'unsafe-inline'`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`.
+- CSP is set by the web nginx (`packages/web/default.conf.template`), not the API: `script-src 'self'` with no inline scripts, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`.
 - Global error handler: catches parse/size errors. No stack traces leaked.
 - Input sanitization: null bytes, RTL/LTR overrides, control chars stripped.
 - Headers: X-Content-Type-Options, X-Frame-Options, Referrer-Policy. X-Powered-By stripped.
