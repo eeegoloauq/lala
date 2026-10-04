@@ -9,6 +9,10 @@ export default defineConfig({
     timeout: 90_000,
     workers: 1,
     reporter: [['list']],
+    projects: [
+        { name: 'web', testIgnore: /desktop\.spec\.ts/ },
+        { name: 'desktop', testMatch: /desktop\.spec\.ts/ },
+    ],
     use: {
         baseURL: 'http://127.0.0.1:3000',
         permissions: ['microphone', 'camera'],

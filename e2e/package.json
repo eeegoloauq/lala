@@ -5,7 +5,8 @@
     "description": "End-to-end call tests against a local LiveKit, API and web build",
     "scripts": {
         "setup": "playwright install chromium",
-        "test": "playwright test"
+        "test": "playwright test --project=web",
+        "test:desktop": "playwright test --project=desktop"
     },
     "devDependencies": {
         "@playwright/test": "1.63.0"
