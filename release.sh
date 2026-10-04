@@ -6,16 +6,20 @@
 # and .github/workflows/images.yml, which publishes the server images as
 # :<version> and :latest.
 #
-# Usage: ./release.sh patch|minor|major|<x.y.z>
+# The notes file becomes the annotated tag message, which is the release body.
+#
+# Usage: ./release.sh patch|minor|major|<x.y.z> <notes-file>
 set -euo pipefail
 
-cd "$(dirname "$0")"
-
 BUMP="${1:-}"
-if [[ -z "$BUMP" ]]; then
-    echo "Usage: ./release.sh patch|minor|major|<x.y.z>" >&2
+NOTES="${2:-}"
+if [[ -z "$BUMP" || ! -s "$NOTES" ]]; then
+    echo "Usage: ./release.sh patch|minor|major|<x.y.z> <notes-file>" >&2
     exit 1
 fi
+NOTES="$(realpath "$NOTES")"
+
+cd "$(dirname "$0")"
 
 if [[ -n "$(git status --porcelain)" ]]; then
     echo "Working tree is not clean — commit or stash first." >&2
@@ -45,7 +49,7 @@ fi
 
 git add packages/desktop/package.json packages/desktop/package-lock.json
 git commit -m "release: desktop ${TAG}"
-git tag "$TAG"
+git tag -a "$TAG" -F "$NOTES"
 git push origin main "$TAG"
 
 echo

@@ -64,7 +64,7 @@ services:
 
   # ─── API Server (token + rooms) ───
   api:
-    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/lala-api:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/lala-api:${LALA_TAG:?set LALA_TAG in .env (latest, a version, edge or a commit SHA)}
     container_name: lala-api
     restart: unless-stopped
     expose:
@@ -92,7 +92,7 @@ services:
 
   # ─── Web Frontend ───
   web:
-    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/lala-web:${LALA_TAG:?set LALA_TAG (image SHA) in .env}
+    image: ${LALA_REGISTRY:?set LALA_REGISTRY in .env}/lala-web:${LALA_TAG:?set LALA_TAG in .env (latest, a version, edge or a commit SHA)}
     container_name: lala-web
     restart: unless-stopped
     environment:

@@ -93,4 +93,4 @@ npm run build:linux      # AppImage, rpm, tar.gz
 npm run publish:win      # build + publish to GitHub Releases
 npm run publish:linux    # build + publish
 ```
-Release: `./release.sh patch|minor|major|x.y.z` -> bumps version, commits, tags, pushes. CI on tag push.
+Release: `./release.sh patch|minor|major|x.y.z <notes-file>` -> bumps version, commits, makes an annotated tag from the notes (the release body), pushes. CI on tag push.
