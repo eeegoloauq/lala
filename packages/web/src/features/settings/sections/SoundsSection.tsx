@@ -1,5 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import type { AppSettings } from '../types';
+import {
+  playChatSound, playJoinSound, playMuteSound, playScreenShareStartSound, playTalkingWhileMutedSound,
+} from '../../../lib/sounds';
 
 const SOUND_KEYS = ['soundJoinLeave', 'soundChat', 'soundScreenShare', 'soundMicFeedback', 'soundTalkingWhileMuted'] as const;
 
@@ -14,11 +17,11 @@ export function SoundsSection({ headerRef, settings, onUpdate }: SoundsSectionPr
   const allOn = SOUND_KEYS.every(k => settings[k] ?? true);
 
   const SOUND_ROWS = [
-    { key: 'soundJoinLeave',        label: t('settings.joinLeave'),       desc: t('settings.joinLeaveHint') },
-    { key: 'soundChat',              label: t('settings.newMessage'),      desc: t('settings.newMessageHint') },
-    { key: 'soundScreenShare',       label: t('settings.screenShareChime'), desc: t('settings.screenShareChimeHint') },
-    { key: 'soundMicFeedback',       label: t('settings.muteClick'),       desc: t('settings.muteClickHint') },
-    { key: 'soundTalkingWhileMuted', label: t('settings.talkingMuted'),    desc: t('settings.talkingMutedHint') },
+    { key: 'soundJoinLeave',        label: t('settings.joinLeave'),       desc: t('settings.joinLeaveHint'),        preview: playJoinSound },
+    { key: 'soundChat',              label: t('settings.newMessage'),      desc: t('settings.newMessageHint'),       preview: playChatSound },
+    { key: 'soundScreenShare',       label: t('settings.screenShareChime'), desc: t('settings.screenShareChimeHint'), preview: playScreenShareStartSound },
+    { key: 'soundMicFeedback',       label: t('settings.muteClick'),       desc: t('settings.muteClickHint'),        preview: playMuteSound },
+    { key: 'soundTalkingWhileMuted', label: t('settings.talkingMuted'),    desc: t('settings.talkingMutedHint'),     preview: playTalkingWhileMutedSound },
   ] as const;
 
   return (
@@ -38,12 +41,15 @@ export function SoundsSection({ headerRef, settings, onUpdate }: SoundsSectionPr
           </label>
         </div>
         <div style={{ borderTop: '1px solid var(--border-color)', margin: '4px 0' }} />
-        {SOUND_ROWS.map(({ key, label, desc }) => (
+        {SOUND_ROWS.map(({ key, label, desc, preview }) => (
           <div className="settings-row" key={key}>
             <div>
               <div className="settings-row-label">{label}</div>
               <div className="settings-row-desc">{desc}</div>
             </div>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: '12px', marginLeft: 'auto', marginRight: 12 }} onClick={preview}>
+              {t('settings.previewSound')}
+            </button>
             <label className="toggle">
               <input type="checkbox" className="toggle-input"
                 checked={settings[key] ?? true}

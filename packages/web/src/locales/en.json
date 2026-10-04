@@ -275,6 +275,7 @@
     "muteClickHint": "Local feedback when toggling your microphone",
     "talkingMuted": "Talking while muted warning",
     "talkingMutedHint": "Beep when you speak into a muted mic",
+    "previewSound": "Play",
     "enableShortcuts": "Enable keyboard shortcuts",
     "shortcutsHint": "Room hotkeys (Esc always works)",
     "keyMic": "Mute / unmute mic",
