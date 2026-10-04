@@ -2,7 +2,7 @@
 # so the types-only @lala/shared file: dependency resolves at ../shared.
 
 # Build stage
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app/packages/web
 
 COPY packages/shared /app/packages/shared
