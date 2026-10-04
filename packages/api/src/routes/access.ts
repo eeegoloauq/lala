@@ -24,6 +24,12 @@ if (required && password.length < MIN_PASSWORD_LENGTH) {
     throw new Error(`LALA_ACCESS_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters`);
 }
 
+// The secret is what keeps a leaked cookie from being an offline guessing oracle for
+// the password: the HMACs below are fast on purpose and safe only because of it.
+if (required && !process.env.LIVEKIT_API_SECRET) {
+    throw new Error('LALA_ACCESS_PASSWORD requires LIVEKIT_API_SECRET');
+}
+
 const signingKey = createHmac('sha256', process.env.LIVEKIT_API_SECRET ?? '')
     .update(`lala-access\0${password}`)
     .digest();

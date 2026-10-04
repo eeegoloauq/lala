@@ -29,7 +29,7 @@ With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access a
 - `src/routes/rooms.ts` -- CRUD; room name sanitized (null bytes, RTL, control chars stripped); `maxParticipants` 1-100
 - `src/routes/admin.ts` -- kick/ban/mute/unban; requires `adminSecret`; strips adminSecret before writing metadata
 - `src/routes/events.ts` -- SSE endpoint
-- `src/routes/access.ts` -- optional instance password: `requireAccess` gate; stateless cookie `<expiry>.<hmac>` keyed from `LIVEKIT_API_SECRET` + password (changing either signs everyone out); fails startup if the password is under 12 chars
+- `src/routes/access.ts` -- optional instance password: `requireAccess` gate; stateless cookie `<expiry>.<hmac>` keyed from `LIVEKIT_API_SECRET` + password (changing either signs everyone out); fails startup if the password is under 12 chars or the secret is missing
 - `src/routes/webhook.ts` -- LiveKit webhook (signature-verified); broadcasts SSE; evicts Redis on `room_finished`
 - `src/lib/roomMeta.ts` -- `RoomMeta` interface; `hashPassword`/`verifyPassword` (scrypt); `generateRoomId()` (16 hex, 64-bit entropy)
 - `src/lib/auth.ts` -- `verifyAdminSecret()` (timingSafeEqual), `getAuthedRoom()` (Redis + LK metadata fallback)
