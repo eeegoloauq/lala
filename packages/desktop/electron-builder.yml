@@ -6,6 +6,7 @@ directories:
 
 files:
   - main.js
+  - main/**/*
   - preload.js
   - index.html
   - connection.js
