@@ -1,21 +1,26 @@
 # Prod runs on an arm64 box that cannot reach the Forgejo registry, so the
-# images are built here, on GitHub's native arm64 runners, and published to
-# GHCR. Forgejo still owns the code and the pull requests; this repo is its
-# mirror, and a mirror push fires this workflow like any other push.
+# images are built here and published to GHCR. Forgejo still owns the code and
+# the pull requests; this repo is its mirror, and a mirror push fires this
+# workflow like any other push.
 name: images
 
+# Every commit on main gets a SHA tag, which is what production runs, and moves
+# :edge. A v* tag, the same one that releases the desktop clients, publishes the
+# server as that version and moves :latest.
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 # Jobs that need more ask for it themselves.
 permissions:
   contents: read
 
-env:
-  IMAGE_API: ghcr.io/${{ github.repository_owner }}/lala-api
-  IMAGE_WEB: ghcr.io/${{ github.repository_owner }}/lala-web
+# Runs on one ref queue up instead of overlapping, so :edge cannot move back to
+# an older commit and two cleanups never delete the same image.
+concurrency:
+  group: images-${{ github.ref }}
 
 jobs:
   # The e2e suite builds both packages (which typechecks them) and runs real calls
@@ -32,9 +37,18 @@ jobs:
       - name: Run e2e
         run: cd e2e && npm test
 
+  # Each architecture builds on its own native runner and is pushed untagged;
+  # the publish job tags the pair as one multi-arch image.
   build:
-    runs-on: ubuntu-24.04-arm
     needs: e2e
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -45,20 +59,96 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       # Build context is the repo root so packages/shared (types-only file:
-      # dependency of api and web) is reachable inside the builds. Images are
-      # SHA-tagged only — no mutable :latest, so what runs in prod is pinned
-      # and a rollback is unambiguous.
-      - name: Build & push api
+      # dependency of api and web) is reachable inside the builds.
+      - name: Build & push
         run: |
-          docker build -f packages/api/Dockerfile -t "$IMAGE_API:${{ github.sha }}" .
-          docker push "$IMAGE_API:${{ github.sha }}"
+          docker buildx create --use --driver docker-container
+          mkdir digests
+          for image in api web; do
+            docker buildx build -f packages/$image/Dockerfile --platform linux/${{ matrix.arch }} \
+              --provenance=false --metadata-file meta.json \
+              --output type=image,name=ghcr.io/${{ github.repository_owner }}/lala-$image,push-by-digest=true,name-canonical=true,push=true .
+            jq -r '."containerimage.digest"' meta.json > digests/$image-${{ matrix.arch }}
+          done
 
-      - name: Build & push web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: digests
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digests-*
+          merge-multiple: true
+          path: digests
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # A release tags only its version: the SHA tag of a commit on main is what
+      # production may be running, so it is never pushed twice.
+      - name: Tag
         run: |
-          docker build -f packages/web/Dockerfile \
-            --build-arg VITE_LIVEKIT_URL=wss://rtc.egor-solovev.dev \
-            -t "$IMAGE_WEB:${{ github.sha }}" .
-          docker push "$IMAGE_WEB:${{ github.sha }}"
+          case "$GITHUB_REF" in
+            refs/tags/v*) tags="${GITHUB_REF_NAME#v} latest" ;;
+            refs/heads/main) tags="$GITHUB_SHA edge" ;;
+            *) echo "Images are published from main or a v* tag, not $GITHUB_REF" >&2; exit 1 ;;
+          esac
+          for image in api web; do
+            name=ghcr.io/${{ github.repository_owner }}/lala-$image
+            docker buildx imagetools create $(printf -- "-t $name:%s " $tags) \
+              "$name@$(cat digests/$image-amd64)" "$name@$(cat digests/$image-arm64)"
+          done
+
+  # Rollback needs only recent commits. Images that carry a release tag or :edge
+  # are kept whatever their age. Deleting a multi-arch image deletes the
+  # per-architecture images under it too, or they would linger untagged.
+  cleanup:
+    if: github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      KEEP: 30
+    steps:
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Delete old commit images
+        run: |
+          for image in lala-api lala-web; do
+            name=ghcr.io/${{ github.repository_owner }}/$image
+            versions=/users/${{ github.repository_owner }}/packages/container/$image/versions
+            # Sorted here rather than trusting the API's order: the newest are what a rollback needs.
+            gh api --paginate "$versions" | jq -s 'add | sort_by(.created_at) | reverse' > all.json
+            jq -r --argjson keep "$KEEP" '
+              def tagged: (.metadata.container.tags | length) > 0;
+              def commit_only: tagged and all(.metadata.container.tags[]; test("^[0-9a-f]{40}$"));
+              ([.[] | select(commit_only)][$keep:] | map(.name)) as $old
+              | .[] | select(tagged) | "\(if .name | IN($old[]) then "old" else "kept" end) \(.name)"' all.json > plan.txt
+            children() { docker buildx imagetools inspect --raw "$name@$1" > manifest.json; jq -r '.manifests[]?.digest' manifest.json; }
+            id_of() { jq -r --arg d "$1" '.[] | select(.name == $d) | .id' all.json; }
+
+            # A per-arch image that a kept image still points to stays.
+            : > in-use.txt
+            for digest in $(awk '$1 == "kept" { print $2 }' plan.txt); do children "$digest" >> in-use.txt; done
+
+            for digest in $(awk '$1 == "old" { print $2 }' plan.txt); do
+              children "$digest" > old-children.txt
+              for child in $(cat old-children.txt); do
+                grep -qxF "$child" in-use.txt || for id in $(id_of "$child"); do gh api -X DELETE "$versions/$id"; done
+              done
+              gh api -X DELETE "$versions/$(id_of "$digest")"
+            done
+          done
 
 # There is no deploy job on purpose: the machine that runs this service watches
 # the branch and the registry itself and updates when they move. CI publishes

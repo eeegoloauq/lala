@@ -49,28 +49,29 @@ You need: Docker, a server with a public IP, a domain.
 
 The four containers use about 75 MB of RAM when idle; LiveKit grows during calls.
 
-The web image has the LiveKit URL built in, so build the images yourself. Use the repo root as the
-build context so `packages/shared` is included:
+Images for amd64 and arm64 are published to GHCR: `:latest` and a version tag (`:0.0.27`) for each
+release, `:edge` for the latest commit on `main`.
 
 ```bash
 git clone https://github.com/eeegoloauq/lala.git
 cd lala
 cp .env.example .env
-# edit .env — set your IP, domain, LiveKit keys, Redis password;
-# for a local build set LALA_REGISTRY=local and LALA_TAG=dev
-
-docker build -f packages/api/Dockerfile -t local/homelab/lala-api:dev .
-docker build -f packages/web/Dockerfile \
-  --build-arg VITE_LIVEKIT_URL=wss://rtc.example.com \
-  -t local/homelab/lala-web:dev .
+# edit .env: your IP, domain, LiveKit keys, Redis password and the image tag
 
 docker network create edge   # compose attaches web and LiveKit to it for your reverse proxy
 docker compose up -d
 ```
 
 The web UI runs on port 3000. Put a reverse proxy with TLS in front of it and of LiveKit
-signaling (`wss://rtc.example.com` → `:7880`). If `LIVEKIT_URL` changes, rebuild `lala-web` with
-the new `VITE_LIVEKIT_URL`.
+signaling (`wss://rtc.example.com` → `:7880`).
+
+To build the images yourself, use the repo root as the build context so `packages/shared` is
+included, and set `LALA_REGISTRY=local` and `LALA_TAG=dev`:
+
+```bash
+docker build -f packages/api/Dockerfile -t local/lala-api:dev .
+docker build -f packages/web/Dockerfile -t local/lala-web:dev .
+```
 
 ### Environment
 
@@ -81,7 +82,7 @@ the new `VITE_LIVEKIT_URL`.
 | `NODE_IP` | Server public IP (WebRTC ICE) |
 | `LIVEKIT_DOMAIN` | Domain for TURN (must resolve to the server) |
 | `REDIS_PASSWORD` | Redis password (`openssl rand -hex 24`) |
-| `LALA_REGISTRY` / `LALA_TAG` | Where compose pulls the api/web images from |
+| `LALA_REGISTRY` / `LALA_TAG` | Where compose pulls the api/web images from (`ghcr.io/eeegoloauq`, `latest`) |
 | `ALLOWED_ORIGINS` | Allowed frontend origins (CORS) |
 | `LALA_ACCESS_PASSWORD` | Optional password for the whole server, at least 12 characters (`openssl rand -base64 18`) |
 | `CSP_CONNECT_SRC` | CSP connect-src (default `wss: ws:`, tighten for prod) |
@@ -89,8 +90,9 @@ the new `VITE_LIVEKIT_URL`.
 ### Private server
 
 Set `LALA_ACCESS_PASSWORD` to keep the server to people you give the password to. Without it nobody
-can list or create rooms or join a call, in the browser or the desktop app. A device stays signed
-in for 30 days of inactivity. Changing the password signs everyone out. Wrong attempts are limited
+can list or create rooms or join a call, in the browser or the desktop app. An invite link copied
+from the room list lets one person in without the password for 7 days. A device stays signed
+in for 30 days of inactivity. Changing the password signs everyone out and voids all invite links. Wrong attempts are limited
 to 10 per IP per 15 minutes.
 
 ### Ports
@@ -137,7 +139,7 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md).
 
 ```bash
 cd packages/api && npm install && npm run dev   # :3001
-cd packages/web && npm install && VITE_LIVEKIT_URL=wss://rtc.example.com npm run dev   # :3000
+cd packages/web && npm install && npm run dev   # :3000
 ```
 
 Call tests: `cd e2e && npm ci && npm run setup && npm test` (see [CONTRIBUTING.md](CONTRIBUTING.md)).

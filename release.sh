@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Cut a desktop release: bump version, commit, tag, push.
+# Cut a release: bump version, commit, tag, push.
 # The v<version> tag (once mirrored to GitHub) triggers
 # .github/workflows/electron.yml, which builds Windows + Linux clients and
-# publishes them to GitHub Releases — the auto-updater picks them up from there.
+# publishes them to GitHub Releases — the auto-updater picks them up from there —
+# and .github/workflows/images.yml, which publishes the server images as
+# :<version> and :latest.
 #
 # Usage: ./release.sh patch|minor|major|<x.y.z>
 set -euo pipefail

@@ -11,12 +11,12 @@ Lala is a self-hosted voice and video chat app for people who want a Mumble/Disc
 
 ## Delivery and rollback
 
-Work lands on `main`. A mirrored push to `main` starts CI image builds; the pull-based production deploy picks up SHA-tagged images and restarts containers. Active calls drop during a deploy. Production does not build images. A failed health check restores the previous image tag and records the rejected commit so the timer does not retry it. `deploy/lala-pull` is the deploy and rollback procedure. Desktop releases use `release.sh` and a `v*` tag.
+Work lands on `main`. A mirrored push to `main` starts CI image builds; the pull-based production deploy picks up SHA-tagged images and restarts containers. Active calls drop during a deploy. Production does not build images. A failed health check restores the previous image tag and records the rejected commit so the timer does not retry it. `deploy/lala-pull` is the deploy and rollback procedure. Releases use `release.sh` and a `v*` tag, which publishes the desktop clients and the server images.
 
 ## Decisions and gotchas
 
 - `packages/shared` owns API wire types; update it when response shapes change. API and web consume it as a local package dependency. Docker image builds need the repo root as context.
-- The web client bakes `LIVEKIT_URL` into its image through `VITE_LIVEKIT_URL`; changing it requires a web rebuild.
+- Images are multi-arch (amd64, arm64) so self-hosters can use them. The web image is deployment-neutral: clients get `LIVEKIT_URL` from the API with each token. Per-commit images are SHA-tagged for the deploy and pruned to the last 30; a `v*` tag publishes `:<version>` and `:latest`.
 - Password rooms use E2EE. The worker is bundled from the installed `livekit-client` through the import in `RoomView.tsx`.
 - Voice uses DTX; screen sharing explicitly disables DTX and RED. Keep this distinction when changing publishing options.
 - Tor Browser disables WebRTC. iOS Safari lacks screen capture and output-device selection. Electron system-audio capture is Windows-only.
