@@ -7,7 +7,7 @@ Electron 40+ desktop client wrapping the web app with native features.
 - `main.js` -- main process: window management, IPC, auto-updater, crash recovery, tray, badges, auto-launch, icon switching, single instance lock, power save blocker, error recovery (502 flash fix)
 - `preload.js` -- contextBridge: `electronAPI` (screen share, update, badge, auto-launch, session, icon, `navigateBack()`, `loadUrl()`, `pingServer()`)
 - `index.html` -- connection page markup/styles only (CSP `script-src 'self'`, no inline JS)
-- `connection.js` -- connection page logic: saved servers with editable labels, auto-connect, health check before `loadUrl()`, ping status dots
+- `connection.js` -- connection page logic: saved servers with editable labels, auto-connect, health check before `loadUrl()`, ping status dots. The check (`PING_SERVER` in `main.js`) uses `net.fetch`, so it shares the window's cookies, proxy and client certificates; any non-5xx answer counts as reachable
 - `electron-builder.yml` -- Win NSIS x64, Linux AppImage/rpm/tar.gz, macOS dmg
 - `build/icon-variants/` -- 4 SVG icon variants + generated PNGs
 

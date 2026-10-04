@@ -12,6 +12,7 @@ const {
     desktopCapturer,
     shell,
     powerSaveBlocker,
+    net,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -1147,16 +1148,17 @@ function registerIpcHandlers() {
         if (!isFileSender(event)) return null;
         if (!isUrlAllowed(url)) return null;
         const endpoint = url.replace(/\/+$/, '') + '/api/health';
-        const mod = endpoint.startsWith('https') ? require('https') : require('http');
         const start = Date.now();
-        return new Promise(resolve => {
-            const req = mod.get(endpoint, { timeout: 5000 }, (res) => {
-                res.resume(); // drain response
-                resolve(res.statusCode >= 200 && res.statusCode < 300 ? Date.now() - start : null);
-            });
-            req.on('error', () => resolve(null));
-            req.on('timeout', () => { req.destroy(); resolve(null); });
-        });
+        // net.fetch goes through the window's own network stack (session cookies,
+        // system proxy, client certificates), so the probe sees what the page will.
+        // Any non-5xx answer means the server is up: a 401 or a redirect comes from
+        // an auth layer in front of Lala, which the loaded page then handles.
+        try {
+            const res = await net.fetch(endpoint, { signal: AbortSignal.timeout(5000) });
+            return res.status < 500 ? Date.now() - start : null;
+        } catch {
+            return null;
+        }
     });
 
     // Load a server URL (from connection page). File://-only: this is how a
