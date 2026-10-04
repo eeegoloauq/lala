@@ -65,7 +65,7 @@ Desktop (>=900px): docked flex sibling of the stage (`.cp-dock`), animates only 
 Right-click -> hide: `publication.setSubscribed(false)` on both video + audio tracks. LiveKit stops sending data.
 
 ### SSE Updates
-`useRooms` opens `EventSource('/api/events')`. Events: `connected`, `rooms_updated`. Auto-reconnect built in. Zero polling.
+`useRooms` opens `EventSource('/api/events')`. Events: `connected`, `rooms_updated`. The browser retries dropped streams itself; a non-200 answer closes the stream, so `useRooms` reopens it after 5s and makes one plain request to surface a 401. Zero polling.
 
 ### Room Templates
 Auto-saved after 30s. Up to 3, deduped by name. Sidebar shows offline templates with one-click recreate.

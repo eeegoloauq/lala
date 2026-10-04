@@ -30,24 +30,36 @@ export function useRooms() {
         fetchRooms();
 
         // Real-time updates via SSE — no polling
-        const es = new EventSource('/api/events');
+        let es: EventSource;
+        let retry: ReturnType<typeof setTimeout> | undefined;
+        const connect = () => {
+            es = new EventSource('/api/events');
 
-        // Fetch on every room change event from LiveKit webhook
-        es.addEventListener('rooms_updated', () => fetchRooms());
+            // Fetch on every room change event from LiveKit webhook
+            es.addEventListener('rooms_updated', () => fetchRooms());
 
-        // Re-fetch when SSE reconnects (may have missed events while disconnected)
-        // Server sends custom 'connected' event on each new SSE connection
-        es.addEventListener('connected', () => fetchRooms());
+            // Re-fetch when SSE reconnects (may have missed events while disconnected)
+            // Server sends custom 'connected' event on each new SSE connection
+            es.addEventListener('connected', () => fetchRooms());
 
-        // Set error state when SSE connection fails (API down)
-        // EventSource auto-reconnects, so this fires on each failed attempt
-        es.addEventListener('error', () => {
-            if (es.readyState === EventSource.CLOSED || es.readyState === EventSource.CONNECTING) {
+            // EventSource retries dropped connections by itself, but a non-200 answer
+            // (502 while the API restarts, 401 after the instance password changed)
+            // closes it for good. Reopen it ourselves, and make a plain request so a
+            // 401 reaches AccessGate.
+            es.addEventListener('error', () => {
                 setError('server_unavailable');
-            }
-        });
+                if (es.readyState === EventSource.CLOSED) {
+                    fetchRooms();
+                    retry = setTimeout(connect, 5000);
+                }
+            });
+        };
+        connect();
 
-        return () => es.close();
+        return () => {
+            clearTimeout(retry);
+            es.close();
+        };
     }, [fetchRooms]);
 
     return { rooms, loading, error, addRoom, refresh: fetchRooms };
