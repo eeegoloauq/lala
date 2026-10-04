@@ -1,9 +1,10 @@
+import type { ReactElement } from 'react';
 import type { IconVariant } from '../types/electron';
 
 export interface IconVariantDef {
   id: IconVariant;
   labelKey: string;
-  svg: JSX.Element;
+  svg: ReactElement;
 }
 
 export const ICON_VARIANTS: IconVariantDef[] = [
