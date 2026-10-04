@@ -103,7 +103,7 @@ export function createRoomsRouter(): Router {
         try {
             // Partial<> because the body is untrusted input — every field is
             // validated below before use.
-            const { name, password, maxParticipants, identity } = req.body as Partial<CreateRoomRequest>;
+            const { name, password, maxParticipants, identity } = (req.body ?? {}) as Partial<CreateRoomRequest>;
 
             if (!name || typeof name !== 'string' || !name.trim()) {
                 res.status(400).json({ error: 'invalid_input' });
@@ -181,10 +181,10 @@ export function createRoomsRouter(): Router {
     });
 
     /** Delete a room (requires adminSecret) */
-    router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+    router.delete('/:id', async (req, res: Response): Promise<void> => {
         try {
             const { id } = req.params;
-            const { adminSecret } = req.body as { adminSecret?: string };
+            const { adminSecret } = (req.body ?? {}) as { adminSecret?: string };
             const ctx = await getAuthedRoom(id, adminSecret, res);
             if (!ctx) return;
             await ctx.roomService.deleteRoom(id);

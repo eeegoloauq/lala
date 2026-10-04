@@ -15,7 +15,7 @@ export function createTokenRouter(): Router {
         try {
             // Partial<> because the body is untrusted input — every field is
             // validated below before use.
-            const { room, name, deviceId, password, adminSecret } = req.body as Partial<TokenRequest>;
+            const { room, name, deviceId, password, adminSecret } = (req.body ?? {}) as Partial<TokenRequest>;
 
             if (!room || typeof room !== 'string' || room.length > 50) {
                 res.status(400).json({ error: 'room_required' });

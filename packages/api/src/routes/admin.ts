@@ -27,13 +27,16 @@ function validateAdminInput(
     return true;
 }
 
+/** `:id` comes from the mount path (`/api/rooms/:id/admin`), so the router can't infer it. */
+type RoomRequest = Request<{ id: string }>;
+
 export function createAdminRouter(): Router {
     const router = Router({ mergeParams: true });
 
     /** List banned identities. GET (not POST) so it's cheap to poll from the admin UI;
      * the secret travels via header (not query string, which nginx/access logs would capture,
      * and a GET can't carry a JSON body via fetch). */
-    router.get('/bans', async (req: Request, res: Response): Promise<void> => {
+    router.get('/bans', async (req: RoomRequest, res: Response): Promise<void> => {
         try {
             const secret = req.header('X-Admin-Secret');
             if (secret !== undefined && (typeof secret !== 'string' || secret.length > 100)) {
@@ -54,9 +57,9 @@ export function createAdminRouter(): Router {
     });
 
     /** Kick a participant (immediate disconnect, can rejoin) */
-    router.post('/kick', async (req: Request, res: Response): Promise<void> => {
+    router.post('/kick', async (req: RoomRequest, res: Response): Promise<void> => {
         try {
-            const { identity, adminSecret } = req.body as { identity?: string; adminSecret?: string };
+            const { identity, adminSecret } = (req.body ?? {}) as { identity?: string; adminSecret?: string };
             if (!validateAdminInput(res, adminSecret, identity)) return;
 
             const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
@@ -71,9 +74,9 @@ export function createAdminRouter(): Router {
     });
 
     /** Ban: add to bannedIdentities list + kick if in room */
-    router.post('/ban', async (req: Request, res: Response): Promise<void> => {
+    router.post('/ban', async (req: RoomRequest, res: Response): Promise<void> => {
         try {
-            const { identity, adminSecret } = req.body as { identity?: string; adminSecret?: string };
+            const { identity, adminSecret } = (req.body ?? {}) as { identity?: string; adminSecret?: string };
             if (!validateAdminInput(res, adminSecret, identity)) return;
 
             const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
@@ -97,9 +100,9 @@ export function createAdminRouter(): Router {
     });
 
     /** Unban: remove from bannedIdentities */
-    router.post('/unban', async (req: Request, res: Response): Promise<void> => {
+    router.post('/unban', async (req: RoomRequest, res: Response): Promise<void> => {
         try {
-            const { identity, adminSecret } = req.body as { identity?: string; adminSecret?: string };
+            const { identity, adminSecret } = (req.body ?? {}) as { identity?: string; adminSecret?: string };
             if (!validateAdminInput(res, adminSecret, identity)) return;
 
             const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
@@ -118,9 +121,9 @@ export function createAdminRouter(): Router {
     });
 
     /** Force-mute or force-unmute a participant via server-side permission */
-    router.post('/mute', async (req: Request, res: Response): Promise<void> => {
+    router.post('/mute', async (req: RoomRequest, res: Response): Promise<void> => {
         try {
-            const { identity, muted, adminSecret } = req.body as { identity?: string; muted?: boolean; adminSecret?: string };
+            const { identity, muted, adminSecret } = (req.body ?? {}) as { identity?: string; muted?: boolean; adminSecret?: string };
             if (!validateAdminInput(res, adminSecret, identity)) return;
 
             const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
