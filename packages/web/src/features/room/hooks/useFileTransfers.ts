@@ -29,16 +29,9 @@ export interface UseFileTransfersResult {
  * higher-level `sendFile()` helper) so we can track upload progress ourselves and
  * support cancellation -- neither is wired through in this version of livekit-client.
  *
- * Sends are serialized FIFO (see `sendQueue`/`runSend` below): every `streamBytes()` writer
- * funnels its chunks through the same underlying reliable SCTP data channel, and while each
- * individual writer awaits the SDK's own backpressure (`RTCEngine.sendDataPacket` blocks on
- * `waitForBufferStatusLow` before every `dc.send()`), that wait is a check-then-send race --
- * concurrent writers can all observe "buffer is low" and send in the same tick, bursting past
- * the channel's send buffer. That flood can abort the whole reliable data channel (logged by
- * livekit-client as `publisher data channel 'RELIABLE' closed unexpectedly`), which is why
- * sending several files at once left only one of them ever arriving. Serializing to one active
- * writer at a time removes the concurrent-writer race entirely; the SDK's own per-chunk await
- * still throttles a single big file correctly.
+ * Sends are serialized FIFO (see `sendQueue`/`runSend` below): all writers share one reliable
+ * data channel, so one file at a time lets each finish as early as possible and gives the
+ * 'queued' state and per-file progress a meaning.
  */
 export function useFileTransfers(room: Room, localParticipant: LocalParticipant): UseFileTransfersResult {
     const [entries, setEntries] = useState<Map<string, FileTransferItem>>(new Map());
