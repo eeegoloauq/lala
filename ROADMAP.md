@@ -2,7 +2,7 @@
 
 Larger work that shouldn't be done in passing. Remove an item when it ships.
 
-- **Critical path tests.** Add behavioral coverage for authentication, room management and media calls; the package scripts currently provide no test suite (`packages/api`, `packages/web`, `packages/desktop`).
+- **Critical path tests.** `e2e/` covers the server password and a two-person call. Still missing: room admin actions (kick, ban, mute, delete need Redis), screen share, and running `e2e` in CI.
 - **Desktop main process.** Split the combined window, IPC, updater and tray responsibilities in `packages/desktop/main.js`.
 - **Connection translations.** Consolidate duplicated locale text in `packages/desktop/connection.js` and `packages/web/src/locales/`.
 - **Stale package guidance.** Correct the inline-script CSP claim in `packages/api/CLAUDE.md` against `packages/web/default.conf.template`.

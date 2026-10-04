@@ -39,11 +39,20 @@ For a full local stack (LiveKit, Redis) you'll also need Docker and the
 
 ## Testing your changes
 
-There is no automated test suite yet, so the bar is: **verify with a real
-call.** Open two browser tabs (or a tab + the desktop app), join the same
-room, and check audio, video, and whatever you touched. If your change goes
-anywhere near encryption or passwords, test in a password-protected room
-specifically — that path uses E2EE and behaves differently.
+`e2e/` runs a two-person call in headless Chromium against a local LiveKit,
+the API and the production web build. It covers the server password, a
+password-protected room (E2EE), audio both ways, camera with background blur
+and chat:
+
+```bash
+cd e2e && npm ci && npm run setup && npm test
+```
+
+It downloads the LiveKit server version production uses on first run.
+For what it doesn't cover (screen share, the desktop app, real devices),
+open two browser tabs or a tab and the desktop app, join the same room and
+check what you touched. Changes near encryption or passwords need a
+password-protected room: that path uses E2EE and behaves differently.
 
 Both `npm run build` (web) and `npm run build` (api, `tsc`) must pass —
 the typecheck is the CI gate.

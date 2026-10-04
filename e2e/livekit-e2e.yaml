@@ -1,0 +1,15 @@
+# Local test server only; the key pair is not used anywhere else.
+port: 7880
+bind_addresses: [127.0.0.1]
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+  node_ip: 127.0.0.1
+keys:
+  e2e-key: e2e-secret-not-used-outside-tests-000
+webhook:
+  api_key: e2e-key
+  urls: [http://127.0.0.1:3001/api/webhook]
+logging:
+  level: warn

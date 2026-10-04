@@ -1,0 +1,13 @@
+{
+    "name": "@lala/e2e",
+    "version": "0.0.1",
+    "private": true,
+    "description": "End-to-end call tests against a local LiveKit, API and web build",
+    "scripts": {
+        "setup": "playwright install chromium",
+        "test": "playwright test"
+    },
+    "devDependencies": {
+        "@playwright/test": "1.63.0"
+    }
+}

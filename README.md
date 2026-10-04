@@ -140,6 +140,8 @@ cd packages/api && npm install && npm run dev   # :3001
 cd packages/web && npm install && VITE_LIVEKIT_URL=wss://rtc.example.com npm run dev   # :3000
 ```
 
+Call tests: `cd e2e && npm ci && npm run setup && npm test` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+
 ## Contributing
 
 Issues and PRs are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the dev setup and testing
