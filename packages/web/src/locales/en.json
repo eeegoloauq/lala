@@ -352,5 +352,13 @@
     "unban": "Unban",
     "loading": "Loading...",
     "noBans": "No banned users"
+  },
+  "access": {
+    "prompt": "This server is private. Enter the server password to continue",
+    "placeholder": "Server password",
+    "submit": "Continue",
+    "wrongPassword": "Wrong password",
+    "tooManyAttempts": "Too many attempts. Try again in {{minutes}} min",
+    "serverError": "Could not reach the server. Try again"
   }
 }

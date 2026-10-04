@@ -53,6 +53,12 @@ export interface TokenResponse {
     identity: string; // HMAC-derived from deviceId — stable per device, cannot be forged without server secret
 }
 
+/** Response from GET /api/access. POST /api/access takes `{ password }` and sets the session cookie. */
+export interface AccessStatus {
+    required: boolean; // the instance has LALA_ACCESS_PASSWORD set
+    granted: boolean;  // this client has a valid session (always true when not required)
+}
+
 /**
  * Error codes in API `{ error: <code> }` responses, plus two codes the web
  * client synthesizes locally: 'rate_limited' (HTTP 429 from the rate
@@ -60,6 +66,7 @@ export interface TokenResponse {
  * failure — no response at all).
  */
 export type ApiErrorCode =
+    | 'access_required'
     | 'banned'
     | 'forbidden'
     | 'invalid_input'

@@ -14,6 +14,9 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 
 ## Features
 
+### Access (`features/access/`)
+- `AccessGate.tsx` -- wraps `App` in `main.tsx`; asks `GET /api/access` and shows the instance password screen when needed; any API `access_required` (dispatched by `lib/api.ts` as `lala:access-required`) brings it back
+
 ### Room (`features/room/`)
 - `RoomView.tsx` -- token fetch + E2EE setup + `<LiveKitRoom>`; password pool auto-try; rate limit countdown
 - `RoomShell.tsx` -- orchestrates everything; mic/screen sounds; keyboard shortcuts; reconnecting banner

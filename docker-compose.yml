@@ -77,12 +77,13 @@ services:
       - API_PORT=3001
       - LIVEKIT_HOST=lala-livekit:7880
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - LALA_ACCESS_PASSWORD=${LALA_ACCESS_PASSWORD:-}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@lala-redis:6379
     security_opt:
       - no-new-privileges:true
     mem_limit: 512m
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/api/rooms"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/api/health"]
       interval: 15s
       timeout: 5s
       retries: 3

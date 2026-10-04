@@ -83,7 +83,15 @@ the new `VITE_LIVEKIT_URL`.
 | `REDIS_PASSWORD` | Redis password (`openssl rand -hex 24`) |
 | `LALA_REGISTRY` / `LALA_TAG` | Where compose pulls the api/web images from |
 | `ALLOWED_ORIGINS` | Allowed frontend origins (CORS) |
+| `LALA_ACCESS_PASSWORD` | Optional password for the whole server, at least 12 characters (`openssl rand -base64 18`) |
 | `CSP_CONNECT_SRC` | CSP connect-src (default `wss: ws:`, tighten for prod) |
+
+### Private server
+
+Set `LALA_ACCESS_PASSWORD` to keep the server to people you give the password to. Without it nobody
+can list or create rooms or join a call, in the browser or the desktop app. A device stays signed
+in for 30 days of inactivity. Changing the password signs everyone out. Wrong attempts are limited
+to 10 per IP per 15 minutes.
 
 ### Ports
 
@@ -119,6 +127,7 @@ Identity is an HMAC of a stable device UUID, so the same device is always the sa
 - HMAC identity that cannot be forged without the API secret
 - Passwords stored as scrypt hashes, constant-time comparison
 - Admin secrets: 128-bit random, Redis-only (never in room metadata)
+- Optional server password with an HttpOnly session cookie and a limit on failed attempts
 - Rate limiting in nginx and Express; null bytes, RTL overrides and control chars stripped from input
 - CSP without inline scripts, HSTS, containers non-root with `no-new-privileges` and memory limits
 

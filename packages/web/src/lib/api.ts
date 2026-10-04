@@ -1,7 +1,10 @@
-import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse } from './types';
+import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus } from './types';
 import { ApiError } from './types';
 
 const API_BASE = '/api';
+
+/** Fired when the instance password session is missing or expired; AccessGate shows the password screen. */
+export const ACCESS_REQUIRED_EVENT = 'lala:access-required';
 
 /**
  * Shared fetch wrapper for every API call. Unifies network-error wrapping,
@@ -23,6 +26,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
             throw new ApiError('rate_limited', 429, isNaN(retryAfter) ? 15 : retryAfter);
         }
         const body = await res.json().catch(() => ({ error: 'server_error' }));
+        if (body.error === 'access_required') window.dispatchEvent(new Event(ACCESS_REQUIRED_EVENT));
         throw new ApiError(body.error ?? 'server_error', res.status);
     }
 
@@ -34,6 +38,14 @@ const jsonBody = (body: object): RequestInit => ({
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
 });
+
+export function getAccess(): Promise<AccessStatus> {
+    return request<AccessStatus>('/access');
+}
+
+export function submitAccessPassword(password: string): Promise<void> {
+    return request<void>('/access', jsonBody({ password }));
+}
 
 export function getToken(req: TokenRequest): Promise<TokenResponse> {
     return request<TokenResponse>('/token', jsonBody(req));

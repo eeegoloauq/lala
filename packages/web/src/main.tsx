@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { AccessGate } from './features/access/AccessGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './features/settings/ThemeProvider';
 import { initSecureStore } from './lib/secureStore';
@@ -24,7 +25,9 @@ initSecureStore().then(() => {
         <React.StrictMode>
             <ErrorBoundary>
                 <ThemeProvider>
-                    <App />
+                    <AccessGate>
+                        <App />
+                    </AccessGate>
                 </ThemeProvider>
             </ErrorBoundary>
         </React.StrictMode>

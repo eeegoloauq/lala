@@ -9,6 +9,7 @@ export type {
     ApiErrorCode,
     RoomBan,
     BansResponse,
+    AccessStatus,
 } from '@lala/shared';
 
 import type { ApiErrorCode } from '@lala/shared';

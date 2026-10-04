@@ -6,6 +6,7 @@ import { createRoomsRouter } from './routes/rooms';
 import { createAdminRouter } from './routes/admin';
 import { createWebhookRouter } from './routes/webhook';
 import { createEventsRouter } from './routes/events';
+import { createAccessRouter, requireAccess } from './routes/access';
 import { connectRedis } from './lib/roomStore';
 
 /**
@@ -17,6 +18,7 @@ import { connectRedis } from './lib/roomStore';
  * - /api/rooms/:id/admin/*    — Admin actions (kick/ban/mute)
  * - POST /api/webhook         — LiveKit webhook receiver (raw body, must be before express.json)
  * - GET  /api/events          — SSE stream for real-time room updates
+ * - GET/POST /api/access       — Optional instance password (LALA_ACCESS_PASSWORD)
  */
 const app = express();
 app.set('trust proxy', 1);
@@ -45,6 +47,11 @@ app.use(express.json({ limit: '16kb' }));
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', service: 'lala-api' });
 });
+
+// Everything registered after the gate needs the instance password when one is set;
+// health, webhook and the access endpoint itself stay open.
+app.use('/api/access', limiter(30), createAccessRouter());
+app.use('/api', requireAccess);
 
 // Routes — limits per 15s window (≈ same requests/min as before)
 app.use('/api/token', limiter(25), createTokenRouter());   // ~100/min (password pool can send up to 20 in burst)
