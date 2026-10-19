@@ -7,6 +7,7 @@ const { IS_MAC, HAS_SYSTEM_TRAY, USER_DATA, IPC } = require('./constants');
 const { state, sendToRenderer } = require('./state');
 const { isUrlAllowed, isIndexHtmlUrl } = require('./trust');
 const { getInitialWindowIcon } = require('./icons');
+const { setupContextMenu } = require('./context-menu');
 
 const WINDOW_MIN_WIDTH = 800;
 const WINDOW_MIN_HEIGHT = 600;
@@ -119,6 +120,8 @@ function createWindow() {
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
     });
+
+    setupContextMenu(mainWindow.webContents);
 
     // F12 opens DevTools (dev builds only)
     mainWindow.webContents.on('before-input-event', (_event, input) => {

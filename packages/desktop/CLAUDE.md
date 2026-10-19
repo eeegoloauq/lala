@@ -5,7 +5,7 @@ Electron 40+ desktop client wrapping the web app with native features.
 ## Key Files
 
 - `main.js` -- main process entry: Chromium switches, single instance lock, startup wiring and app lifecycle
-- `main/` -- the main process work, one module each: `constants` (platform flags, install channel, IPC names), `state` (the window, tray, trusted origin and other shared state), `trust` (URL and sender checks, permission handlers), `window` (window state, creation, error recovery, navigation lock, downloads), `tray` (tray and unread badges), `icons`, `screen-share`, `updater`, `crash` (crash logs, session file), `ipc` (the remaining channels)
+- `main/` -- the main process work, one module each: `constants` (platform flags, install channel, IPC names), `state` (the window, tray, trusted origin and other shared state), `trust` (URL and sender checks, permission handlers), `window` (window state, creation, error recovery, navigation lock, downloads), `tray` (tray and unread badges), `icons`, `screen-share`, `context-menu` (edit menu for text fields), `updater`, `crash` (crash logs, session file), `ipc` (the remaining channels)
 - `preload.js` -- contextBridge: `electronAPI` (screen share, update, badge, auto-launch, session, icon, `navigateBack()`, `loadUrl()`, `pingServer()`)
 - `index.html` -- connection page markup/styles only (CSP `script-src 'self'`, no inline JS)
 - `connection.js` -- connection page logic: saved servers with editable labels, auto-connect, health check before `loadUrl()`, ping status dots. The check (`PING_SERVER` in `main/ipc.js`) uses `net.fetch`, so it shares the window's cookies, proxy and client certificates; any non-5xx answer counts as reachable
