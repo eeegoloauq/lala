@@ -12,8 +12,12 @@ const { app } = require('electron');
 app.setAppUserModelId('app.lala.desktop');
 
 // ─── Platform Flags ──────────────────────────────────────────────────────────
-// Wayland screen capture (PipeWire) — must be set before app is ready.
-app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
+// Must be set before app is ready, in one call for the same reason as
+// disable-features below:
+//  - WebRTCPipeWireCapturer: Wayland screen capture.
+//  - PulseaudioLoopbackForScreenShare: Linux system audio for screen share
+//    (off by default in Chromium).
+app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer,PulseaudioLoopbackForScreenShare');
 // Chromium only honors the *last* --disable-features switch on the command
 // line — repeated appendSwitch('disable-features', ...) calls don't merge,
 // the later one wins and silently drops the earlier features. So every

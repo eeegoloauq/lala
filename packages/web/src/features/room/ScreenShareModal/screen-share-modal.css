@@ -247,6 +247,13 @@
 }
 
 /* ─── Browser Mode ─── */
+.ss-audio-warning {
+    font-size: 13px;
+    color: var(--color-warning);
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
 .ss-browser-hint {
     font-size: 13px;
     color: var(--text-muted);

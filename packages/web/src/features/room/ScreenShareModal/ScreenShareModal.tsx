@@ -7,7 +7,7 @@ import { useEscapeKey } from '../../../hooks/useEscapeKey';
 import { Select } from '../../../ui/Select';
 import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS, screenShareBitrateLabel } from '../../../lib/constants';
 import './screen-share-modal.css';
-import { IS_ELECTRON as isElectron } from '../../../lib/env';
+import { IS_ELECTRON as isElectron, IS_LINUX } from '../../../lib/env';
 
 interface ScreenShareModalProps {
     settings: AppSettings;
@@ -129,6 +129,9 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
         <div className="ss-backdrop" onClick={onCancel}>
             <div className={`ss-modal ${showSourcePicker ? 'ss-modal-large' : ''}`} onClick={(e) => e.stopPropagation()}>
                 <h3 className="ss-title">{t('screenShare.title')}</h3>
+                {isElectron && IS_LINUX && audio && (
+                    <div className="ss-audio-warning">{t('screenShare.linuxAudioWarning')}</div>
+                )}
 
                 {showSourcePicker ? (
                     <>

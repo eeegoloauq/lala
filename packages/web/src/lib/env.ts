@@ -9,3 +9,6 @@ export const IS_ELECTRON = typeof window !== 'undefined' && !!window.electronAPI
 
 /** Device has a touchscreen — used to hide keyboard-centric UI. */
 export const IS_TOUCH = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
+
+/** Desktop Linux (not Android) — system audio capture there includes the call's own playout. */
+export const IS_LINUX = typeof navigator !== 'undefined' && /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);

@@ -19,7 +19,7 @@ Work lands on `main`. A mirrored push to `main` starts CI image builds; the pull
 - Images are multi-arch (amd64, arm64) so self-hosters can use them. The web image is deployment-neutral: clients get `LIVEKIT_URL` from the API with each token. Per-commit images are SHA-tagged for the deploy and pruned to the last 30; a `v*` tag publishes `:<version>` and `:latest`.
 - Password rooms use E2EE. The worker is bundled from the installed `livekit-client` through the import in `RoomView.tsx`.
 - Voice uses DTX; screen sharing explicitly disables DTX and RED. Keep this distinction when changing publishing options.
-- Tor Browser disables WebRTC. iOS Safari lacks screen capture and output-device selection. Electron system-audio capture is Windows-only.
+- Tor Browser disables WebRTC. iOS Safari lacks screen capture and output-device selection. Electron captures system audio on every desktop OS, but on Linux the capture includes the call's own playout (Chromium cannot exclude a process there), so the screen share modal warns about it.
 - A room ban tied to device identity lasts only for that room's lifetime.
 
 Do not use `docker compose up -d --build` as a production build path. Do not put secrets in tracked files. Package-specific notes are in `packages/api/CLAUDE.md`, `packages/web/CLAUDE.md` and `packages/desktop/CLAUDE.md`.

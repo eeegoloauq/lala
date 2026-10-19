@@ -3,6 +3,7 @@
     "title": "Share Screen",
     "audioOn": "Audio enabled",
     "audioOff": "Audio disabled",
+    "linuxAudioWarning": "Other participants' voices will be included too: on Linux system audio can't be captured without Lala's own sound",
     "windowsTab": "Windows",
     "screensTab": "Screens",
     "noSources": "No available {{type}}",

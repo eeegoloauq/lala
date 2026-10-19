@@ -9,8 +9,11 @@ import { IS_ELECTRON as isElectron } from '../../../lib/env';
 /**
  * Audio constraints for screen share — disable all voice processing
  * so system/game/music audio is captured 1:1 without "barrel" effect.
+ * restrictOwnAudio keeps the call's own playout out of the capture where the
+ * platform supports it, so participants don't hear themselves back.
  */
 const screenShareAudioOptions: AudioCaptureOptions = {
+    restrictOwnAudio: true,
     echoCancellation: false,
     noiseSuppression: false,
     autoGainControl: false,

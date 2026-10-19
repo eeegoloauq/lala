@@ -98,6 +98,16 @@ function denyDisplayMediaRequest(callback, reason) {
     }
 }
 
+// System audio is captured independently of the video source, so X11, Wayland
+// and Windows/macOS share one path. The renderer asks for restrictOwnAudio,
+// which makes Electron capture 'loopback' without this app's own output where
+// Chromium supports it (Windows, macOS). Linux has no such mode: the capture
+// is the default output's monitor and includes the other participants' voices.
+function withSystemAudio(request, response) {
+    if (request.audioRequested) response.audio = 'loopback';
+    return response;
+}
+
 function setupScreenShareHandler() {
     // Note: setDisplayMediaRequestHandler's { useSystemPicker: true } option
     // would let Chromium drive the picker natively, but in Electron 40 it is
@@ -132,7 +142,7 @@ function setupScreenShareHandler() {
                     // The portal returns only the user-selected source
                     console.log('[Lala] Screen share (Wayland): got source', sources[0].id);
                     calledBack = true;
-                    callback({ video: sources[0] });
+                    callback(withSystemAudio(request, { video: sources[0] }));
                 } else {
                     // getSources() resolved but gave us nothing: the user cancelled
                     // the portal dialog, or xdg-desktop-portal / its desktop backend
@@ -163,14 +173,7 @@ function setupScreenShareHandler() {
         if (pendingScreenShareSourceId) {
             const sourceId = pendingScreenShareSourceId;
             clearPendingScreenShare();
-            const response = { video: { id: sourceId, name: sourceId } };
-            // Only include audio when the renderer requested it.
-            // 'loopbackWithoutChrome' captures system audio excluding this app's
-            // own output — prevents echo where participants hear themselves back.
-            // If this value fails on some systems, screen share video still works.
-            if (request.audioRequested) {
-                response.audio = 'loopbackWithoutChrome';
-            }
+            const response = withSystemAudio(request, { video: { id: sourceId, name: sourceId } });
             try {
                 callback(response);
             } catch (err) {

@@ -18,7 +18,7 @@ Electron 40+ desktop client wrapping the web app with native features.
 3. Sources via `electronAPI.getDesktopSources()` -> `desktopCapturer.getSources()`
 4. Skeleton loading -> Windows/Screens tabs with thumbnails (8s auto-refresh)
 5. User picks source -> `setScreenShareSource(sourceId)` -> `setScreenShareEnabled(true)`
-6. `setDisplayMediaRequestHandler` returns source with `audio: 'loopbackWithoutChrome'`
+6. `setDisplayMediaRequestHandler` returns the source with `audio: 'loopback'`; the renderer's `restrictOwnAudio` makes Electron exclude our own output where Chromium can (Windows, macOS)
 7. DTX and RED disabled for screen share audio
 
 ## Error Recovery
@@ -77,8 +77,8 @@ recovery flow, the tray "Change server" item, and the `NAVIGATE_BACK` IPC).
 4 variants: `voice-wave` (default), `dark-sphere`, `single-wave`, `double-wave`. IPC `getAppIcon()`/`setAppIcon()`. `buildMultiSizeIcon()` with 16/32/48/64/256. Preference in `userData/icon-preference.json`. `.exe` icon baked at build time (always `voice-wave`).
 
 ## Platform Notes
-- **Screen share audio**: Windows only via WASAPI loopback. macOS/Linux silently get no audio.
-- **Wayland**: PipeWire capturer enabled. XDG portal for screen picker. No system audio.
+- **Screen share audio**: system loopback everywhere. Linux needs `PulseaudioLoopbackForScreenShare` (set in `main.js`) and captures the default output's monitor, own playout included.
+- **Wayland**: PipeWire capturer enabled. XDG portal for screen picker. Audio comes from the same loopback as X11.
 - **Single instance**: `requestSingleInstanceLock()` -- second instance focuses existing window.
 - **Power save**: `prevent-display-sleep` blocker during calls.
 - **Auto-updater**: GitHub Releases, `autoDownload: false`, `autoInstallOnAppQuit: false` — install only happens via the user-triggered `INSTALL_UPDATE` IPC (Settings "Update" button), never silently on quit.
