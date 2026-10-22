@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { VideoTrack, useIsSpeaking } from '@livekit/components-react';
+import { VideoTrack, useIsSpeaking, useConnectionQualityIndicator } from '@livekit/components-react';
 import type { TrackReference, TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { isTrackReference } from '@livekit/components-react';
 import { RemoteParticipant } from 'livekit-client';
@@ -8,7 +8,6 @@ import type { Participant } from 'livekit-client';
 import { ConnectionQuality, ParticipantEvent } from 'livekit-client';
 import { Avatar } from './Avatar';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../icons/Icons';
-import { useConnectionQuality } from '../hooks/useConnectionQuality';
 import { useParticipantState } from '../hooks/useParticipantState';
 import { hasAttribute, isServerMuted } from '../lib/permissions';
 import { readDeafened } from '../lib/participantMeta';
@@ -71,7 +70,7 @@ function useIsScreenSharing(participant: Participant): boolean {
 export const ParticipantTile = memo(function ParticipantTile({ participant, trackRef, audioMuted, avatarUrl, onClick, onFlip, onContextMenu }: ParticipantTileProps) {
     const { t } = useTranslation();
     const isSpeaking = useIsSpeaking(participant);
-    const quality = useConnectionQuality(participant);
+    const { quality } = useConnectionQualityIndicator({ participant });
     const micMuted = useMicMuted(participant);
     const deafenedFromMeta = useIsDeafenedFromMeta(participant);
     const isScreenSharing = useIsScreenSharing(participant);

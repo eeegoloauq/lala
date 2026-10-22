@@ -54,14 +54,9 @@ export function usePersistedVolumes(storageKey = 'lala_volumes') {
         });
     }, [persistVolumes]);
 
-    const reset = useCallback(() => {
-        setVolumes(new Map());
-        localStorage.removeItem(keyRef.current);
-    }, []);
-
     useEffect(() => {
         return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
     }, []);
 
-    return { volumes, handleVolumeChange, reset };
+    return { volumes, handleVolumeChange };
 }

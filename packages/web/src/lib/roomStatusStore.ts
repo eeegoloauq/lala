@@ -106,12 +106,6 @@ export function resetRoomSession(): void {
 
 // ---- Reader hooks ----
 
-/** Whole-set snapshot — only used where the full set identity matters (none currently;
- *  kept for symmetry / future use, prefer the per-identity selectors below). */
-export function useSpeakingUsers(): Set<string> {
-    return useSyncExternalStore(speakingStore.subscribe, speakingStore.get);
-}
-
 export function useIsSpeaking(identity: string): boolean {
     return useSyncExternalStore(speakingStore.subscribe, () => speakingStore.get().has(identity));
 }

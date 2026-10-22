@@ -359,11 +359,7 @@
     "silenceGateOff": "Шумоподавление выключено — потяните вправо",
     "silenceGate": "Порог: {{value}} дБ",
     "stopMonitoring": "Остановить мониторинг",
-    "listenToMic": "Прослушать микрофон",
-    "noAccess": "Нет доступа к микрофону",
-    "inputLevel": "Уровень входа",
-    "micMonitor": "Мониторинг микрофона",
-    "micMonitorHint": "Слушайте себя через колонки"
+    "listenToMic": "Прослушать микрофон"
   },
   "emoji": {
     "recent": "Недавние",

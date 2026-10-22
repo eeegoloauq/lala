@@ -39,11 +39,6 @@ export function getRoomPassword(roomId: string): string | null {
     return secureGet(ROOM_PW_PREFIX + roomId);
 }
 
-/** Remove the saved password for a specific room. */
-export function removeRoomPassword(roomId: string): void {
-    secureRemove(ROOM_PW_PREFIX + roomId);
-}
-
 /** Wipe every stored password: pool, per-room passwords, template passwords. */
 export function clearAllPasswords(): void {
     clearPool();

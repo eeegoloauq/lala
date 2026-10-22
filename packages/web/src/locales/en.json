@@ -359,11 +359,7 @@
     "silenceGateOff": "Silence gate off — drag right to enable",
     "silenceGate": "Gate: {{value}} dB",
     "stopMonitoring": "Stop monitoring",
-    "listenToMic": "Listen to your mic",
-    "noAccess": "No mic access",
-    "inputLevel": "Input level",
-    "micMonitor": "Mic monitor",
-    "micMonitorHint": "Hear your own mic through speakers"
+    "listenToMic": "Listen to your mic"
   },
   "emoji": {
     "recent": "Recent",
