@@ -138,7 +138,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
 
     useParticipantVolumeSync({ participants, volumes, onVolumeChange, screenVolumes });
 
-    const { unreadCount, resetUnread } = useChatNotifications(settings, messages, chatOpen, localParticipant.identity, t, fileTransfers);
+    const { unreadCount, resetUnread } = useChatNotifications(settings, messages, chatOpen, localParticipant.identity, fileTransfers);
 
     const handleOpenChat = useCallback(() => {
         setChatOpen((v) => {
@@ -219,7 +219,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
         onScreenShare: handleScreenShareToggle,
         onEscape: () => setChatOpen(false),
         pttKey: settings.pushToTalk ? settings.pushToTalkKey : undefined,
-        enabled: settings.shortcutsEnabled ?? true,
+        enabled: settings.shortcutsEnabled,
         keyMic: settings.keyMic,
         keyCam: settings.keyCam,
         keyDeafen: settings.keyDeafen,

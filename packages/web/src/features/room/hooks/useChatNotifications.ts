@@ -1,5 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { TFunction } from 'i18next';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 import { playChatSound } from '../../../lib/sounds';
 import { speak } from '../../../lib/tts';
@@ -25,9 +25,9 @@ export function useChatNotifications(
     messages: ReceivedChatMessage[],
     chatOpen: boolean,
     localParticipantIdentity: string,
-    t: TFunction,
     fileTransfers: FileTransferItem[] = [],
 ): UseChatNotificationsResult {
+    const { t } = useTranslation();
     const [unreadCount, setUnreadCount] = useState(0);
     const prevMsgCountRef = useRef(0);
     const prevFileCountRef = useRef(0);
@@ -45,7 +45,7 @@ export function useChatNotifications(
 
         if (incoming.length > 0) {
             if (!chatOpen) setUnreadCount((c) => c + incoming.length);
-            if (s.soundChat ?? true) playChatSound();
+            if (s.soundChat) playChatSound();
         }
         if (s.chatTTS && allNew.length > 0) {
             for (const m of allNew) {
@@ -54,7 +54,7 @@ export function useChatNotifications(
             }
         }
         prevMsgCountRef.current = messages.length;
-    }, [messages, localParticipantIdentity, chatOpen]);
+    }, [messages, localParticipantIdentity, chatOpen, t]);
 
     // Same pipeline for incoming file transfers, keyed off first appearance (not progress/status
     // updates) so a single file only ever notifies once.
@@ -65,7 +65,7 @@ export function useChatNotifications(
 
         if (newFiles.length > 0) {
             if (!chatOpen) setUnreadCount((c) => c + newFiles.length);
-            if (s.soundChat ?? true) playChatSound();
+            if (s.soundChat) playChatSound();
             if (s.chatTTS) {
                 for (const f of newFiles) {
                     speak(t('chat.fileSent', { name: f.displayName }), ttsOptsFromSettings(s));

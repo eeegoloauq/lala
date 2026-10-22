@@ -7,7 +7,6 @@ interface Route {
     /** Password from URL hash fragment (#pw=...), null if absent */
     hashPassword: string | null;
     navigate: (to: string) => void;
-    replace: (to: string) => void;
 }
 
 function parseRoomId(pathname: string): string | null {
@@ -24,21 +23,18 @@ function parseHashPassword(hash: string): string | null {
 
 export function useRoute(): Route {
     const [path, setPath] = useState(window.location.pathname);
-    const [hashPassword, setHashPassword] = useState(() => parseHashPassword(window.location.hash));
+    // The password from an invite link, good for the room in that same link only.
+    const [invite] = useState(() => ({
+        roomId: parseRoomId(window.location.pathname),
+        password: parseHashPassword(window.location.hash),
+    }));
 
     // Strip password from URL before first paint (don't leak in address bar / screen share)
     useLayoutEffect(() => {
-        if (hashPassword && window.location.hash) {
+        if (invite.password && window.location.hash) {
             window.history.replaceState(null, '', window.location.pathname);
         }
-    }, [hashPassword]);
-
-    // Clear hash password when navigating away from the room it was intended for
-    useEffect(() => {
-        if (hashPassword && !parseRoomId(path)) {
-            setHashPassword(null);
-        }
-    }, [path]);
+    }, [invite]);
 
     useEffect(() => {
         const handler = () => setPath(window.location.pathname);
@@ -51,10 +47,6 @@ export function useRoute(): Route {
         setPath(to);
     }, []);
 
-    const replace = useCallback((to: string) => {
-        window.history.replaceState(null, '', to);
-        setPath(to);
-    }, []);
-
-    return { path, roomId: parseRoomId(path), hashPassword, navigate, replace };
+    const roomId = parseRoomId(path);
+    return { path, roomId, hashPassword: roomId && roomId === invite.roomId ? invite.password : null, navigate };
 }
