@@ -5,10 +5,9 @@
 
 ## How I tested it
 
-<!-- There's no test suite yet, so this section carries the weight. -->
-
-- [ ] Verified with a real call (two tabs, or tab + desktop app)
-- [ ] Typecheck/build passes (`npm run build` in the packages I touched)
+- [ ] `npm run build` passes in the packages I touched, `npm run lint` in web
+- [ ] Call, auth or dependency changes: `cd e2e && npm test` passes
+- [ ] Verified with a real call if the change is something the tests don't cover
 - [ ] If this touches passwords or encryption: tested in a password-protected room (E2EE path)
 
 <!-- Screenshots or a short capture are very welcome for UI changes. -->

@@ -25,33 +25,34 @@ Lala is a monorepo with four packages:
 
 | Package | What | Dev command |
 |---|---|---|
-| `packages/api` | Express — tokens, rooms, admin | `npm install && npm run dev` (:3001) |
-| `packages/web` | Vite + React SPA | `npm install && npm run dev` (:3000) |
-| `packages/desktop` | Electron wrapper | `npm install && npm start` |
+| `packages/api` | Express — tokens, rooms, admin | `npm ci && npm run dev` (:3001) |
+| `packages/web` | Vite + React SPA | `npm ci && npm run dev` (:3000) |
+| `packages/desktop` | Electron wrapper | `npm ci && npm start` |
 | `packages/shared` | Types-only wire contract | consumed by api + web |
 
 Changing an API response shape? Change it in `packages/shared` **first** —
 api and web both consume it as a `file:` dependency.
 
 For a full local stack (LiveKit, Redis) you'll also need Docker and the
-`.env` described in the [README](README.md#setup); for most UI work,
+`.env` described in the [README](README.md#self-hosting); for most UI work,
 `api` + `web` in dev mode against an existing LiveKit instance is enough.
 
 ## Testing your changes
 
 `e2e/` runs a two-person call in headless Chromium against a local LiveKit,
 the API and the production web build. It covers the server password, a
-password-protected room (E2EE), audio both ways, camera with background blur
-and chat:
+password-protected room (E2EE), audio both ways, camera with background blur,
+chat, screen share and the room creator's mute, kick, ban and delete:
 
 ```bash
 cd e2e && npm ci && npm run setup && npm test
 ```
 
 It downloads the LiveKit server version production uses on first run.
-For what it doesn't cover (screen share, the desktop app, real devices),
-open two browser tabs or a tab and the desktop app, join the same room and
-check what you touched. Changes near encryption or passwords need a
+`npm run test:desktop` in `e2e/` runs the same call in the desktop app on
+Linux/X11. For the rest (Windows, macOS, Wayland, real devices), open two
+browser tabs or a tab and the desktop app, join the same room and check what
+you touched. Changes near encryption or passwords need a
 password-protected room: that path uses E2EE and behaves differently.
 
 Both `npm run build` (web) and `npm run build` (api, `tsc`) must pass —

@@ -76,7 +76,7 @@ Auto-saved after 30s. Up to 3, deduped by name. Sidebar shows offline templates 
 | Key | Contents |
 |-----|----------|
 | `lala-settings` | AppSettings JSON |
-| `lala-identity` | device UUID (NOT the LiveKit identity) |
+| `lala-device-id` | private device UUID (NOT the LiveKit identity); never sent anywhere but the API |
 | `lala_cached_hmac_identity` | HMAC identity for instant display |
 | `lala_cached_hmac_device` | device UUID for cache invalidation |
 | `lala-display-name` | display name |

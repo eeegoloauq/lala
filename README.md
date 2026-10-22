@@ -17,7 +17,7 @@ Demo: [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
 
 - Voice and video with configurable audio quality (speech / music / high-quality stereo)
 - End-to-end encryption for password-protected rooms in browsers that support it (AES-GCM)
-- Screen sharing with quality/FPS controls and system audio (Windows)
+- Screen sharing with quality/FPS controls; the desktop app also shares system audio
 - Chat over data channels with emoji picker and TTS
 - Room admin: kick, ban, mute; passwords hashed with scrypt
 - 5 themes: dark, light, AMOLED, Discord, Windows XP
@@ -62,8 +62,10 @@ docker network create edge   # compose attaches web and LiveKit to it for your r
 docker compose up -d
 ```
 
-The web UI runs on port 3000. Put a reverse proxy with TLS in front of it and of LiveKit
-signaling (`wss://rtc.example.com` → `:7880`).
+The web UI (`:80` in the `web` container) and LiveKit signaling (`:7880`) are reachable on the
+`edge` network and on the host's loopback (`127.0.0.1:3000`, `127.0.0.1:7880`). Put a reverse proxy
+with TLS on that network in front of both, with LiveKit at its own domain
+(`wss://rtc.example.com` → `lala-livekit:7880`).
 
 To build the images yourself, use the repo root as the build context so `packages/shared` is
 included, and set `LALA_REGISTRY=local` and `LALA_TAG=dev`:
@@ -97,10 +99,10 @@ to 10 per IP per 15 minutes.
 
 ### Ports
 
+Open these to the internet; the web UI and signaling go through the reverse proxy.
+
 | Port | Proto | What |
 |------|-------|------|
-| 3000 | TCP | Web UI (nginx → SPA + API proxy) |
-| 7880 | TCP | LiveKit signaling |
 | 7881 | TCP | ICE/TCP fallback |
 | 50000 | UDP | Media |
 | 3478 | UDP | TURN |
@@ -131,15 +133,15 @@ Identity is an HMAC of a stable device UUID, so the same device is always the sa
 - Admin secrets: 128-bit random, Redis-only (never in room metadata)
 - Optional server password with an HttpOnly session cookie and a limit on failed attempts
 - Rate limiting in nginx and Express; null bytes, RTL overrides and control chars stripped from input
-- CSP without inline scripts, HSTS, containers non-root with `no-new-privileges` and memory limits
+- CSP without inline scripts; containers with `no-new-privileges` and memory limits, the API as a non-root user
 
 Found a vulnerability? See [SECURITY.md](SECURITY.md).
 
 ## Local dev
 
 ```bash
-cd packages/api && npm install && npm run dev   # :3001
-cd packages/web && npm install && npm run dev   # :3000
+cd packages/api && npm ci && npm run dev   # :3001
+cd packages/web && npm ci && npm run dev   # :3000
 ```
 
 Call tests: `cd e2e && npm ci && npm run setup && npm test` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
