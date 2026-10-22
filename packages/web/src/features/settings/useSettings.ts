@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { STORAGE_KEYS } from '../../lib/constants';
 import { safeJsonParse } from '../../lib/utils';
 import { DEFAULT_SETTINGS, AUDIO_QUALITY_PRESETS, NOISE_SUPPRESSION_MODES, CAMERA_EFFECTS } from './types';
@@ -44,6 +44,12 @@ function migrate(parsed: StoredSettings): Partial<AppSettings> {
 }
 
 const ACCENT_COLOR_RE = /^#[0-9a-f]{6}$/i;
+// Fields that take one of a fixed set of strings.
+const ENUM_FIELDS: Partial<Record<keyof AppSettings, readonly string[]>> = {
+  audioQuality: AUDIO_QUALITY_PRESETS,
+  noiseSuppressionMode: NOISE_SUPPRESSION_MODES,
+  cameraEffect: CAMERA_EFFECTS,
+};
 // Optional free-form device-id strings — no entry in DEFAULT_SETTINGS to
 // typeof-check against, so they get an explicit string check instead.
 const OPTIONAL_STRING_FIELDS = new Set<keyof AppSettings>([
@@ -65,22 +71,9 @@ function sanitize(partial: Partial<AppSettings>): Partial<AppSettings> {
       if (typeof value === 'string' && ACCENT_COLOR_RE.test(value)) clean.accentColor = value;
       continue;
     }
-    if (key === 'audioQuality') {
-      if (typeof value === 'string' && (AUDIO_QUALITY_PRESETS as readonly string[]).includes(value)) {
-        clean.audioQuality = value as AppSettings['audioQuality'];
-      }
-      continue;
-    }
-    if (key === 'noiseSuppressionMode') {
-      if (typeof value === 'string' && (NOISE_SUPPRESSION_MODES as readonly string[]).includes(value)) {
-        clean.noiseSuppressionMode = value as AppSettings['noiseSuppressionMode'];
-      }
-      continue;
-    }
-    if (key === 'cameraEffect') {
-      if (typeof value === 'string' && (CAMERA_EFFECTS as readonly string[]).includes(value)) {
-        clean.cameraEffect = value as AppSettings['cameraEffect'];
-      }
+    const allowed = ENUM_FIELDS[key];
+    if (allowed) {
+      if (typeof value === 'string' && allowed.includes(value)) (clean as Record<string, unknown>)[key] = value;
       continue;
     }
     if (OPTIONAL_STRING_FIELDS.has(key)) {
@@ -107,23 +100,21 @@ function loadSettings(): AppSettings {
       : {};
   const migrated = migrate(parsed);
   const sanitized = sanitize(migrated);
-  const merged = { ...DEFAULT_SETTINGS, ...sanitized };
-  if (parsed._v !== SETTINGS_VERSION) {
-    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ ...merged, _v: SETTINGS_VERSION }));
-  }
-  return merged;
+  return { ...DEFAULT_SETTINGS, ...sanitized };
 }
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
 
-  const updateSettings = (patch: Partial<AppSettings>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ ...next, _v: SETTINGS_VERSION }));
-      return next;
-    });
-  };
+  // Saved from an effect: state updaters must stay pure. This also writes back a
+  // migrated or cleaned-up copy right after loading.
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify({ ...settings, _v: SETTINGS_VERSION }));
+  }, [settings]);
+
+  const updateSettings = useCallback((patch: Partial<AppSettings>) => {
+    setSettings((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   return { settings, updateSettings };
 }

@@ -40,7 +40,7 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
         </div>
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.language')}</div></div>
-          <Select value={i18next.language?.startsWith('ru') ? 'ru' : 'en'} onChange={(v) => { i18next.changeLanguage(v); onUpdate({ language: v }); }} options={LANGUAGE_OPTIONS} className="lala-select-wide" />
+          <Select value={i18next.language?.startsWith('ru') ? 'ru' : 'en'} onChange={(v) => i18next.changeLanguage(v)} options={LANGUAGE_OPTIONS} className="lala-select-wide" />
         </div>
       </div>
 

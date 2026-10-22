@@ -47,7 +47,6 @@ export interface AppSettings {
   keyChat: string;
   keyFullscreen: string;
   keyScreenShare: string;
-  language: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -84,5 +83,4 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keyChat: 'KeyC',
   keyFullscreen: 'KeyF',
   keyScreenShare: 'KeyS',
-  language: 'en',
 };
