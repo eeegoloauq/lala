@@ -6,16 +6,17 @@ interface RoomKeyboardOptions {
     onDeafen: () => void;
     onChat: () => void;
     onFullscreen: () => void;
-    onScreenShare?: () => void;
-    onEscape?: () => void;
-    pttKey?: string;      // skip binding if PTT is on (Space already used)
-    enabled?: boolean;    // master shortcut toggle
-    keyMic?: string;
-    keyCam?: string;
-    keyDeafen?: string;
-    keyChat?: string;
-    keyFullscreen?: string;
-    keyScreenShare?: string;
+    onScreenShare: () => void;
+    onEscape: () => void;
+    /** The push-to-talk key when it is on: it belongs to push-to-talk, not to a shortcut. */
+    pttKey?: string;
+    enabled: boolean;    // master shortcut toggle
+    keyMic: string;
+    keyCam: string;
+    keyDeafen: string;
+    keyChat: string;
+    keyFullscreen: string;
+    keyScreenShare: string;
 }
 
 const IGNORED_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
@@ -29,23 +30,16 @@ export function useRoomKeyboard(options: RoomKeyboardOptions) {
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             const {
-                onMicToggle, onCamToggle, onDeafen, onChat, onFullscreen,
-                onScreenShare, onEscape,
-                enabled = true,
-                keyMic = 'KeyM',
-                keyCam = 'KeyV',
-                keyDeafen = 'KeyD',
-                keyChat = 'KeyC',
-                keyFullscreen = 'KeyF',
-                keyScreenShare = 'KeyS',
+                onMicToggle, onCamToggle, onDeafen, onChat, onFullscreen, onScreenShare, onEscape,
+                pttKey, enabled, keyMic, keyCam, keyDeafen, keyChat, keyFullscreen, keyScreenShare,
             } = optionsRef.current;
 
             // Escape always works regardless of enabled flag
             if (e.code === 'Escape') {
-                if (onEscape) onEscape();
+                onEscape();
                 return;
             }
-            if (!enabled) return;
+            if (!enabled || e.code === pttKey) return;
             if (IGNORED_TAGS.has((e.target as HTMLElement)?.tagName)) return;
             if (e.ctrlKey || e.metaKey || e.altKey) return;
 
@@ -54,7 +48,7 @@ export function useRoomKeyboard(options: RoomKeyboardOptions) {
             else if (e.code === keyDeafen)     { e.preventDefault(); onDeafen(); }
             else if (e.code === keyChat)       { e.preventDefault(); onChat(); }
             else if (e.code === keyFullscreen) { e.preventDefault(); onFullscreen(); }
-            else if (e.code === keyScreenShare && onScreenShare) { e.preventDefault(); onScreenShare(); }
+            else if (e.code === keyScreenShare) { e.preventDefault(); onScreenShare(); }
         };
 
         window.addEventListener('keydown', handler);
