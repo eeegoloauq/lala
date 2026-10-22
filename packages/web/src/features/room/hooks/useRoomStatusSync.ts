@@ -13,17 +13,9 @@ export interface UseRoomStatusSyncOptions {
 }
 
 /**
- * Keeps the sidebar-facing room status in sync: live participant list, muted-identity
- * set, deafened-identity set, and active speakers. These four used to be four separate
- * `room.on/off` effects in RoomShell with overlapping ParticipantConnected/Disconnected
- * subscriptions; kept as four effects here too (clarity over micro-optimizing listener
- * count) but under one roof since they all feed the same family of writers.
- *
- * Writes straight into the external room-status store (lib/roomStatusStore.ts) instead
- * of bubbling callbacks up through RoomShell -> RoomView -> App -> ChannelSidebar — that
- * chain used to force a full top-down React re-render (App and everything below it) on
- * every ActiveSpeakersChanged event, even though only a single sidebar avatar dot ever
- * needed to update.
+ * Keeps the sidebar-facing room status in sync: live participants, muted and deafened
+ * identities, and active speakers, written straight into the room-status store
+ * (lib/roomStatusStore.ts) so only the affected sidebar rows re-render.
  */
 export function useRoomStatusSync({
     room,

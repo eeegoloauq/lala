@@ -13,11 +13,8 @@ export interface UseAvatarCacheOptions {
 }
 
 /**
- * Owns the identity -> avatar-data-URL cache shown on participant tiles. The Map itself
- * now lives in the external room-status store (lib/roomStatusStore.ts) — this hook is
- * just the room-lifetime wiring that feeds it, so ChannelSidebar can read the exact same
- * in-memory cache without it being threaded through App/RoomView/RoomShell props.
- * Three sources feed it, in the same order they ran as separate effects in RoomShell:
+ * Feeds the identity -> avatar cache in the room-status store (lib/roomStatusStore.ts),
+ * which tiles and ChannelSidebar both read. Three sources:
  *  1. Pre-population from localStorage for participants already in the room on mount
 
  *  2. `useAvatarSync`, which broadcasts our own avatar and receives others' over the

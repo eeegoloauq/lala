@@ -1,25 +1,14 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * External store for the volatile, high-frequency room status that used to live in
- * App.tsx state (speakingUsers, mutedInRoom, deafenedInRoom, liveParticipants, the
- * live avatar cache). Writers are the room-lifetime hooks (useRoomStatusSync,
- * useAvatarCache) that run deep inside RoomShell; readers are ChannelSidebar's
- * per-participant rows.
+ * External store for volatile, high-frequency room status: speaking, muted and deafened
+ * identities, live participants and the live avatar cache. Room-lifetime hooks deep in
+ * RoomShell (useRoomStatusSync, useAvatarCache) write it; ChannelSidebar rows read it.
  *
- * Why not React state passed down via props/context: an ActiveSpeakersChanged event
- * used to update App state, which re-rendered the whole tree (App -> ChannelSidebar
- * -> RoomView -> RoomShell) for a change that only ever affects a single avatar dot in
- * the sidebar. `useSyncExternalStore` with a per-identity selector lets each sidebar
- * row subscribe to just its own membership in a Set/Map — the row only re-renders when
- * ITS OWN speaking/muted/deafened/avatar value actually changes, and nothing above
- * ChannelSidebar (App, RoomView, RoomShell) re-renders at all since none of them read
- * from this store.
- *
- * No new dependency: this is a ~30-line manual store, the same shape React's own docs
- * use to demonstrate `useSyncExternalStore` without the `use-sync-external-store` shim
- * (safe here since selectors return primitives/stable-until-written references, so
- * `Object.is` comparison in React 18 is all we need — no external "with-selector" package).
+ * Not React state passed down: an active-speaker change would re-render App and
+ * everything under it for one avatar dot. With useSyncExternalStore and a per-identity
+ * selector, only the row whose value changed re-renders. Selectors return primitives or
+ * references that stay the same until written, so Object.is comparison is enough.
  */
 
 type Listener = () => void;
@@ -44,9 +33,7 @@ const speakingStore = createStore<Set<string>>(new Set());
 const mutedStore = createStore<Set<string>>(new Set());
 const deafenedStore = createStore<Set<string>>(new Set());
 const liveParticipantsStore = createStore<Map<string, string>>(new Map());
-// In-memory-only layer (localStorage persistence stays exactly where it already
-// happened — useAvatarSync.ts and useAvatarCache.ts — this just replaces the old
-// App.liveAvatarCache + useAvatarCache's own useState<Map> duplicates of the same data).
+// In memory only; useAvatarSync and useAvatarCache persist avatars to localStorage.
 const avatarCacheStore = createStore<Map<string, string>>(new Map());
 
 // ---- Writers — called from room-lifetime hooks (RoomShell subtree) ----

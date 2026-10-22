@@ -90,10 +90,6 @@ export default function App() {
 
     const handleLeave = () => {
         route.navigate('/');
-        // Clears speakingUsers/mutedInRoom/deafenedInRoom/liveParticipants/avatarCache —
-        // these now live in the external room-status store (lib/roomStatusStore.ts)
-        // instead of App state, so ChannelSidebar reads them directly and App no longer
-        // re-renders on voice activity.
         resetRoomSession();
         // Clear session for crash recovery
         window.electronAPI?.saveSession?.(null);

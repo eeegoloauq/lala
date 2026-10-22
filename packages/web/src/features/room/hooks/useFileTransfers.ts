@@ -180,8 +180,8 @@ export function useFileTransfers(room: Room, localParticipant: LocalParticipant)
         const mimeType = file.type || 'application/octet-stream';
         const isImage = mimeType.startsWith('image/');
         const blobUrl = isImage ? URL.createObjectURL(file) : undefined;
-        // A transfer is already writing to the channel -- queue behind it instead of starting
-        // a second concurrent writer (that's the flood that used to abort the channel).
+        // A transfer is already writing to the channel: queue behind it. A second concurrent
+        // writer floods the reliable channel until LiveKit aborts it.
         const mustQueue = activeSendId.current !== null;
 
         upsert(id, {

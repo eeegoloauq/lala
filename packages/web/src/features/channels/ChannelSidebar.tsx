@@ -14,15 +14,14 @@ import { RoomContextMenu } from './RoomContextMenu';
 import { BannedUsersModal } from './BannedUsersModal';
 import { ChannelUserRow } from './ChannelUserRow';
 import { useTheme } from '../settings/ThemeProvider';
-import type { Theme } from '../settings/ThemeProvider';
+import { THEMES } from '../settings/themes';
+import { MAX_NAME_LENGTH } from '../../lib/constants';
 import { useLiveParticipants } from '../../lib/roomStatusStore';
 import { buildAdminActions } from '../room/hooks/useAdminActions';
 import { useMeContext } from '../../lib/meContext';
 import '../settings/settings.css';
 import './channel-sidebar.css';
 import { IS_TOUCH as isTouchDevice } from '../../lib/env';
-
-const THEMES: Theme[] = ['dark', 'light', 'amoled', 'discord', 'winxp'];
 
 interface ChannelSidebarProps {
     rooms: RoomInfo[];
@@ -381,7 +380,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                         ref={renameInputRef}
                         className="sidebar-rename-input"
                         value={renameValue}
-                        maxLength={20}
+                        maxLength={MAX_NAME_LENGTH}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onBlur={commitRename}
                         onKeyDown={(e) => {

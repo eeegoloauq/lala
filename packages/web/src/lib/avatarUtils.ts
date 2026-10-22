@@ -35,8 +35,7 @@ const AVATAR_SIZE = 128;
 const AVATAR_QUALITY = 0.72;
 const MY_AVATAR_KEY = 'lala_my_avatar';
 const CACHED_PREFIX = 'lala_av_';
-// Cache is bounded: avatars are up to ~50 KB each and used to accumulate for
-// every participant ever seen, eventually exhausting the localStorage quota.
+// Bounded: an entry for every participant ever seen would fill the localStorage quota.
 const MAX_CACHED_AVATARS = 60;
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days, same as volume cache
 

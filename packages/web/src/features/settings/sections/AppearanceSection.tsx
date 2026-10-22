@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 import type { AppSettings } from '../types';
-import { useTheme, type Theme } from '../ThemeProvider';
+import { useTheme } from '../ThemeProvider';
+import type { Theme } from '../themes';
 import { Select } from '../../../ui/Select';
 import type { SelectOption } from '../../../ui/Select';
 

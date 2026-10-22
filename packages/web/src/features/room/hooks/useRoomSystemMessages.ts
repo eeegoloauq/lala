@@ -26,9 +26,6 @@ export interface UseRoomSystemMessagesResult {
  * `addSystem`/`suppressLeave` it hands to useAdminActions) kick/ban/mute — plus the
  * insertion-order bookkeeping that interleaves them with real chat messages into a
  * single sorted `chatEntries` list for ChatPanel.
- *
- * Consolidates what used to be three separate RoomShell effects (self-join, join/leave,
- * screen-share) that all built the same kind of entry via a shared `addSystem` closure.
  */
 export function useRoomSystemMessages(
     room: Room,

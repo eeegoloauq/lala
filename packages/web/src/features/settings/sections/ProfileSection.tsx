@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compressAvatar } from '../../../lib/avatarUtils';
 import { useMeContext } from '../../../lib/meContext';
+import { MAX_NAME_LENGTH } from '../../../lib/constants';
 
 interface ProfileSectionProps {
   headerRef: (el: HTMLElement | null) => void;
@@ -45,7 +46,7 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
           <input
             className="input"
             defaultValue={displayName ?? ''}
-            maxLength={20}
+            maxLength={MAX_NAME_LENGTH}
             placeholder={t('settings.namePlaceholder')}
             onBlur={(e) => {
               const val = e.target.value.trim();
@@ -66,7 +67,7 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <img
                   src={myAvatar}
-                  alt="Avatar preview"
+                  alt={t('settings.avatar')}
                   style={{ width: 40, height: 40, borderRadius: 'var(--avatar-radius, 50%)', objectFit: 'cover', border: '1px solid var(--border-color)' }}
                 />
                 <button className="accent-reset-btn" onClick={() => onAvatarChange?.(null)}>

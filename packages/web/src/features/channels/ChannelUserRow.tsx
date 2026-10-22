@@ -28,10 +28,8 @@ export interface ChannelUserRowProps {
 /**
  * A single participant row in ChannelSidebar's room list. Split out from the parent
  * so each row can subscribe individually to the room-status store's per-identity
- * selectors (lib/roomStatusStore.ts) — a speaking/mute/deafen change for ONE
- * participant now only re-renders THEIR row, not the whole sidebar (previously an
- * ActiveSpeakersChanged event re-rendered all of App -> ChannelSidebar -> RoomView
- * -> RoomShell for a single avatar dot).
+ * selectors (lib/roomStatusStore.ts): a speaking, mute or deafen change re-renders only
+ * that participant's row.
  */
 export const ChannelUserRow = memo(function ChannelUserRow({
     identity,

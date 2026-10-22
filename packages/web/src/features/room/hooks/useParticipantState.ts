@@ -4,8 +4,7 @@ import type { Participant, ParticipantEvent, ParticipantEventCallbacks } from 'l
 /**
  * Derives reactive state from a participant by re-running `read` whenever any of `events` fires.
  * Shared plumbing behind the participant-event hooks in ParticipantTile (mic muted, deafened,
- * server-muted, screen sharing…), which previously each hand-rolled the same
- * useState + participant.on/off + reset-on-[participant] pattern.
+ * server-muted, screen sharing…).
  *
  * `update` always takes zero args, which every ParticipantEventCallbacks listener accepts
  * (TS allows fewer-param callbacks); the cast below only bridges the enum-vs-string-literal-key

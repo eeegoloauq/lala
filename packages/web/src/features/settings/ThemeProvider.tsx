@@ -1,9 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { STORAGE_KEYS } from '../../lib/constants';
 
-export type Theme = 'dark' | 'light' | 'amoled' | 'discord' | 'winxp';
-
-const VALID_THEMES: Theme[] = ['dark', 'light', 'amoled', 'discord', 'winxp'];
+import { THEMES, type Theme } from './themes';
 
 interface ThemeContextType {
     theme: Theme;
@@ -18,7 +16,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         // Explicit fallback: unknown/removed values (e.g. the removed 'retro'
         // theme, or a stale value from an older build) fall back to 'dark'
         // instead of applying a data-theme attribute with no matching CSS.
-        return stored && VALID_THEMES.includes(stored) ? stored : 'dark';
+        return stored && THEMES.includes(stored) ? stored : 'dark';
     });
 
     useEffect(() => {

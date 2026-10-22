@@ -20,13 +20,10 @@ export function screenShareBitrateLabel(mbps: number): string {
 /** LocalStorage keys */
 export const STORAGE_KEYS = {
   displayName: 'lala-display-name',
-  // Renamed from 'lala-identity': clients used to publish the old value in the room
-  // list, so every device starts over with a fresh ID under the new key.
+  // Not 'lala-identity': IDs stored under that key were exposed, and a new key gives
+  // every device a new ID (identity.ts deletes the old one).
   identity: 'lala-device-id',
-  // Actual key in users' storage is 'lala_theme' (underscore) — ThemeProvider
-  // used to hardcode this string instead of importing the constant, and the
-  // constant itself drifted to the wrong (never-used) value. Keep the real
-  // value here so existing users' saved theme isn't silently dropped.
+  // Underscore, unlike its neighbours: the key users' saved themes are under.
   theme: 'lala_theme',
   settings: 'lala-settings',
 } as const;
