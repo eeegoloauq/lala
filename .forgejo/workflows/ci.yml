@@ -33,4 +33,4 @@ jobs:
         run: |
           cd packages/desktop
           npm ci
-          for f in main.js preload.js connection.js main/*.js; do node --check "$f"; done
+          for f in main.js preload.js connection.js main/*.js; do node --check "$f" || exit 1; done
