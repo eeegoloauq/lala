@@ -15,14 +15,20 @@ async function newClient(browser: Browser) {
     return context;
 }
 
-/** Opens Lala in a fresh browser profile, passes the server password and sets a name. */
-async function enter(browser: Browser, name: string, settings?: object): Promise<{ page: Page; errors: string[] }> {
+/** A page in a fresh browser profile that records its errors, including camera effect failures, which only warn. */
+async function openPage(browser: Browser): Promise<{ page: Page; errors: string[] }> {
     const page = await (await newClient(browser)).newPage();
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => {
         if (m.type() === 'error' || m.text().includes('useCameraProcessor')) errors.push(m.text());
     });
+    return { page, errors };
+}
+
+/** Opens Lala, passes the server password and sets a name. */
+async function enter(browser: Browser, name: string, settings?: object): Promise<{ page: Page; errors: string[] }> {
+    const { page, errors } = await openPage(browser);
     if (settings) await page.addInitScript(s => localStorage.setItem('lala-settings', s), JSON.stringify(settings));
     await page.goto('/');
     await page.getByLabel('Server password').fill(SERVER_PASSWORD);
@@ -68,8 +74,8 @@ test('server password keeps the app closed', async ({ page }) => {
 });
 
 test('two people talk in a password room', async ({ browser }) => {
-    // Alice publishes her camera through the background blur processor.
-    const alice = await enter(browser, 'Alice', { cameraEffect: 'blur' });
+    // Alice publishes her camera through the background blur processor and her mic through RNNoise.
+    const alice = await enter(browser, 'Alice', { cameraEffect: 'blur', noiseSuppressionMode: 'rnnoise' });
     await alice.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     await alice.page.getByRole('button', { name: 'Create channel' }).click();
     await alice.page.getByPlaceholder('e.g. "General"').fill('E2E room');
@@ -86,8 +92,7 @@ test('two people talk in a password room', async ({ browser }) => {
     expect(link).toMatch(/#pw=room-password&invite=\d+\.[\w-]+$/);
 
     // Bob has never entered the server password: the link alone lets him in.
-    const bob = { page: await (await newClient(browser)).newPage(), errors: [] as string[] };
-    bob.page.on('pageerror', e => bob.errors.push(e.message));
+    const bob = await openPage(browser);
     await bob.page.goto(link);
     await bob.page.getByPlaceholder('Your name...').fill('Bob');
     await bob.page.getByRole('button', { name: 'Continue' }).click();

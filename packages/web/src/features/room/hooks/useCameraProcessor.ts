@@ -1,8 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { Track, ParticipantEvent } from 'livekit-client';
 import type { LocalVideoTrack, LocalTrackPublication } from 'livekit-client';
-import { BackgroundProcessor, type BackgroundProcessorWrapper } from '@livekit/track-processors';
 import type { CameraEffect } from '../../settings/types';
 
 /**
@@ -15,9 +14,13 @@ import type { CameraEffect } from '../../settings/types';
  * Only touches the track while the camera source is actually publishing —
  * no processor work happens while the camera is off.
  */
+// MediaPipe is large, so it loads only once someone turns blur on. Its files are
+// served by the app (see vite.config.ts), not a CDN.
+const loadBackgroundProcessor = () => import('@livekit/track-processors').then(m => m.BackgroundProcessor);
+const ASSET_PATHS = { tasksVisionFileSet: '/mediapipe', modelAssetPath: '/mediapipe/selfie_segmenter.tflite' };
+
 export function useCameraProcessor(effect: CameraEffect) {
     const { localParticipant } = useLocalParticipant();
-    const processorRef = useRef<BackgroundProcessorWrapper | null>(null);
 
     useEffect(() => {
         const getCameraTrack = (): LocalVideoTrack | undefined => {
@@ -25,22 +28,16 @@ export function useCameraProcessor(effect: CameraEffect) {
             return pub?.videoTrack as LocalVideoTrack | undefined;
         };
 
+        // Asks the track, not a remembered processor: a republished camera track starts bare.
         const applyProcessor = async (track: LocalVideoTrack | undefined) => {
             if (!track) return;
-
             if (effect === 'none') {
-                if (processorRef.current) {
-                    await track.stopProcessor();
-                    processorRef.current = null;
-                }
+                if (track.getProcessor()) await track.stopProcessor();
                 return;
             }
-
-            // effect === 'blur'
-            if (processorRef.current) return; // already applied — nothing to update in-place for blur-only scope
-            const processor = BackgroundProcessor({ mode: 'background-blur' });
-            processorRef.current = processor;
-            await track.setProcessor(processor);
+            if (track.getProcessor()) return;
+            const BackgroundProcessor = await loadBackgroundProcessor();
+            await track.setProcessor(BackgroundProcessor({ mode: 'background-blur', assetPaths: ASSET_PATHS }));
         };
 
         const run = () => {
@@ -48,7 +45,6 @@ export function useCameraProcessor(effect: CameraEffect) {
                 // Never let a processor failure break/unpublish the camera — just
                 // fall back to unprocessed video.
                 console.warn('[useCameraProcessor] failed to apply:', err instanceof Error ? err.message : err);
-                processorRef.current = null;
             });
         };
 
@@ -69,13 +65,8 @@ export function useCameraProcessor(effect: CameraEffect) {
     // Cleanup on unmount
     useEffect(() => {
         return () => {
-            const track = localParticipant
-                .getTrackPublication(Track.Source.Camera)
-                ?.videoTrack as LocalVideoTrack | undefined;
-            if (track && processorRef.current) {
-                track.stopProcessor().catch(() => {});
-                processorRef.current = null;
-            }
+            const track = localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack as LocalVideoTrack | undefined;
+            if (track?.getProcessor()) track.stopProcessor().catch(() => {});
         };
     }, [localParticipant]);
 }

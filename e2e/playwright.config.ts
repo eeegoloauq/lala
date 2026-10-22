@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 export const SERVER_PASSWORD = 'e2e-server-password';
 
 // Builds and starts the real stack: LiveKit, Redis, the API and the production web bundle
-// served by `vite preview` (which proxies /api to :3001 like nginx does).
+// served by `vite preview` with the production CSP, proxying /api to :3001 like nginx does.
 export default defineConfig({
     testDir: './tests',
     timeout: 90_000,
@@ -49,7 +49,7 @@ export default defineConfig({
             },
         },
         {
-            command: 'npm ci && npm run build && npx vite preview --host 127.0.0.1 --port 3000 --strictPort',
+            command: 'npm ci && npm run build && npx vite preview --config ../../e2e/preview.config.mjs',
             cwd: '../packages/web',
             url: 'http://127.0.0.1:3000',
             reuseExistingServer: false,

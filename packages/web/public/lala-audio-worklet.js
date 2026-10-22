@@ -31,7 +31,13 @@ class LalaAudioProcessor extends AudioWorkletProcessor {
 
     _setRNNoise(enabled) {
         if (enabled && !this._m) {
-            this._m = createRNNWasmModuleSync();
+            try {
+                this._m = createRNNWasmModuleSync();
+            } catch (err) {
+                // Errors here stay inside the audio thread; tell the page.
+                this.port.postMessage({ error: `RNNoise failed to load: ${err.message}` });
+                return;
+            }
             this._state = this._m._rnnoise_create();
             this._inBuf  = this._m._malloc(FRAME_SIZE * 4);
             this._outBuf = this._m._malloc(FRAME_SIZE * 4);

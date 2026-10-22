@@ -124,7 +124,10 @@ IndexedDB (`lala-secure`); ciphertext lives under `lala_enc_<logical-key>`.
 | keyMic/keyCam/keyDeafen/keyChat/keyFullscreen/keyScreenShare | M/V/D/C/F/S | rebindable shortcuts |
 
 ## Nginx (`default.conf.template`)
-Processed by envsubst. CSP headers, `X-Forwarded-For` = `$remote_addr`, hashed assets cached 1 year, rate limiting, SSE proxy config.
+Processed by envsubst. CSP headers, `X-Forwarded-For` = `$remote_addr`, hashed assets cached 1 year, rate limiting, SSE proxy config. The CSP allows only the app's own origin (plus `CSP_CONNECT_SRC`) and `'wasm-unsafe-eval'` for RNNoise and MediaPipe. The e2e suite serves the build under this same CSP (`e2e/preview.config.mjs` reads it from the template), so anything that loads from a third party fails the tests.
+
+## Background blur
+`useCameraProcessor` imports `@livekit/track-processors` lazily. Its MediaPipe WebAssembly (from the installed `@mediapipe/tasks-vision`) and segmentation model (fetched at build by pinned URL and sha256, cached in `node_modules/.cache/mediapipe`) are served from `/mediapipe` by the plugin in `vite.config.ts`.
 
 ## Static Files (`public/`)
 - `lala-audio-worklet.js` -- RNNoise + silence gate AudioWorklet

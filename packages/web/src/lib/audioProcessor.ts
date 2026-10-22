@@ -30,6 +30,9 @@ export class LalaAudioProcessor implements TrackProcessor<Track.Kind.Audio, Audi
         this.workletNode = new AudioWorkletNode(this.ctx, 'lala-audio-processor');
         this.destinationNode = this.ctx.createMediaStreamDestination();
 
+        this.workletNode.port.onmessage = (e) => {
+            if (e.data.error) console.error('[audioProcessor]', e.data.error);
+        };
         this.sourceNode.connect(this.workletNode);
         this.workletNode.connect(this.destinationNode);
 
