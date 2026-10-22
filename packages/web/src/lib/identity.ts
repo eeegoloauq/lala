@@ -1,7 +1,10 @@
 import { STORAGE_KEYS } from './constants';
 
-/** Returns a stable UUID for this browser session, creating one if needed. */
+const LEAKED_IDENTITY_KEY = 'lala-identity';
+
+/** Returns this device's private UUID, creating one if needed. Never send it anywhere but the API. */
 export function getOrCreateIdentity(): string {
+    localStorage.removeItem(LEAKED_IDENTITY_KEY);
     let id = localStorage.getItem(STORAGE_KEYS.identity);
     if (!id) {
         id = crypto.randomUUID();

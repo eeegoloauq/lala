@@ -17,7 +17,7 @@ export interface RoomInfo {
     hasPassword: boolean;
     creationTime: number;
     participants: Array<{ identity: string; name: string }>;
-    adminIdentity?: string;          // creator's UUID, shown as crown in UI
+    adminIdentity?: string;          // creator's identity, shown as crown in UI
     screenSharingParticipants?: string[];  // identities currently screen sharing
     mutedParticipants?: string[];         // identities with mic muted
     deafenedParticipants?: string[];      // identities who are deafened (from participant metadata)
@@ -35,7 +35,7 @@ export interface CreateRoomRequest {
     name: string;
     password?: string;
     maxParticipants?: number;
-    identity?: string; // creator identity — stored in metadata to skip password on reconnect
+    deviceId?: string; // creator's device UUID — the server stores only the identity derived from it
 }
 
 /** Payload for POST /api/token */

@@ -20,7 +20,9 @@ export function screenShareBitrateLabel(mbps: number): string {
 /** LocalStorage keys */
 export const STORAGE_KEYS = {
   displayName: 'lala-display-name',
-  identity: 'lala-identity',
+  // Renamed from 'lala-identity': clients used to publish the old value in the room
+  // list, so every device starts over with a fresh ID under the new key.
+  identity: 'lala-device-id',
   // Actual key in users' storage is 'lala_theme' (underscore) — ThemeProvider
   // used to hardcode this string instead of importing the constant, and the
   // constant itself drifted to the wrong (never-used) value. Keep the real

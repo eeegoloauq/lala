@@ -6,6 +6,7 @@ import { cacheRoomMeta, evictRoomMeta } from '../lib/roomStore';
 import { sanitizeDisplayText } from '../lib/sanitize';
 import { randomBytes } from 'crypto';
 import { getAuthedRoom } from '../lib/auth';
+import { deriveIdentity } from '../lib/identity';
 
 // In-memory cache for the aggregated room list — GET /api/rooms is unauthenticated
 // and fans out a listParticipants() call per room, so without a cache it's an N+1
@@ -103,7 +104,7 @@ export function createRoomsRouter(): Router {
         try {
             // Partial<> because the body is untrusted input — every field is
             // validated below before use.
-            const { name, password, maxParticipants, identity } = (req.body ?? {}) as Partial<CreateRoomRequest>;
+            const { name, password, maxParticipants, deviceId } = (req.body ?? {}) as Partial<CreateRoomRequest>;
 
             if (!name || typeof name !== 'string' || !name.trim()) {
                 res.status(400).json({ error: 'invalid_input' });
@@ -119,7 +120,7 @@ export function createRoomsRouter(): Router {
                 res.status(400).json({ error: 'invalid_input' });
                 return;
             }
-            if (identity !== undefined && (typeof identity !== 'string' || identity.length > 128)) {
+            if (deviceId !== undefined && (typeof deviceId !== 'string' || deviceId.length > 100)) {
                 res.status(400).json({ error: 'invalid_input' });
                 return;
             }
@@ -135,7 +136,7 @@ export function createRoomsRouter(): Router {
                 passwordHash: password ? await hashPassword(password) : undefined,
                 maxParticipants: limit,
                 createdAt: Date.now(),
-                creatorIdentity: identity?.trim() || undefined,
+                creatorIdentity: deviceId ? deriveIdentity(deviceId) : undefined,
             };
 
             const roomService = getRoomService();

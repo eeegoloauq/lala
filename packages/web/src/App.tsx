@@ -110,7 +110,7 @@ export default function App() {
     };
 
     const handleCreateRoom = async (req: CreateRoomRequest) => {
-        const room = await addRoom({ ...req, identity });
+        const room = await addRoom({ ...req, deviceId: identity });
         if (room.adminSecret) {
             saveAdminSecret(room.id, room.adminSecret);
         }

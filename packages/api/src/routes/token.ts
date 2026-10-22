@@ -1,12 +1,12 @@
 import { Router, Request, Response } from 'express';
 import type { TokenRequest, TokenResponse } from '@lala/shared';
-import { createHmac } from 'crypto';
 import { AccessToken } from 'livekit-server-sdk';
 import { getRoomService } from '../lib/livekit';
 import { parseRoomMeta, verifyPassword } from '../lib/roomMeta';
 import { verifyAdminSecret } from '../lib/auth';
 import { getCachedMeta } from '../lib/roomStore';
 import { sanitizeDisplayText } from '../lib/sanitize';
+import { deriveIdentity } from '../lib/identity';
 
 export function createTokenRouter(): Router {
     // Clients learn where LiveKit is from here, so one web image serves any deployment.
@@ -48,12 +48,8 @@ export function createTokenRouter(): Router {
                 return;
             }
 
-            // Derive a stable identity from the client's device UUID using HMAC-SHA256.
-            // Same device → same identity → LiveKit replaces old connection (no duplicate participants).
-            // Other clients cannot forge someone else's identity without knowing apiSecret.
-            const identity = deviceId && deviceId.length > 0
-                ? createHmac('sha256', apiSecret).update(deviceId).digest('hex').slice(0, 36)
-                : crypto.randomUUID();
+            // Same device → same identity → LiveKit replaces the old connection (no duplicate participants).
+            const identity = deriveIdentity(deviceId);
 
             // Verify room exists and check password
             const roomService = getRoomService();

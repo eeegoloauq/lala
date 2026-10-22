@@ -137,6 +137,16 @@ test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
     };
     await join();
 
+    // The public room list names the creator by identity; the device ID behind it stays private.
+    const { rooms, deviceId, identity } = await alice.page.evaluate(async () => ({
+        rooms: (await (await fetch('/api/rooms')).json()).rooms,
+        deviceId: localStorage.getItem('lala-device-id'),
+        identity: localStorage.getItem('lala_cached_hmac_identity'),
+    }));
+    expect(deviceId).toBeTruthy();
+    expect(JSON.stringify(rooms)).not.toContain(deviceId);
+    expect(rooms.find((r: { displayName: string }) => r.displayName === 'Admin room').adminIdentity).toBe(identity);
+
     // Server mute revokes Bob's publish permission, so his microphone track goes away.
     await adminAction('Server mute');
     await expect(alice.page.locator('.p-tile', { hasText: 'Bob' }).getByTitle('Muted by admin')).toBeVisible({ timeout: 10_000 });
