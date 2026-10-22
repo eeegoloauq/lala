@@ -123,7 +123,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
 
     const adminProps = useAdminActions({ room, canModerate, settings, addSystem, suppressLeave });
 
-    usePushToTalk(settings.pushToTalk, settings.pushToTalkKey);
+    usePushToTalk(settings.pushToTalk, settings.pushToTalkKey, audioMuted);
     useAudioProcessor({ noiseSuppressionMode: settings.noiseSuppressionMode, silenceGate: settings.silenceGate });
     useCameraProcessor(settings.cameraEffect);
 
@@ -192,23 +192,23 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     // mic doesn't change (already off while deafening, or was never re-enabled
     // while undeafening), since nothing else will provide that feedback.
     const handleToggleAudio = useCallback(() => {
-        setAudioMuted((prev) => {
-            const nextMuted = !prev;
-            if (nextMuted) {
-                micWasEnabledRef.current = isMicrophoneEnabled;
-                if (isMicrophoneEnabled) localParticipant.setMicrophoneEnabled(false);
-                else playMuteSound();
-            } else {
-                if (micWasEnabledRef.current) localParticipant.setMicrophoneEnabled(true);
-                else playUnmuteSound();
-            }
-            const meta = JSON.stringify({ deafened: nextMuted });
-            localParticipant.setMetadata(meta).catch(() => {
-                setTimeout(() => localParticipant.setMetadata(meta).catch(console.warn), 1500);
-            });
-            return nextMuted;
+        const deafened = !audioMuted;
+        setAudioMuted(deafened);
+        if (deafened) {
+            micWasEnabledRef.current = isMicrophoneEnabled;
+            if (isMicrophoneEnabled) localParticipant.setMicrophoneEnabled(false);
+            else playMuteSound();
+        } else {
+            if (micWasEnabledRef.current) localParticipant.setMicrophoneEnabled(true);
+            else playUnmuteSound();
+        }
+        // Others see the deafened state through the metadata; one retry covers an update
+        // refused while the connection is still settling.
+        const meta = JSON.stringify({ deafened });
+        localParticipant.setMetadata(meta).catch(() => {
+            setTimeout(() => localParticipant.setMetadata(meta).catch(console.warn), 1500);
         });
-    }, [isMicrophoneEnabled, localParticipant]);
+    }, [audioMuted, isMicrophoneEnabled, localParticipant]);
 
     useRoomKeyboard({
         onMicToggle: mic.toggle,

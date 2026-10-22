@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
 
-export function usePushToTalk(enabled: boolean, key: string) {
+/** Hold `key` to talk. Deafened, the key does nothing; leaving the window lets go of it. */
+export function usePushToTalk(enabled: boolean, key: string, deafened: boolean) {
     const { localParticipant } = useLocalParticipant();
     const isKeyPressed = useRef(false);
 
@@ -12,7 +13,7 @@ export function usePushToTalk(enabled: boolean, key: string) {
         localParticipant.setMicrophoneEnabled(false).catch(console.warn);
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.code === key && !isKeyPressed.current && !e.repeat) {
+            if (e.code === key && !isKeyPressed.current && !e.repeat && !deafened) {
                 // Ignore key events if user is typing in chat input
                 if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
@@ -21,22 +22,27 @@ export function usePushToTalk(enabled: boolean, key: string) {
             }
         };
 
+        const release = () => {
+            if (!isKeyPressed.current) return;
+            isKeyPressed.current = false;
+            localParticipant.setMicrophoneEnabled(false).catch(console.warn);
+        };
         const handleKeyUp = (e: KeyboardEvent) => {
-            if (e.code === key && isKeyPressed.current) {
-                isKeyPressed.current = false;
-                localParticipant.setMicrophoneEnabled(false).catch(console.warn);
-            }
+            if (e.code === key) release();
         };
 
+        // The key-up of a key let go in another window never arrives here.
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', release);
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', release);
             if (isKeyPressed.current) {
                 localParticipant.setMicrophoneEnabled(false).catch(console.warn);
             }
         };
-    }, [enabled, key, localParticipant]);
+    }, [enabled, key, deafened, localParticipant]);
 }
