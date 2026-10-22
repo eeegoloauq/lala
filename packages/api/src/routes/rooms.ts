@@ -8,6 +8,7 @@ import { configRoomSalt, deriveRoomAuthKey, hashRoomKey } from '../lib/passwords
 import { can, canCreateRooms, isModerator, mayEnter } from '../lib/rights';
 import { claimRoom, dropRoom, findRoomByName, generateRoomId, getRoom, listMuted, listRoomStates, putPermanentRoom, type RoomState } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
+import { isShutOut } from '../lib/bans';
 
 type ListedRoom = Omit<RoomInfo, 'canModerate' | 'canJoin'> & { state: RoomState };
 
@@ -159,6 +160,10 @@ export function createRoomsRouter(): Router {
         }
         if (!creator) {
             res.status(400).json({ error: 'identity_required' });
+            return;
+        }
+        if (await isShutOut(creator, req.ip)) {
+            res.status(403).json({ error: 'banned' });
             return;
         }
         // Someone who may not create rooms still gets a live room by its name.

@@ -16,6 +16,8 @@ export interface ParticipantAdminActions {
     onKick: (identity: string) => Promise<void>;
     onBan: (identity: string) => Promise<void>;
     onToggleMute: (identity: string, serverMuted: boolean) => Promise<void>;
+    /** Server admins only. */
+    onServerBan?: (identity: string) => Promise<void>;
 }
 
 export interface ContextMenuState {
@@ -106,6 +108,7 @@ export function useParticipantContextMenu({
                 onKick: () => admin.onKick(identity),
                 onBan: () => admin.onBan(identity),
                 onToggleMute: () => admin.onToggleMute(identity, contextMenu.serverMuted),
+                onServerBan: admin.onServerBan && (() => admin.onServerBan!(identity)),
             } : undefined,
             screenShareHidden: contextMenu.screenShareHidden,
             onToggleScreenShare: contextMenu.hasScreenSharePub ? () => {

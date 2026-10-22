@@ -12,6 +12,8 @@ export type {
     AccessStatus,
     InviteResponse,
     Me,
+    ServerBan,
+    ServerBansResponse,
     ModerationEvent,
     ModerationTopic,
 } from '@lala/shared';

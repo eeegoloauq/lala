@@ -7,6 +7,7 @@ import { callerIdentity, deriveIdentity } from '../lib/identity';
 import { verifyRoomKey } from '../lib/passwords';
 import { can, isModerator, permissionFor } from '../lib/rights';
 import { getRoom, isBanned, isMuted } from '../lib/rooms';
+import { isShutOut, recordIp } from '../lib/bans';
 import { sanitizeDisplayText } from '../lib/sanitize';
 
 // Wrong room passwords only, per IP and room: enough for the client to try a full
@@ -50,7 +51,7 @@ export function createTokenRouter(): Router {
             res.status(403).json({ error: 'not_allowed' });
             return;
         }
-        if (await isBanned(room.id, identity)) {
+        if (await isShutOut(identity, req.ip) || await isBanned(room.id, identity)) {
             res.status(403).json({ error: 'banned' });
             return;
         }
@@ -79,6 +80,7 @@ export function createTokenRouter(): Router {
             await getRoomService().createRoom({ name: room.id, emptyTimeout: 300, maxParticipants: room.maxParticipants });
         }
 
+        await recordIp(identity, req.ip ?? '');
         const permission = permissionFor(identity, room, await isMuted(room.id, identity));
         const token = new AccessToken(apiKey, apiSecret, {
             identity,

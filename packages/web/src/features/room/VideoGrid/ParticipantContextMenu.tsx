@@ -10,6 +10,7 @@ export interface AdminActions {
     onKick: () => Promise<void>;
     onBan: () => Promise<void>;
     onToggleMute: () => Promise<void>;
+    onServerBan?: () => Promise<void>;
 }
 
 export interface ParticipantContextMenuProps {
@@ -156,6 +157,16 @@ export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVo
                                 </svg>
                                 {t('ctx.ban')}
                             </button>
+                            {admin.onServerBan && (
+                                <button className="ctx-menu-item ctx-menu-item--danger" onClick={() => runAdmin(admin.onServerBan!)}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                        <line x1="2" y1="12" x2="22" y2="12" />
+                                    </svg>
+                                    {t('ctx.banServer')}
+                                </button>
+                            )}
                             {adminError && <div className="ctx-menu-error" role="alert">{adminError}</div>}
                         </div>
                     )}

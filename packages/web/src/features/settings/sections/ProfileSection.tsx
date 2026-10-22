@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compressAvatar } from '../../../lib/avatarUtils';
+import { useMeContext } from '../../../lib/meContext';
 
 interface ProfileSectionProps {
   headerRef: (el: HTMLElement | null) => void;
@@ -8,11 +9,11 @@ interface ProfileSectionProps {
   onRename?: (name: string) => void;
   myAvatar?: string | null;
   onAvatarChange?: (dataUrl: string | null) => void;
-  identity?: string;
 }
 
-export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange, identity }: ProfileSectionProps) {
+export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange }: ProfileSectionProps) {
   const { t } = useTranslation();
+  const identity = useMeContext()?.identity;
   const [copied, setCopied] = useState(false);
 
   const copyIdentity = () => {

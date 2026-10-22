@@ -8,6 +8,7 @@ import { createWebhookRouter } from './routes/webhook';
 import { createEventsRouter } from './routes/events';
 import { createAccessRouter, requireAccess } from './routes/access';
 import { createMeRouter } from './routes/me';
+import { createServerAdminRouter } from './routes/server-admin';
 import { loadConfig } from './lib/config';
 import { connectRedis, redisReady } from './lib/redis';
 import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
@@ -76,6 +77,7 @@ app.use('/api/rooms',
     createRoomsRouter());
 app.use('/api/events', limiter(5), createEventsRouter());
 app.use('/api/me', limiter(30), createMeRouter());
+app.use('/api/admin', limiter(20), createServerAdminRouter());
 
 // 404 handler — don't leak Express default page
 app.use((_req, res) => {

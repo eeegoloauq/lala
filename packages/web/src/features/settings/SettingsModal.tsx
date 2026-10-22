@@ -16,8 +16,10 @@ import { ChatSection } from './sections/ChatSection';
 import { SoundsSection } from './sections/SoundsSection';
 import { KeybindsSection } from './sections/KeybindsSection';
 import { DesktopSection } from './sections/DesktopSection';
+import { ServerSection } from './sections/ServerSection';
+import { useMeContext } from '../../lib/meContext';
 
-type Section = 'profile' | 'security' | 'devices' | 'audio' | 'video' | 'appearance' | 'screenshare' | 'chat' | 'sounds' | 'keybinds' | 'desktop';
+type Section = 'profile' | 'security' | 'devices' | 'audio' | 'video' | 'appearance' | 'screenshare' | 'chat' | 'sounds' | 'keybinds' | 'desktop' | 'server';
 
 interface SettingsModalProps {
   settings: AppSettings;
@@ -27,12 +29,12 @@ interface SettingsModalProps {
   onRename?: (name: string) => void;
   myAvatar?: string | null;
   onAvatarChange?: (dataUrl: string | null) => void;
-  identity?: string;
 }
 
 
-export function SettingsModal({ settings, onUpdate, onClose, displayName, onRename, myAvatar, onAvatarChange, identity }: SettingsModalProps) {
+export function SettingsModal({ settings, onUpdate, onClose, displayName, onRename, myAvatar, onAvatarChange }: SettingsModalProps) {
   const { t } = useTranslation();
+  const serverAdmin = useMeContext()?.role === 'admin';
   const [activeSection, setActiveSection] = useState<Section>('profile');
   const [micMonitor, setMicMonitor] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -69,9 +71,10 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
         { id: 'sounds', label: t('settings.sounds') },
         ...(!isTouchDevice ? [{ id: 'keybinds' as Section, label: t('settings.keybinds') }] : []),
         ...(isElectron ? [{ id: 'desktop' as Section, label: t('settings.desktop') }] : []),
+        ...(serverAdmin ? [{ id: 'server' as Section, label: t('settings.server') }] : []),
       ],
     },
-  ], [t]);
+  ], [t, serverAdmin]);
 
   const handleClose = useCallback(() => {
     setMicMonitor(false);
@@ -152,7 +155,6 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
               onRename={onRename}
               myAvatar={myAvatar}
               onAvatarChange={onAvatarChange}
-              identity={identity}
             />
 
             <SecuritySection headerRef={setSectionRef('security')} />
@@ -192,6 +194,8 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
             )}
 
             {isElectron && <DesktopSection headerRef={setSectionRef('desktop')} settings={settings} onUpdate={onUpdate} />}
+
+            {serverAdmin && <ServerSection headerRef={setSectionRef('server')} />}
 
           {/* -- About -- */}
           <div className="settings-about">

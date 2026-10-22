@@ -91,7 +91,8 @@
     "ban": "Ban",
     "itsYou": "It's you",
     "rename": "Change name",
-    "settings": "Settings"
+    "settings": "Settings",
+    "banServer": "Ban from server"
   },
   "admin": {
     "kicked": "{{by}} kicked {{target}}",
@@ -332,7 +333,10 @@
     "autoJoinLastRoomHint": "On launch, go straight into the room you were in last; it is created again if it has ended",
     "yourId": "Your ID",
     "yourIdHint": "Give it to the server admin to become a member or admin. It belongs to this app on this device.",
-    "copy": "Copy"
+    "copy": "Copy",
+    "serverBans": "Banned from the server",
+    "serverBansHint": "Banned people can join no room. The address each last used is banned for a day as well.",
+    "ipBannedUntil": "Address banned until {{time}}"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",

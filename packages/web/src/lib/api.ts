@@ -1,4 +1,4 @@
-import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me } from './types';
+import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
 
@@ -100,4 +100,12 @@ export const muteParticipant = (roomId: string, identity: string, muted: boolean
 
 export async function getBans(roomId: string): Promise<RoomBan[]> {
     return (await request<BansResponse>(admin(roomId, 'bans'))).bans;
+}
+
+export const banFromServer = (identity: string) => request<void>('/admin/ban', send('POST', { identity }));
+
+export const unbanFromServer = (identity: string) => request<void>('/admin/unban', send('POST', { identity }));
+
+export async function getServerBans(): Promise<ServerBan[]> {
+    return (await request<ServerBansResponse>('/admin/bans')).bans;
 }

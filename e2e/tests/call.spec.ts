@@ -301,3 +301,32 @@ test('configured rooms: always listed, members only, admins speak, password from
     expect(guest.errors.filter(e => !e.includes('status of 403'))).toEqual([]);
 });
 
+
+test('a server ban keeps someone out of every room, under a new device ID too', async ({ browser }) => {
+    const admin = await enter(browser, 'Admin', undefined, 'e2e-admin-device');
+    const guest = await enter(browser, 'Guest');
+    const lobby = (page: Page) => page.locator('.channel-item', { hasText: /^Lobby/ });
+    await lobby(admin.page).click();
+    await lobby(guest.page).click();
+    const tile = admin.page.locator('.p-tile', { hasText: 'Guest' });
+    await expect(tile).toBeVisible({ timeout: 20_000 });
+
+    await tile.click({ button: 'right' });
+    await admin.page.getByRole('button', { name: 'Ban from server' }).click();
+    await guest.page.waitForURL(url => !url.pathname.startsWith('/room/'), { timeout: 10_000 });
+
+    const { device, identity, stage } = await guest.page.evaluate(async () => {
+        const device = localStorage.getItem('lala-device-id')!;
+        const headers = { 'X-Lala-Device': device };
+        const me = await (await fetch('/api/me', { headers })).json();
+        const { rooms } = await (await fetch('/api/rooms', { headers })).json();
+        return { device, identity: me.identity, stage: rooms.find((r: { displayName: string }) => r.displayName === 'Stage').id };
+    });
+    expect((await api(guest.page, device, 'POST', '/token', { room: stage })).status).toBe(403);
+    // A new device ID is a new identity, but it comes from the banned address.
+    expect((await api(guest.page, 'a-brand-new-device', 'POST', '/token', { room: stage })).status).toBe(403);
+
+    expect((await api(admin.page, 'e2e-admin-device', 'POST', '/admin/unban', { identity })).status).toBe(200);
+    expect((await api(guest.page, device, 'POST', '/token', { room: stage })).status).toBe(200);
+    expect(admin.errors).toEqual([]);
+});

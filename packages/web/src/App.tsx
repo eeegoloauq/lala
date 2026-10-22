@@ -7,6 +7,7 @@ import { WaveformWelcome } from './features/welcome/WaveformWelcome';
 import { useSettings } from './features/settings';
 import { useRooms } from './hooks/useRooms';
 import { useMe } from './hooks/useMe';
+import { MeContext } from './lib/meContext';
 import { useRoute } from './hooks/useRoute';
 import { useDisplayName } from './hooks/useDisplayName';
 import { usePersistedVolumes } from './hooks/usePersistedVolumes';
@@ -164,78 +165,77 @@ export default function App() {
 
 
     return (
-        <div className={`app-layout${!activeRoom ? ' no-room' : ''}`}>
-            {sidebarOpen && (
-                <div
-                    className="sidebar-mobile-overlay"
-                    onClick={() => setSidebarOpen(false)}
-                />
-            )}
+        <MeContext.Provider value={me}>
+            <div className={`app-layout${!activeRoom ? ' no-room' : ''}`}>
+                {sidebarOpen && (
+                    <div
+                        className="sidebar-mobile-overlay"
+                        onClick={() => setSidebarOpen(false)}
+                    />
+                )}
 
-            <div className={`sidebar-wrapper${sidebarOpen ? ' sidebar-mobile-open' : ''}`}>
-                <ChannelSidebar
-                    rooms={rooms}
-                    roomsError={roomsError}
-                    activeRoom={activeRoom}
-                    identity={me?.identity ?? ''}
-                    canCreateRooms={me?.canCreateRooms ?? true}
-                    displayName={displayName}
-                    myAvatarUrl={myAvatar}
-                    onRename={setDisplayName}
-                    onJoinRoom={handleJoinRoom}
-                    onCreateRoom={handleCreateRoom}
-                    onOpenSettings={() => { setSettingsOpen(true); setSidebarOpen(false); }}
-                    onClose={() => setSidebarOpen(false)}
-                    volumes={volumes}
-                    onVolumeChange={handleVolumeChange}
-                />
-            </div>
-
-            <main className="main-content">
-                <button
-                    className="sidebar-hamburger"
-                    onClick={() => setSidebarOpen(true)}
-                    title={t('app.openSidebar')}
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <line x1="3" y1="12" x2="21" y2="12" />
-                        <line x1="3" y1="18" x2="21" y2="18" />
-                    </svg>
-                </button>
-
-                {activeRoom ? (
-                    <RoomView
-                        roomName={activeRoom}
-                        name={displayName}
-                        hashPassword={route.hashPassword}
+                <div className={`sidebar-wrapper${sidebarOpen ? ' sidebar-mobile-open' : ''}`}>
+                    <ChannelSidebar
+                        rooms={rooms}
+                        roomsError={roomsError}
+                        activeRoom={activeRoom}
+                        displayName={displayName}
                         myAvatarUrl={myAvatar}
-                        settings={settings}
-                        onUpdateSettings={updateSettings}
-                        onLeave={handleLeave}
-                        onOpenSettings={() => setSettingsOpen(true)}
+                        onRename={setDisplayName}
+                        onJoinRoom={handleJoinRoom}
+                        onCreateRoom={handleCreateRoom}
+                        onOpenSettings={() => { setSettingsOpen(true); setSidebarOpen(false); }}
+                        onClose={() => setSidebarOpen(false)}
                         volumes={volumes}
                         onVolumeChange={handleVolumeChange}
                     />
-                ) : (
-                    <WaveformWelcome />
-                )}
-            </main>
+                </div>
 
-            {settingsOpen && (
-                <Suspense fallback={null}>
-                    <SettingsModal
-                        settings={settings}
-                        onUpdate={updateSettings}
-                        onClose={() => setSettingsOpen(false)}
-                        displayName={displayName}
-                        onRename={setDisplayName}
-                        myAvatar={myAvatar}
-                        onAvatarChange={handleAvatarChange}
-                        identity={me?.identity}
-                    />
-                </Suspense>
-            )}
-        </div>
+                <main className="main-content">
+                    <button
+                        className="sidebar-hamburger"
+                        onClick={() => setSidebarOpen(true)}
+                        title={t('app.openSidebar')}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
+                    </button>
+
+                    {activeRoom ? (
+                        <RoomView
+                            roomName={activeRoom}
+                            name={displayName}
+                            hashPassword={route.hashPassword}
+                            myAvatarUrl={myAvatar}
+                            settings={settings}
+                            onUpdateSettings={updateSettings}
+                            onLeave={handleLeave}
+                            onOpenSettings={() => setSettingsOpen(true)}
+                            volumes={volumes}
+                            onVolumeChange={handleVolumeChange}
+                        />
+                    ) : (
+                        <WaveformWelcome />
+                    )}
+                </main>
+
+                {settingsOpen && (
+                    <Suspense fallback={null}>
+                        <SettingsModal
+                            settings={settings}
+                            onUpdate={updateSettings}
+                            onClose={() => setSettingsOpen(false)}
+                            displayName={displayName}
+                            onRename={setDisplayName}
+                            myAvatar={myAvatar}
+                            onAvatarChange={handleAvatarChange}
+                        />
+                    </Suspense>
+                )}
+            </div>
+        </MeContext.Provider>
     );
 }

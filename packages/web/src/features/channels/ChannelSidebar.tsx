@@ -17,6 +17,7 @@ import { useTheme } from '../settings/ThemeProvider';
 import type { Theme } from '../settings/ThemeProvider';
 import { useLiveParticipants } from '../../lib/roomStatusStore';
 import { buildAdminActions } from '../room/hooks/useAdminActions';
+import { useMeContext } from '../../lib/meContext';
 import '../settings/settings.css';
 import './channel-sidebar.css';
 import { IS_TOUCH as isTouchDevice } from '../../lib/env';
@@ -27,8 +28,6 @@ interface ChannelSidebarProps {
     rooms: RoomInfo[];
     roomsError?: string | null;
     activeRoom: string | null;
-    identity: string;       // own public identity, '' until known
-    canCreateRooms: boolean;
     displayName: string;    // display name shown in footer
     myAvatarUrl?: string | null;
     onRename: (name: string) => void;
@@ -72,8 +71,6 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     rooms,
     roomsError,
     activeRoom,
-    identity,
-    canCreateRooms,
     displayName,
     myAvatarUrl,
     onRename,
@@ -85,6 +82,9 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     onVolumeChange,
 }: ChannelSidebarProps) {
     const { t } = useTranslation();
+    const me = useMeContext();
+    const identity = me?.identity ?? '';
+    const canCreateRooms = me?.canCreateRooms ?? true;
     // Live participant list for the active room — lives in the external room-status
     // store (lib/roomStatusStore.ts) instead of being prop-drilled through
     // App -> RoomView -> RoomShell -> useRoomStatusSync -> App -> here. Speaking/
@@ -200,15 +200,16 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         const room = rooms.find(r => r.id === roomId);
         if (!room?.canModerate) return undefined;
         const serverMuted = room.serverMutedParticipants.includes(participantIdentity);
-        const actions = buildAdminActions(roomId);
+        const actions = buildAdminActions(roomId, me?.role === 'admin');
         return {
             roomId,
             serverMuted,
             onKick: () => actions.onKick(participantIdentity),
             onBan: () => actions.onBan(participantIdentity),
             onToggleMute: () => actions.onToggleMute(participantIdentity, serverMuted),
+            onServerBan: actions.onServerBan && (() => actions.onServerBan!(participantIdentity)),
         };
-    }, [rooms]);
+    }, [rooms, me?.role]);
 
     return (
         <div className="sidebar">

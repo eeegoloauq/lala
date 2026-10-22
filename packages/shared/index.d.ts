@@ -51,6 +51,11 @@ export interface CreateRoomRequest {
     maxParticipants?: number;
 }
 
+/** One server ban, from GET /api/admin/bans; the address the person last used is banned for a day. */
+export interface ServerBan { identity: string; name: string; ipBannedUntil?: number; }
+/** Response from GET /api/admin/bans */
+export interface ServerBansResponse { bans: ServerBan[]; }
+
 /** Response from GET /api/me */
 export interface Me {
     identity: string;   // public; what goes into the server config to make someone a member or admin

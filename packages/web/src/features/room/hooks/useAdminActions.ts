@@ -4,7 +4,8 @@ import { RoomEvent } from 'livekit-client';
 import type { RemoteParticipant, Room } from 'livekit-client';
 import { speak } from '../../../lib/tts';
 import { ttsOptsFromSettings } from '../lib/ttsOpts';
-import { kickParticipant, banParticipant, muteParticipant } from '../../../lib/api';
+import { kickParticipant, banParticipant, muteParticipant, banFromServer } from '../../../lib/api';
+import { useMeContext } from '../../../lib/meContext';
 import type { ModerationEvent, ModerationTopic } from '../../../lib/types';
 import type { AppSettings } from '../../settings/types';
 import type { ParticipantAdminActions } from './useParticipantContextMenu';
@@ -23,14 +24,16 @@ function parseModerationEvent(payload: Uint8Array): ModerationEvent | null {
 }
 
 /**
- * Kick, ban and mute for any room the caller moderates. Each is just the API call: the
- * server announces the outcome to everyone in the room, the caller included.
+ * Kick, ban and mute for any room the caller moderates, plus a server ban for server
+ * admins. Each is just the API call: the server announces the outcome to everyone in
+ * the room, the caller included.
  */
-export function buildAdminActions(roomId: string): Omit<ParticipantAdminActions, 'roomId'> {
+export function buildAdminActions(roomId: string, serverAdmin: boolean): Omit<ParticipantAdminActions, 'roomId'> {
     return {
         onKick: (identity) => kickParticipant(roomId, identity),
         onBan: (identity) => banParticipant(roomId, identity),
         onToggleMute: (identity, serverMuted) => muteParticipant(roomId, identity, !serverMuted),
+        onServerBan: serverAdmin ? banFromServer : undefined,
     };
 }
 
@@ -47,6 +50,7 @@ export interface UseAdminActionsOptions {
 /** Shows the server's moderation events in the chat and hands moderators their actions. */
 export function useAdminActions({ room, canModerate, settings, addSystem, suppressLeave }: UseAdminActionsOptions): ParticipantAdminActions | undefined {
     const { t } = useTranslation();
+    const serverAdmin = useMeContext()?.role === 'admin';
     const settingsRef = useRef(settings);
     useEffect(() => { settingsRef.current = settings; });
 
@@ -66,7 +70,7 @@ export function useAdminActions({ room, canModerate, settings, addSystem, suppre
     }, [room, t, addSystem, suppressLeave]);
 
     return useMemo(
-        () => (canModerate ? { roomId: room.name, ...buildAdminActions(room.name) } : undefined),
-        [canModerate, room.name],
+        () => (canModerate ? { roomId: room.name, ...buildAdminActions(room.name, serverAdmin) } : undefined),
+        [canModerate, room.name, serverAdmin],
     );
 }
