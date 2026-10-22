@@ -291,7 +291,7 @@ test('configured rooms: always listed, members only, admins speak, password from
     await room(admin.page, 'Stage').click();
     await room(guest.page, 'Stage').click();
     await expect.poll(async () => (await media(guest.page)).audio, { timeout: 20_000 }).toBe(1);
-    await expect(guest.page.getByRole('button', { name: 'Not allowed in this room' }).first()).toBeDisabled();
+    await expect(guest.page.getByRole('button', { name: 'Raise hand' })).toBeVisible();
     await expect(admin.page.locator('.p-tile', { hasText: 'Guest' })).toBeVisible();
     expect((await media(admin.page)).audio).toBe(0);
 
@@ -346,3 +346,23 @@ test('background blur loads its model from the app under the production CSP', as
     expect(alice.errors).toEqual([]);
 });
 
+
+/** Creates a room from the sidebar and waits until the page is in it. */
+async function createRoom(page: Page, name: string, options: { stage?: boolean } = {}) {
+    await page.getByRole('button', { name: 'Create channel' }).click();
+    await page.getByPlaceholder('e.g. "General"').fill(name);
+    if (options.stage) await page.getByLabel('Only I speak').check();
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
+    await page.waitForURL(/\/room\//);
+}
+
+test('switching rooms keeps the microphone', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    const bob = await enter(browser, 'Bob');
+    await createRoom(alice.page, 'First room');
+    await createRoom(alice.page, 'Second room');
+    // Alice is now in the second room, having left the first.
+    await bob.page.locator('.channel-item', { hasText: 'Second room' }).click();
+    await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);
+    expect(alice.errors).toEqual([]);
+});

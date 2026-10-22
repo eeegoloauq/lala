@@ -11,6 +11,7 @@ import { getPassPool, saveToPool, saveRoomPassword, getRoomPassword } from '../.
 import { deriveRoomKeys } from '../../lib/roomKeys';
 import type { AppSettings } from '../settings/types';
 import { RoomShell } from './RoomShell';
+import { MICROPHONE, canPublishSource } from './lib/permissions';
 import './RoomView.css';
 
 interface RoomViewProps {
@@ -132,13 +133,9 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
 
     // Pre-acquired mic track for the CWAEC join-glitch mitigation (see the
     // audioOptions comment above). Populated by the join-flow effect below as
-    // soon as a join attempt starts, consumed once by handleConnected on the
-    // first real connect. `micPublishedRef` gates that one-time hand-off:
-    // once true, later Connected events (e.g. the Room-recreation-on-settings-
-    // change path — see the `room` useMemo comment) fall back to the normal
-    // acquire+publish path instead of re-touching this ref.
+    // soon as a join attempt starts, handed to the first Room by handleConnected,
+    // which empties the ref; until then the track is ours to stop.
     const micTrackRef = useRef<LocalAudioTrack | null>(null);
-    const micPublishedRef = useRef(false);
     // Guards against handling the same Room's Connected event twice (e.g. a
     // stray duplicate event) — only re-runs the publish/fallback logic when
     // Connected fires for a *different* Room instance than last time.
@@ -193,7 +190,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         setPassword('');
         setPasswordError(null);
         setE2eeSetup(null);
-        micPublishedRef.current = false;
+        handledRoomRef.current = null;
 
         // Pre-acquire the mic track for this join attempt now, in parallel with
         // the token fetch below (see the audioOptions comment above for why this
@@ -207,7 +204,8 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         // acceptable; the existing settings-change path (the `room` useMemo
         // recreating on `roomOptions` change) fixes that up after connect.
         createLocalAudioTrack(audioOptions).then(track => {
-            if (!mounted()) { track.stop(); return; }
+            // Too late when the Room already connected and published a microphone itself.
+            if (!mounted() || handledRoomRef.current) { track.stop(); return; }
             micTrackRef.current = track;
         }).catch(err => {
             // Mic permission denied or no device — join proceeds without a
@@ -274,10 +272,8 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
             // or component unmounted/left), stop it here. Once published,
             // LiveKit's own disconnect handling owns the track's lifecycle,
             // same as it always has for a normally-published mic track.
-            if (micTrackRef.current && !micPublishedRef.current) {
-                micTrackRef.current.stop();
-                micTrackRef.current = null;
-            }
+            micTrackRef.current?.stop();
+            micTrackRef.current = null;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomName, retryKey]);
@@ -292,10 +288,8 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
     // the start of this attempt to still be there once the password succeeds.
     useEffect(() => {
         if (!errorCode) return;
-        if (micTrackRef.current && !micPublishedRef.current) {
-            micTrackRef.current.stop();
-            micTrackRef.current = null;
-        }
+        micTrackRef.current?.stop();
+        micTrackRef.current = null;
     }, [errorCode]);
 
     // Countdown + auto-retry for rate limiting
@@ -316,45 +310,38 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
     // auto-publish logic never touches the microphone, so this is the sole
     // publisher for it.
     const handleConnected = useCallback(() => {
-        // Guard against a stray duplicate Connected event for the same Room —
-        // there's nothing new to do for it either way.
+        // Guard against a stray duplicate Connected event for the same Room.
         if (handledRoomRef.current === room) return;
         handledRoomRef.current = room;
+        const participant = room.localParticipant;
 
-        const track = micTrackRef.current;
-        if (track && !micPublishedRef.current) {
-            micPublishedRef.current = true;
-            room.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
+        // The pre-acquired track serves the first Room only; a Room made later for new
+        // settings gets a microphone of its own below.
+        const preAcquired = micTrackRef.current;
+        micTrackRef.current = null;
+
+        // A listener on a stage may not publish a microphone; asking would only be refused.
+        if (!canPublishSource(participant.permissions, MICROPHONE)) {
+            preAcquired?.stop();
+            return;
+        }
+        if (preAcquired) {
+            participant.publishTrack(preAcquired, { source: Track.Source.Microphone })
                 .then(() => {
-                    // Push-to-talk starts muted: usePushToTalk's mount-time
-                    // setMicrophoneEnabled(false) call may already have run (and
-                    // no-op'd, since no publication existed yet) before this
-                    // publish landed, so enforce the muted start here too.
-                    if (settingsRef.current.pushToTalk) track.mute().catch(() => {});
+                    // Push-to-talk starts muted: usePushToTalk's mount-time mute may have
+                    // run before this publish existed, so enforce it here too.
+                    if (settingsRef.current.pushToTalk) preAcquired.mute().catch(() => {});
                 })
                 .catch(err => {
                     console.warn('[RoomView] Failed to publish pre-acquired microphone track:', err instanceof Error ? err.message : err);
-                    micPublishedRef.current = false;
-                    // Fall back to the normal acquire+publish path so this
-                    // connect isn't left silently mic-less because of it.
-                    room.localParticipant.setMicrophoneEnabled(true, audioOptions).catch(() => {});
+                    preAcquired.stop();
+                    participant.setMicrophoneEnabled(true, audioOptions).catch(() => {});
                 });
-        } else if (!track) {
-            // No pre-acquired track available for this connect — either mic
-            // permission was denied/no device at acquisition time (join
-            // proceeds mic-less, as before this change), or this Connected
-            // event belongs to a Room recreated by a mid-call settings change
-            // (see the `room` useMemo above): that Room's own pre-acquired
-            // track was already consumed by the previous Room. Acquire+publish
-            // the normal way so device/setting changes keep working exactly as
-            // they did before this change.
-            room.localParticipant.setMicrophoneEnabled(true, audioOptions).catch(err => {
-                console.warn('[RoomView] Microphone publish failed:', err instanceof Error ? err.message : err);
-            });
+            return;
         }
-        // `track && micPublishedRef.current` (both true) falls through with no
-        // action: a reconnect on the *same* Room, whose already-published
-        // track LiveKit keeps alive/republishes on its own.
+        participant.setMicrophoneEnabled(true, audioOptions).catch(err => {
+            console.warn('[RoomView] Microphone publish failed:', err instanceof Error ? err.message : err);
+        });
     }, [room, audioOptions]);
 
     const handlePasswordSubmit = async (e: React.FormEvent) => {
