@@ -1,15 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingsIcon, RenameIcon } from '../icons/Icons';
+import { ApiError } from '../../../lib/types';
 import './participant-context-menu.css';
 
 export interface AdminActions {
-    adminSecret: string;
     roomId: string;
     serverMuted: boolean;
-    onKick: () => void;
-    onBan: () => void;
-    onToggleMute: () => void;
+    onKick: () => Promise<void>;
+    onBan: () => Promise<void>;
+    onToggleMute: () => Promise<void>;
 }
 
 export interface ParticipantContextMenuProps {
@@ -30,9 +30,18 @@ export interface ParticipantContextMenuProps {
     onClose: () => void;
 }
 
-export function ParticipantContextMenu({ identity: _identity, name, isRemote, x, y, volume = 50, onVolumeChange, screenVolume, onScreenVolumeChange, screenShareHidden, onToggleScreenShare, admin, onOpenSettings, onRenameRequest, onClose }: ParticipantContextMenuProps) {
+export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVolumeChange, screenVolume, onScreenVolumeChange, screenShareHidden, onToggleScreenShare, admin, onOpenSettings, onRenameRequest, onClose }: ParticipantContextMenuProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
+    const [adminError, setAdminError] = useState<string | null>(null);
+
+    // Stays open until the server answers, so a refused action says why instead of vanishing.
+    const runAdmin = (action: () => Promise<void>) => {
+        setAdminError(null);
+        action().then(onClose, (err) => {
+            setAdminError(err instanceof ApiError && err.code === 'rate_limited' ? t('admin.rateLimited') : t('admin.failed'));
+        });
+    };
 
     useEffect(() => {
         const onDown = (e: MouseEvent) => {
@@ -123,7 +132,7 @@ export function ParticipantContextMenu({ identity: _identity, name, isRemote, x,
 
                     {admin && (
                         <div className="ctx-menu-admin">
-                            <button className="ctx-menu-item ctx-menu-item--warn" onClick={() => { admin.onToggleMute(); onClose(); }}>
+                            <button className="ctx-menu-item ctx-menu-item--warn" onClick={() => runAdmin(admin.onToggleMute)}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     {admin.serverMuted
                                         ? <><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" /></>
@@ -132,7 +141,7 @@ export function ParticipantContextMenu({ identity: _identity, name, isRemote, x,
                                 </svg>
                                 {admin.serverMuted ? t('ctx.allowMic') : t('ctx.serverMute')}
                             </button>
-                            <button className="ctx-menu-item ctx-menu-item--danger" onClick={() => { admin.onKick(); onClose(); }}>
+                            <button className="ctx-menu-item ctx-menu-item--danger" onClick={() => runAdmin(admin.onKick)}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                                     <polyline points="16 17 21 12 16 7" />
@@ -140,13 +149,14 @@ export function ParticipantContextMenu({ identity: _identity, name, isRemote, x,
                                 </svg>
                                 {t('ctx.kick')}
                             </button>
-                            <button className="ctx-menu-item ctx-menu-item--danger" onClick={() => { admin.onBan(); onClose(); }}>
+                            <button className="ctx-menu-item ctx-menu-item--danger" onClick={() => runAdmin(admin.onBan)}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="12" cy="12" r="10" />
                                     <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
                                 </svg>
                                 {t('ctx.ban')}
                             </button>
+                            {adminError && <div className="ctx-menu-error" role="alert">{adminError}</div>}
                         </div>
                     )}
                 </>

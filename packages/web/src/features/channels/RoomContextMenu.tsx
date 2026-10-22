@@ -11,19 +11,14 @@ import '../room/VideoGrid/participant-context-menu.css';
 export interface RoomContextMenuProps {
     roomId: string;
     roomName: string;
-    adminSecret: string;
     x: number;
     y: number;
-    onOpenBans: (roomId: string, adminSecret: string) => void;
+    onOpenBans: (roomId: string) => void;
     onClose: () => void;
 }
 
-/**
- * Creator/admin-only right-click menu on a room row in ChannelSidebar. Only ever
- * constructed when this device holds the room's adminSecret (see
- * ChannelSidebar.handleRoomContextMenu), so no extra permission check needed here.
- */
-export function RoomContextMenu({ roomId, roomName, adminSecret, x, y, onOpenBans, onClose }: RoomContextMenuProps) {
+/** Right-click menu on a room row for its moderators; the server checks the right again. */
+export function RoomContextMenu({ roomId, roomName, x, y, onOpenBans, onClose }: RoomContextMenuProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -57,7 +52,7 @@ export function RoomContextMenu({ roomId, roomName, adminSecret, x, y, onOpenBan
         setDeleting(true);
         setError(null);
         try {
-            await deleteRoom(roomId, adminSecret);
+            await deleteRoom(roomId);
             // No optimistic removal needed — the SSE `rooms_updated` stream
             // triggers useRooms' fetchRooms(), which drops the deleted room.
             onClose();
@@ -73,7 +68,7 @@ export function RoomContextMenu({ roomId, roomName, adminSecret, x, y, onOpenBan
 
             <button
                 className="ctx-menu-item"
-                onClick={() => { onOpenBans(roomId, adminSecret); onClose(); }}
+                onClick={() => { onOpenBans(roomId); onClose(); }}
             >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />

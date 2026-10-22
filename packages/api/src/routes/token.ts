@@ -1,130 +1,97 @@
-import { Router, Request, Response } from 'express';
-import type { TokenRequest, TokenResponse } from '@lala/shared';
+import { Router, type Request, type Response } from 'express';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { AccessToken } from 'livekit-server-sdk';
+import type { TokenResponse } from '@lala/shared';
 import { getRoomService } from '../lib/livekit';
-import { parseRoomMeta, verifyPassword } from '../lib/roomMeta';
-import { verifyAdminSecret } from '../lib/auth';
-import { getCachedMeta } from '../lib/roomStore';
+import { callerIdentity, deriveIdentity } from '../lib/identity';
+import { verifyRoomKey } from '../lib/passwords';
+import { isModerator, permissionFor } from '../lib/rights';
+import { getRoom, isBanned, isMuted } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
-import { deriveIdentity } from '../lib/identity';
+
+// Wrong room passwords only, per IP and room: enough for the client to try a full
+// saved-password pool (20) and a few typos, about 120 guesses an hour after that.
+const passwordFailures = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 30,
+    skipSuccessfulRequests: true,
+    requestWasSuccessful: (_req, res) => res.statusCode !== 401,
+    keyGenerator: (req) => `${ipKeyGenerator(req.ip ?? '')}:${String(req.body?.room)}`,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 export function createTokenRouter(): Router {
     // Clients learn where LiveKit is from here, so one web image serves any deployment.
     const livekitUrl = process.env.LIVEKIT_URL;
-    if (!livekitUrl) throw new Error('LIVEKIT_URL must be set');
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    if (!livekitUrl || !apiKey || !apiSecret) throw new Error('LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET must be set');
 
     const router = Router();
 
-    router.post('/', async (req: Request, res: Response): Promise<void> => {
-        try {
-            // Partial<> because the body is untrusted input — every field is
-            // validated below before use.
-            const { room, name, deviceId, password, adminSecret } = (req.body ?? {}) as Partial<TokenRequest>;
-
-            if (!room || typeof room !== 'string' || room.length > 50) {
-                res.status(400).json({ error: 'room_required' });
-                return;
-            }
-
-            // Input validation
-            if (deviceId !== undefined && (typeof deviceId !== 'string' || deviceId.length > 100)) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-            if (password !== undefined && (typeof password !== 'string' || password.length > 200)) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-            if (name !== undefined && (typeof name !== 'string' || name.length > 50)) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-
-            const apiKey = process.env.LIVEKIT_API_KEY;
-            const apiSecret = process.env.LIVEKIT_API_SECRET;
-
-            if (!apiKey || !apiSecret) {
-                res.status(500).json({ error: 'server_error' });
-                return;
-            }
-
-            // Same device → same identity → LiveKit replaces the old connection (no duplicate participants).
-            const identity = deriveIdentity(deviceId);
-
-            // Verify room exists and check password
-            const roomService = getRoomService();
-            const rooms = await roomService.listRooms([room]);
-
-            if (rooms.length === 0) {
-                res.status(404).json({ error: 'room_not_found' });
-                return;
-            }
-
-            const lkRoom = rooms[0];
-            const meta = parseRoomMeta(lkRoom.metadata);
-
-            // Admin secret holders bypass password check (creator rejoining their own room)
-            // adminSecret lives only in Redis cache, never in LiveKit metadata
-            const cachedMeta = await getCachedMeta(room);
-            const isAdmin = verifyAdminSecret(adminSecret, cachedMeta?.adminSecret);
-
-            // Check if banned
-            if (meta?.bannedIdentities?.includes(identity)) {
-                res.status(403).json({ error: 'banned' });
-                return;
-            }
-
-            if (meta?.passwordHash && !isAdmin) {
-                if (!password) {
-                    res.status(401).json({ error: 'password_required' });
-                    return;
-                }
-                const ok = await verifyPassword(password, meta.passwordHash);
-                if (!ok) {
-                    res.status(401).json({ error: 'wrong_password' });
-                    return;
-                }
-            }
-
-            // Check capacity — skip for reconnect (identity already in room)
-            const limit = meta?.maxParticipants ?? Number(lkRoom.maxParticipants);
-            if (limit > 0 && lkRoom.numParticipants >= limit) {
-                const participants = await roomService.listParticipants(room);
-                const isReconnect = participants.some((p) => p.identity === identity);
-                if (!isReconnect) {
-                    res.status(403).json({ error: 'room_full' });
-                    return;
-                }
-            }
-
-            // Sanitize: strip null bytes, RTL/LTR override chars, and control characters
-            // (same treatment as room displayName — a hostile participant name shouldn't
-            // be able to spoof other UI text via bidi override tricks).
-            const sanitizedName = name ? sanitizeDisplayText(name, 50) : undefined;
-
-            const token = new AccessToken(apiKey, apiSecret, {
-                identity,
-                name: sanitizedName || identity,
-                ttl: '24h',
-            });
-
-            token.addGrant({
-                room,
-                roomJoin: true,
-                roomCreate: false,
-                canPublish: true,
-                canSubscribe: true,
-                canPublishData: true,
-                canUpdateOwnMetadata: true,
-            });
-
-            const jwt = await token.toJwt();
-            const response: TokenResponse = { token: jwt, identity, url: livekitUrl };
-            res.json(response);
-        } catch (error) {
-            console.error('Token generation failed:', error);
-            res.status(500).json({ error: 'server_error' });
+    router.post('/', passwordFailures, async (req: Request, res: Response) => {
+        const { room: roomId, name, passwordKey } = (req.body ?? {}) as Record<string, unknown>;
+        if (typeof roomId !== 'string' || roomId.length > 50
+            || (name !== undefined && (typeof name !== 'string' || name.length > 50))
+            || (passwordKey !== undefined && (typeof passwordKey !== 'string' || passwordKey.length > 200))) {
+            res.status(400).json({ error: 'invalid_input' });
+            return;
         }
+
+        // Without a device ID the participant gets a one-off identity.
+        const identity = callerIdentity(req) ?? deriveIdentity(undefined);
+        const room = await getRoom(roomId);
+        if (!room) {
+            res.status(404).json({ error: 'room_not_found' });
+            return;
+        }
+        if (await isBanned(room.id, identity)) {
+            res.status(403).json({ error: 'banned' });
+            return;
+        }
+        if (room.password) {
+            if (!passwordKey) {
+                res.status(401).json({ error: 'password_required' });
+                return;
+            }
+            if (!await verifyRoomKey(passwordKey, room.password.verifier)) {
+                res.status(401).json({ error: 'wrong_password' });
+                return;
+            }
+        }
+        // LiveKit enforces the limit too, but its refusal reaches the client as a bare
+        // connection error. Someone already inside is reconnecting and doesn't count.
+        if (room.maxParticipants > 0) {
+            const participants = await getRoomService().listParticipants(room.id).catch(() => []);
+            if (participants.length >= room.maxParticipants && !participants.some((p) => p.identity === identity)) {
+                res.status(403).json({ error: 'room_full' });
+                return;
+            }
+        }
+
+        const permission = permissionFor(identity, room, await isMuted(room.id, identity));
+        const token = new AccessToken(apiKey, apiSecret, {
+            identity,
+            name: (typeof name === 'string' && sanitizeDisplayText(name, 50)) || identity,
+        });
+        token.addGrant({
+            room: room.id,
+            roomJoin: true,
+            canSubscribe: permission.canSubscribe,
+            canPublish: permission.canPublish,
+            canPublishSources: permission.canPublishSources,
+            canPublishData: permission.canPublishData,
+            canUpdateOwnMetadata: true,
+        });
+
+        const response: TokenResponse = {
+            token: await token.toJwt(),
+            identity,
+            url: livekitUrl,
+            canModerate: isModerator(identity, room),
+        };
+        res.json(response);
     });
 
     return router;

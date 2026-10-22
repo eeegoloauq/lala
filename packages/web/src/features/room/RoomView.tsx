@@ -4,10 +4,11 @@ import type { AudioCaptureOptions, RoomOptions, LocalAudioTrack } from 'livekit-
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getToken } from '../../lib/api';
+import { getRoom, getToken } from '../../lib/api';
 import { ApiError } from '../../lib/types';
 import type { TokenResponse } from '../../lib/types';
-import { getPassPool, saveToPool, saveRoomPassword, getRoomPassword, getAdminSecret } from '../../lib/passwords';
+import { getPassPool, saveToPool, saveRoomPassword, getRoomPassword } from '../../lib/passwords';
+import { deriveRoomKeys } from '../../lib/roomKeys';
 import type { AppSettings } from '../settings/types';
 import { RoomShell } from './RoomShell';
 import './RoomView.css';
@@ -15,7 +16,6 @@ import './RoomView.css';
 interface RoomViewProps {
     roomName: string;  // opaque room ID
     name: string;      // display name
-    identity: string;  // stable device UUID — server derives LiveKit identity via HMAC
     hashPassword?: string | null;  // password from URL hash fragment (#pw=...)
     myAvatarUrl?: string | null;
     settings: AppSettings;
@@ -27,9 +27,9 @@ interface RoomViewProps {
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
+export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
-    const [connection, setConnection] = useState<{ token: string; url: string } | null>(null);
+    const [connection, setConnection] = useState<{ token: string; url: string; canModerate: boolean } | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
     const [countdown, setCountdown] = useState(0);
     const countdownInitRef = useRef(0);
@@ -40,7 +40,6 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     const [passwordError, setPasswordError] = useState<string | null>(null);
     const [passwordLoading, setPasswordLoading] = useState(false);
     const [e2eeSetup, setE2eeSetup] = useState<{ keyProvider: ExternalE2EEKeyProvider; worker: Worker } | null>(null);
-    const passwordRef = useRef<HTMLInputElement>(null);
 
     // Terminate E2EE worker on unmount
     useEffect(() => {
@@ -119,8 +118,6 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     // when the `room` prop changes, so no manual disconnect is needed here.
     const room = useMemo(() => new Room(roomOptions), [roomOptions]);
 
-    const adminSecret = getAdminSecret(roomName) ?? undefined;
-
     // Bumped on every (re)connect attempt and on unmount; async work compares
     // its captured generation to detect it went stale mid-flight (fast room
     // switch), so a late token/E2EE worker can't attach to an abandoned attempt.
@@ -147,18 +144,24 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
     const settingsRef = useRef(settings);
     useEffect(() => { settingsRef.current = settings; });
 
-    const fetchToken = (pw?: string) => {
-        return getToken({ room: roomName, name, deviceId: identity, password: pw, adminSecret });
+    // The room's password salt, read at the start of each join attempt.
+    const saltRef = useRef<string | undefined>(undefined);
+
+    /** Asks for a token, proving the password with a key derived from it when there is one. */
+    const fetchToken = async (pw?: string) => {
+        const keys = pw && saltRef.current ? await deriveRoomKeys(pw, saltRef.current) : undefined;
+        const data = await getToken({ room: roomName, name, passwordKey: keys?.authKey });
+        return { data, e2eeKey: keys?.e2eeKey };
     };
 
-    const applyToken = async ({ token, url }: TokenResponse, pw?: string) => {
+    const applyToken = async ({ token, url, canModerate }: TokenResponse, e2eeKey?: ArrayBuffer, pw?: string) => {
         const gen = connectGenRef.current;
         room.prepareConnection(url, token).catch(err => {
             console.warn('[RoomView] prepareConnection failed:', err instanceof Error ? err.message : err);
         });
-        if (pw && isE2EESupported()) {
+        if (e2eeKey && isE2EESupported()) {
             const keyProvider = new ExternalE2EEKeyProvider();
-            await keyProvider.setKey(pw);
+            await keyProvider.setKey(e2eeKey);
             if (connectGenRef.current !== gen) return;
             const worker = new E2EEWorker();
             setE2eeSetup({ keyProvider, worker });
@@ -166,7 +169,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         if (connectGenRef.current !== gen) return;
         // Remember working password for this room (for invite links)
         if (pw) saveRoomPassword(roomName, pw);
-        setConnection({ token, url });
+        setConnection({ token, url, canModerate });
         // Save session for crash recovery
         window.electronAPI?.saveSession?.({ serverUrl: window.location.origin, roomId: roomName });
         // Activate power save blocker
@@ -218,53 +221,39 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
             setErrorCode(err instanceof ApiError ? err.code : 'server_error');
         };
 
-        // Try every remaining candidate password (hash password first, then the
-        // saved pool), skipping any password already attempted by the caller.
-        const tryPool = async (skip?: string) => {
-            const base = getPassPool().filter(p => p !== skip);
-            const pool = hashPassword && hashPassword !== skip
-                ? [hashPassword, ...base.filter(p => p !== hashPassword)]
-                : base;
-            for (const pw of pool) {
-                try {
-                    const data = await fetchToken(pw);
-                    if (!mounted()) return;
-                    onIdentityAssigned?.(data.identity);
-                    await applyToken(data, pw);
-                    return;
-                } catch (err) {
-                    if (!mounted()) return;
-                    // Wrong password — try next in pool
-                    if (err instanceof ApiError && (err.code === 'wrong_password' || err.code === 'password_required')) continue;
-                    handleFatalError(err);
-                    return;
-                }
-            }
-            if (mounted()) {
-                setNeedsPassword(true);
-                setTimeout(() => passwordRef.current?.focus(), 50);
-            }
+        const tryPassword = async (pw?: string) => {
+            const { data, e2eeKey } = await fetchToken(pw);
+            if (!mounted()) return;
+            onIdentityAssigned?.(data.identity);
+            await applyToken(data, e2eeKey, pw);
         };
-
-        // If a password is already known for this room (URL invite fragment or a
-        // previously saved room password), send it on the FIRST token request —
-        // requesting without it would just eat an avoidable 401 (password_required)
-        // round trip before falling back to the same password anyway.
-        const knownPassword = hashPassword || getRoomPassword(roomName) || undefined;
+        const isPasswordError = (err: unknown) =>
+            err instanceof ApiError && (err.code === 'wrong_password' || err.code === 'password_required');
 
         const start = async () => {
             try {
-                const data = await fetchToken(knownPassword);
+                const info = await getRoom(roomName);
                 if (!mounted()) return;
-                onIdentityAssigned?.(data.identity);
-                await applyToken(data, knownPassword);
-            } catch (err) {
-                if (!mounted()) return;
-                if (err instanceof ApiError && (err.code === 'password_required' || err.code === 'wrong_password')) {
-                    await tryPool(knownPassword);
-                } else {
-                    handleFatalError(err);
+                saltRef.current = info.passwordSalt;
+                if (!info.passwordSalt) {
+                    await tryPassword();
+                    return;
                 }
+                // The invite link's password and the one saved for this room first, then the pool.
+                const candidates = new Set([hashPassword, getRoomPassword(roomName), ...getPassPool()]);
+                for (const pw of candidates) {
+                    if (!pw) continue;
+                    try {
+                        await tryPassword(pw);
+                        return;
+                    } catch (err) {
+                        if (!mounted()) return;
+                        if (!isPasswordError(err)) throw err;
+                    }
+                }
+                if (mounted()) setNeedsPassword(true);
+            } catch (err) {
+                if (mounted()) handleFatalError(err);
             }
         };
 
@@ -368,10 +357,10 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
         setPasswordLoading(true);
         setPasswordError(null);
         try {
-            const data = await fetchToken(password);
+            const { data, e2eeKey } = await fetchToken(password);
             if (savePassword) saveToPool(password);
             onIdentityAssigned?.(data.identity);
-            await applyToken(data, password);
+            await applyToken(data, e2eeKey, password);
             setNeedsPassword(false);
         } catch (err) {
             if (err instanceof ApiError && err.code === 'wrong_password') {
@@ -398,7 +387,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                 <p className="empty-state-sub">{t('room.enterPassword')}</p>
                 <form onSubmit={handlePasswordSubmit} style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <input
-                        ref={passwordRef}
+                        autoFocus
                         className="input"
                         type="password"
                         placeholder={t('room.passwordPlaceholder')}
@@ -517,7 +506,7 @@ export function RoomView({ roomName, name, identity, hashPassword, myAvatarUrl, 
                 onDisconnected={onLeave}
                 style={{ height: '100%' }}
             >
-                <RoomShell name={name} myAvatarUrl={myAvatarUrl} onIdentityAssigned={onIdentityAssigned} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
+                <RoomShell canModerate={connection.canModerate} name={name} myAvatarUrl={myAvatarUrl} onIdentityAssigned={onIdentityAssigned} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
             </LiveKitRoom>
         </div>
     );

@@ -6,7 +6,8 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 
 - `src/App.tsx` -- root: sidebar + room; holds `volumes`, `myAvatar`, `liveIdentity` state; `SettingsModal` lazy-loaded
 - `src/globals.css` -- all styles + CSS vars; 5 themes: dark, light, amoled, discord, winxp
-- `src/lib/api.ts` -- API client; handles 429 with `retryAfter`; wraps network errors as `ApiError('server_unavailable', 0)`
+- `src/lib/api.ts` -- API client; sends the device ID as `X-Lala-Device` on every request; handles 429 with `retryAfter`; wraps network errors as `ApiError('server_unavailable', 0)`
+- `src/lib/roomKeys.ts` -- room password -> auth key (sent) + E2EE key (kept), PBKDF2 + HKDF with the room's `passwordSalt`
 - `src/lib/identity.ts` -- stable device UUID + HMAC cache
 - `src/lib/types.ts` -- `RoomInfo`, `TokenResponse`, `ApiError`, `ApiErrorCode`
 - `src/lib/i18n.ts` -- i18next setup (en/ru), localStorage key `lala_language`
@@ -98,7 +99,6 @@ IndexedDB (`lala-secure`); ciphertext lives under `lala_enc_<logical-key>`.
 | Logical key | Contents |
 |-----|----------|
 | `lala_passwords` | password pool `string[]` (max 20) |
-| `lala_admin_<roomId>` | admin secret (creator only) |
 | `lala_room_templates` | room templates (max 3, may carry a password) |
 | `lala_room_pw_<roomId>` | saved password for room |
 

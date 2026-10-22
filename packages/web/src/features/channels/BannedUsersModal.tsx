@@ -7,12 +7,11 @@ import './banned-users-modal.css';
 
 interface Props {
     roomId: string;
-    adminSecret: string;
     onClose: () => void;
 }
 
-/** Creator/admin-only modal listing banned identities for a room, with per-row unban. */
-export function BannedUsersModal({ roomId, adminSecret, onClose }: Props) {
+/** Moderator-only modal listing banned identities for a room, with per-row unban. */
+export function BannedUsersModal({ roomId, onClose }: Props) {
     const { t } = useTranslation();
     const [bans, setBans] = useState<RoomBan[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -24,13 +23,13 @@ export function BannedUsersModal({ roomId, adminSecret, onClose }: Props) {
     const load = useCallback(async () => {
         setError(null);
         try {
-            const list = await getBans(roomId, adminSecret);
+            const list = await getBans(roomId);
             setBans(list);
         } catch (err) {
             setError(toErrorMessage(err));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [roomId, adminSecret]);
+    }, [roomId]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -38,7 +37,7 @@ export function BannedUsersModal({ roomId, adminSecret, onClose }: Props) {
         setUnbanning(identity);
         setError(null);
         try {
-            await unbanParticipant(roomId, identity, adminSecret);
+            await unbanParticipant(roomId, identity);
             // Optimistic removal — avoids a round trip just to confirm what we already know.
             setBans((prev) => prev?.filter((b) => b.identity !== identity) ?? prev);
         } catch (err) {
@@ -68,7 +67,7 @@ export function BannedUsersModal({ roomId, adminSecret, onClose }: Props) {
                         {bans.map((ban) => (
                             <div className="bum-row" key={ban.identity}>
                                 <div className="bum-row-info">
-                                    {ban.name && <span className="bum-row-name">{ban.name}</span>}
+                                    <span className="bum-row-name">{ban.name}</span>
                                     <span className="bum-row-identity">{ban.identity}</span>
                                 </div>
                                 <button

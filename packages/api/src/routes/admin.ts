@@ -1,146 +1,99 @@
-import { Router, Request, Response } from 'express';
-import { getAuthedRoom } from '../lib/auth';
-import type { RoomMeta } from '../lib/roomMeta';
-import { cacheRoomMeta } from '../lib/roomStore';
-import type { BansResponse } from '@lala/shared';
+import { Router, type NextFunction, type Request, type Response } from 'express';
+import type { BansResponse, ModerationEvent } from '@lala/shared';
+import { announceModeration, getRoomService, isNotFound } from '../lib/livekit';
+import { callerIdentity } from '../lib/identity';
+import { isModerator, permissionFor } from '../lib/rights';
+import { addBan, getRoom, listBans, removeBan, setMuted, type RoomState } from '../lib/rooms';
+import { invalidateRoomsCache } from './rooms';
 
-/** Strip adminSecret before writing metadata back to LiveKit (it must never be in LK metadata) */
-function stripSecret(meta: RoomMeta): Omit<RoomMeta, 'adminSecret'> {
-    const { adminSecret: _, ...publicMeta } = meta;
-    return publicMeta;
+type ModerationRequest = Request<{ id: string }>;
+interface Context { room: RoomState; caller: string; target: string }
+
+const ignoreNotFound = (err: unknown) => { if (!isNotFound(err)) throw err; };
+
+/** Display name of someone in the room, or their identity when they aren't there. */
+async function nameOf(roomId: string, identity: string): Promise<string> {
+    const participant = await getRoomService().getParticipant(roomId, identity).catch(ignoreNotFound);
+    return participant?.name || identity;
 }
 
-/** Validate adminSecret + identity from request body. Sends 400 and returns false on invalid input. */
-function validateAdminInput(
-    res: Response,
-    adminSecret: string | undefined,
-    identity: string | undefined,
-): identity is string {
-    if (adminSecret !== undefined && (typeof adminSecret !== 'string' || adminSecret.length > 100)) {
-        res.status(400).json({ error: 'invalid_input' });
-        return false;
-    }
-    if (!identity || typeof identity !== 'string' || identity.length > 100) {
-        res.status(400).json({ error: 'invalid_input' });
-        return false;
-    }
-    return true;
+/** Logged so the operator can see who moderated whom. */
+async function announce(ctx: Context, action: ModerationEvent['action'], targetName: string): Promise<void> {
+    const byName = await nameOf(ctx.room.id, ctx.caller);
+    console.log(`[moderation] ${ctx.room.id}: ${byName} (${ctx.caller}) ${action} ${targetName} (${ctx.target})`);
+    await announceModeration(ctx.room.id, { action, target: ctx.target, targetName, byName }).catch(ignoreNotFound);
 }
-
-/** `:id` comes from the mount path (`/api/rooms/:id/admin`), so the router can't infer it. */
-type RoomRequest = Request<{ id: string }>;
 
 export function createAdminRouter(): Router {
     const router = Router({ mergeParams: true });
 
-    /** List banned identities. GET (not POST) so it's cheap to poll from the admin UI;
-     * the secret travels via header (not query string, which nginx/access logs would capture,
-     * and a GET can't carry a JSON body via fetch). */
-    router.get('/bans', async (req: RoomRequest, res: Response): Promise<void> => {
-        try {
-            const secret = req.header('X-Admin-Secret');
-            if (secret !== undefined && (typeof secret !== 'string' || secret.length > 100)) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-
-            const ctx = await getAuthedRoom(req.params.id, secret, res);
-            if (!ctx) return;
-
-            res.json({
-                bans: (ctx.meta.bannedIdentities ?? []).map((identity) => ({ identity })),
-            } satisfies BansResponse);
-        } catch (err) {
-            console.error('bans error:', err);
-            res.status(500).json({ error: 'server_error' });
+    // Every action needs a moderator of this room; the target, where there is one, an identity.
+    router.use(async (req: ModerationRequest, res: Response, next: NextFunction) => {
+        const room = await getRoom(req.params.id);
+        if (!room) {
+            res.status(404).json({ error: 'room_not_found' });
+            return;
         }
+        const caller = callerIdentity(req);
+        if (!caller || !isModerator(caller, room)) {
+            res.status(403).json({ error: 'forbidden' });
+            return;
+        }
+        const target = (req.body ?? {}).identity;
+        if (req.method === 'POST' && (typeof target !== 'string' || !target || target.length > 100)) {
+            res.status(400).json({ error: 'invalid_input' });
+            return;
+        }
+        res.locals.ctx = { room, caller, target } satisfies Context;
+        next();
     });
 
-    /** Kick a participant (immediate disconnect, can rejoin) */
-    router.post('/kick', async (req: RoomRequest, res: Response): Promise<void> => {
-        try {
-            const { identity, adminSecret } = (req.body ?? {}) as { identity?: string; adminSecret?: string };
-            if (!validateAdminInput(res, adminSecret, identity)) return;
-
-            const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
-            if (!ctx) return;
-
-            await ctx.roomService.removeParticipant(req.params.id, identity);
-            res.json({ ok: true });
-        } catch (err) {
-            console.error('kick error:', err);
-            res.status(500).json({ error: 'server_error' });
-        }
+    router.get('/bans', async (_req, res: Response) => {
+        const { room } = res.locals.ctx as Context;
+        const response: BansResponse = { bans: await listBans(room.id) };
+        res.json(response);
     });
 
-    /** Ban: add to bannedIdentities list + kick if in room */
-    router.post('/ban', async (req: RoomRequest, res: Response): Promise<void> => {
-        try {
-            const { identity, adminSecret } = (req.body ?? {}) as { identity?: string; adminSecret?: string };
-            if (!validateAdminInput(res, adminSecret, identity)) return;
-
-            const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
-            if (!ctx) return;
-
-            const banned = [...(ctx.meta.bannedIdentities ?? [])];
-            if (!banned.includes(identity)) banned.push(identity);
-
-            const newMeta = { ...stripSecret(ctx.meta), bannedIdentities: banned };
-            await ctx.roomService.updateRoomMetadata(req.params.id, JSON.stringify(newMeta));
-            await cacheRoomMeta(req.params.id, { ...ctx.meta, bannedIdentities: banned });
-
-            // Kick from room if currently connected (ignore error if not present)
-            try { await ctx.roomService.removeParticipant(req.params.id, identity); } catch { /* ok */ }
-
-            res.json({ ok: true });
-        } catch (err) {
-            console.error('ban error:', err);
-            res.status(500).json({ error: 'server_error' });
-        }
+    router.post('/kick', async (_req, res: Response) => {
+        const ctx = res.locals.ctx as Context;
+        const targetName = await nameOf(ctx.room.id, ctx.target);
+        await getRoomService().removeParticipant(ctx.room.id, ctx.target).catch(ignoreNotFound);
+        await announce(ctx, 'kicked', targetName);
+        res.json({ ok: true });
     });
 
-    /** Unban: remove from bannedIdentities */
-    router.post('/unban', async (req: RoomRequest, res: Response): Promise<void> => {
-        try {
-            const { identity, adminSecret } = (req.body ?? {}) as { identity?: string; adminSecret?: string };
-            if (!validateAdminInput(res, adminSecret, identity)) return;
-
-            const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
-            if (!ctx) return;
-
-            const banned = (ctx.meta.bannedIdentities ?? []).filter((i) => i !== identity);
-            const newMeta = { ...stripSecret(ctx.meta), bannedIdentities: banned };
-            await ctx.roomService.updateRoomMetadata(req.params.id, JSON.stringify(newMeta));
-            await cacheRoomMeta(req.params.id, { ...ctx.meta, bannedIdentities: banned });
-
-            res.json({ ok: true });
-        } catch (err) {
-            console.error('unban error:', err);
-            res.status(500).json({ error: 'server_error' });
-        }
+    router.post('/ban', async (_req, res: Response) => {
+        const ctx = res.locals.ctx as Context;
+        const targetName = await nameOf(ctx.room.id, ctx.target);
+        await addBan(ctx.room.id, ctx.target, targetName);
+        // Revoking tokens issued up to now keeps the banned client from reconnecting
+        // with the one it already holds.
+        const revokeTokenTs = BigInt(Math.floor(Date.now() / 1000) + 1);
+        await getRoomService().removeParticipant(ctx.room.id, ctx.target, { revokeTokenTs }).catch(ignoreNotFound);
+        await announce(ctx, 'banned', targetName);
+        res.json({ ok: true });
     });
 
-    /** Force-mute or force-unmute a participant via server-side permission */
-    router.post('/mute', async (req: RoomRequest, res: Response): Promise<void> => {
-        try {
-            const { identity, muted, adminSecret } = (req.body ?? {}) as { identity?: string; muted?: boolean; adminSecret?: string };
-            if (!validateAdminInput(res, adminSecret, identity)) return;
+    router.post('/unban', async (_req, res: Response) => {
+        const ctx = res.locals.ctx as Context;
+        await removeBan(ctx.room.id, ctx.target);
+        res.json({ ok: true });
+    });
 
-            const ctx = await getAuthedRoom(req.params.id, adminSecret, res);
-            if (!ctx) return;
-
-            const participant = await ctx.roomService.getParticipant(req.params.id, identity);
-
-            await ctx.roomService.updateParticipant(req.params.id, identity, undefined, {
-                ...participant.permission,
-                canPublish: !muted,
-            });
-
-            res.json({ ok: true });
-        } catch (err) {
-            console.error('mute error:', err);
-            res.status(500).json({ error: 'server_error' });
+    router.post('/mute', async (req, res: Response) => {
+        const ctx = res.locals.ctx as Context;
+        const { muted } = req.body ?? {};
+        if (typeof muted !== 'boolean') {
+            res.status(400).json({ error: 'invalid_input' });
+            return;
         }
+        // Stored first: the token for a reconnect is built from it.
+        await setMuted(ctx.room.id, ctx.target, muted);
+        const permission = permissionFor(ctx.target, ctx.room, muted);
+        await getRoomService().updateParticipant(ctx.room.id, ctx.target, { permission }).catch(ignoreNotFound);
+        invalidateRoomsCache();
+        await announce(ctx, muted ? 'muted' : 'unmuted', await nameOf(ctx.room.id, ctx.target));
+        res.json({ ok: true });
     });
 
     return router;

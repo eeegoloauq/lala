@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CreateRoomRequest } from '../../lib/types';
+import type { NewRoom } from '../../lib/types';
 import './create-room-modal.css';
 
 interface Props {
-    onConfirm: (req: CreateRoomRequest) => Promise<void>;
+    onConfirm: (req: NewRoom) => Promise<void>;
     onClose: () => void;
 }
 

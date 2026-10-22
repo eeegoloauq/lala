@@ -95,7 +95,8 @@
     "banned": "{{by}} banned {{target}}",
     "muted": "{{by}} muted {{target}}",
     "unmuted": "{{by}} unmuted {{target}}",
-    "rateLimited": "Too many actions — wait a moment"
+    "rateLimited": "Too many actions — wait a moment",
+    "failed": "That didn't work, try again"
   },
   "theme": {
     "dark": "Dark",

@@ -11,7 +11,16 @@ export type {
     BansResponse,
     AccessStatus,
     InviteResponse,
+    ModerationEvent,
+    ModerationTopic,
 } from '@lala/shared';
+
+/** What the create-room form and room templates produce; the keys are derived before sending. */
+export interface NewRoom {
+    name: string;
+    password?: string;
+    maxParticipants?: number;
+}
 
 import type { ApiErrorCode } from '@lala/shared';
 

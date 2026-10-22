@@ -10,6 +10,7 @@ import { Avatar } from './Avatar';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../icons/Icons';
 import { useConnectionQuality } from '../hooks/useConnectionQuality';
 import { useParticipantState } from '../hooks/useParticipantState';
+import { isMicRevoked } from '../lib/permissions';
 import { readDeafened } from '../lib/participantMeta';
 
 interface ParticipantTileProps {
@@ -51,13 +52,8 @@ function useIsDeafenedFromMeta(participant: Participant): boolean {
     );
 }
 
-/** Detects server-muted state (admin mute = canPublish revoked). */
 function useIsServerMuted(participant: Participant): boolean {
-    return useParticipantState(
-        participant,
-        [ParticipantEvent.ParticipantPermissionsChanged],
-        (p) => p.permissions?.canPublish === false,
-    );
+    return useParticipantState(participant, [ParticipantEvent.ParticipantPermissionsChanged], isMicRevoked);
 }
 
 /** Reactively tracks screen share state. */

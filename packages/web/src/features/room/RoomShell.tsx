@@ -37,6 +37,7 @@ const ScreenShareModal = lazy(() => import('./ScreenShareModal/ScreenShareModal'
 const SCREEN_SHARE_TRACKS = [Track.Source.ScreenShare];
 
 interface RoomShellProps {
+    canModerate: boolean;
     name: string;  // display name — used to call setName on join/change
     myAvatarUrl?: string | null;
     onIdentityAssigned?: (identity: string) => void;
@@ -50,7 +51,7 @@ interface RoomShellProps {
 /** Below this width the chat stays the existing floating/fullscreen overlay; at or above it, chat docks as a proper reflowing column. */
 const DESKTOP_CHAT_QUERY = '(min-width: 900px)';
 
-export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
+export function RoomShell({ canModerate, name, myAvatarUrl, onIdentityAssigned, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
     const [audioMuted, setAudioMuted] = useState(false);
@@ -122,15 +123,7 @@ export function RoomShell({ name, myAvatarUrl, onIdentityAssigned, onOpenSetting
 
     const { chatEntries, addSystem, suppressLeave } = useRoomSystemMessages(room, t, settings, messages, fileTransfers);
 
-    const adminProps = useAdminActions({
-        room,
-        participants,
-        localParticipant,
-        t,
-        settings,
-        addSystem,
-        suppressLeave,
-    });
+    const adminProps = useAdminActions({ room, canModerate, settings, addSystem, suppressLeave });
 
     usePushToTalk(settings.pushToTalk, settings.pushToTalkKey);
     useAudioProcessor({ noiseSuppressionMode: settings.noiseSuppressionMode, silenceGate: settings.silenceGate });

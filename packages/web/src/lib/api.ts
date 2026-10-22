@@ -1,5 +1,6 @@
 import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse } from './types';
 import { ApiError } from './types';
+import { getDeviceId } from './identity';
 
 const API_BASE = '/api';
 
@@ -9,13 +10,16 @@ export const ACCESS_REQUIRED_EVENT = 'lala:access-required';
 /**
  * Shared fetch wrapper for every API call. Unifies network-error wrapping,
  * 429 + Retry-After handling, and snake_case error-code extraction from the
- * response body so every caller gets the same behavior instead of each
- * re-implementing (and occasionally forgetting) it.
+ * response body so every caller gets the same behavior. Every request carries the
+ * device ID, which is how the server knows who is asking.
  */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let res: Response;
     try {
-        res = await fetch(`${API_BASE}${path}`, init);
+        res = await fetch(`${API_BASE}${path}`, {
+            ...init,
+            headers: { ...init.headers, 'X-Lala-Device': getDeviceId() },
+        });
     } catch {
         throw new ApiError('server_unavailable', 0);
     }
@@ -33,8 +37,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return res.json() as Promise<T>;
 }
 
-const jsonBody = (body: object): RequestInit => ({
-    method: 'POST',
+const send = (method: string, body: object): RequestInit => ({
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
 });
@@ -44,11 +48,11 @@ export function getAccess(): Promise<AccessStatus> {
 }
 
 export function submitAccessPassword(password: string): Promise<void> {
-    return request<void>('/access', jsonBody({ password }));
+    return request<void>('/access', send('POST', { password }));
 }
 
 export function submitAccessInvite(invite: string): Promise<void> {
-    return request<void>('/access', jsonBody({ invite }));
+    return request<void>('/access', send('POST', { invite }));
 }
 
 export async function createAccessInvite(): Promise<string> {
@@ -56,46 +60,40 @@ export async function createAccessInvite(): Promise<string> {
 }
 
 export function getToken(req: TokenRequest): Promise<TokenResponse> {
-    return request<TokenResponse>('/token', jsonBody(req));
+    return request<TokenResponse>('/token', send('POST', req));
 }
 
 export async function getRooms(): Promise<RoomInfo[]> {
-    const data = await request<{ rooms: RoomInfo[] }>('/rooms');
-    return data.rooms;
+    return (await request<{ rooms: RoomInfo[] }>('/rooms')).rooms;
 }
 
+export function getRoom(roomId: string): Promise<RoomInfo> {
+    return request<RoomInfo>(`/rooms/${encodeURIComponent(roomId)}`);
+}
+
+/** Returns the live room with this name if there is one, otherwise a new room. */
 export function createRoom(req: CreateRoomRequest): Promise<RoomInfo> {
-    return request<RoomInfo>('/rooms', jsonBody(req));
+    return request<RoomInfo>('/rooms', send('POST', req));
 }
 
-function adminPost(roomId: string, action: string, body: object): Promise<void> {
-    return request<void>(`/rooms/${encodeURIComponent(roomId)}/admin/${action}`, jsonBody(body));
+export function deleteRoom(roomId: string): Promise<void> {
+    return request<void>(`/rooms/${encodeURIComponent(roomId)}`, { method: 'DELETE' });
 }
 
-export const kickParticipant = (roomId: string, identity: string, adminSecret: string) =>
-    adminPost(roomId, 'kick', { identity, adminSecret });
+const admin = (roomId: string, action: string) => `/rooms/${encodeURIComponent(roomId)}/admin/${action}`;
 
-export const banParticipant = (roomId: string, identity: string, adminSecret: string) =>
-    adminPost(roomId, 'ban', { identity, adminSecret });
+export const kickParticipant = (roomId: string, identity: string) =>
+    request<void>(admin(roomId, 'kick'), send('POST', { identity }));
 
-export const muteParticipant = (roomId: string, identity: string, adminSecret: string, muted: boolean) =>
-    adminPost(roomId, 'mute', { identity, adminSecret, muted });
+export const banParticipant = (roomId: string, identity: string) =>
+    request<void>(admin(roomId, 'ban'), send('POST', { identity }));
 
-/** List of participants banned from a room. Auth via X-Admin-Secret header (not body/query). */
-export async function getBans(roomId: string, adminSecret: string): Promise<RoomBan[]> {
-    const data = await request<BansResponse>(`/rooms/${encodeURIComponent(roomId)}/admin/bans`, {
-        headers: { 'X-Admin-Secret': adminSecret },
-    });
-    return data.bans;
-}
+export const unbanParticipant = (roomId: string, identity: string) =>
+    request<void>(admin(roomId, 'unban'), send('POST', { identity }));
 
-export const unbanParticipant = (roomId: string, identity: string, adminSecret: string) =>
-    adminPost(roomId, 'unban', { identity, adminSecret });
+export const muteParticipant = (roomId: string, identity: string, muted: boolean) =>
+    request<void>(admin(roomId, 'mute'), send('POST', { identity, muted }));
 
-export function deleteRoom(roomId: string, adminSecret: string): Promise<void> {
-    return request<void>(`/rooms/${encodeURIComponent(roomId)}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminSecret }),
-    });
+export async function getBans(roomId: string): Promise<RoomBan[]> {
+    return (await request<BansResponse>(admin(roomId, 'bans'))).bans;
 }

@@ -9,11 +9,12 @@ import { useRooms } from './hooks/useRooms';
 import { useRoute } from './hooks/useRoute';
 import { useDisplayName } from './hooks/useDisplayName';
 import { usePersistedVolumes } from './hooks/usePersistedVolumes';
-import { getOrCreateIdentity, getCachedHmacIdentity, saveCachedHmacIdentity } from './lib/identity';
-import type { CreateRoomRequest } from './lib/types';
+import { getDeviceId, getCachedHmacIdentity, saveCachedHmacIdentity } from './lib/identity';
+import type { NewRoom } from './lib/types';
+import { deriveRoomKeys, newRoomSalt } from './lib/roomKeys';
 import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
-import { saveRoomPassword, getRoomPassword, saveAdminSecret } from './lib/passwords';
+import { saveRoomPassword, getRoomPassword } from './lib/passwords';
 import { saveTemplate } from './lib/roomTemplates';
 import { resetRoomSession } from './lib/roomStatusStore';
 import './App.css';
@@ -24,7 +25,7 @@ export default function App() {
     const { t } = useTranslation();
     const { rooms, error: roomsError, addRoom } = useRooms();
     const { displayName, setDisplayName } = useDisplayName();
-    const [identity] = useState(getOrCreateIdentity);
+    const [deviceId] = useState(getDeviceId);
     const { settings, updateSettings } = useSettings();
     const route = useRoute();
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -32,23 +33,23 @@ export default function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { volumes, handleVolumeChange } = usePersistedVolumes();
     const [myAvatar, setMyAvatar] = useState(getMyAvatar);
-    const [liveIdentity, setLiveIdentity] = useState<string | null>(() => getCachedHmacIdentity(identity));
+    const [liveIdentity, setLiveIdentity] = useState<string | null>(() => getCachedHmacIdentity(deviceId));
 
     const handleIdentityAssigned = useCallback((id: string) => {
-        saveCachedHmacIdentity(identity, id);
+        saveCachedHmacIdentity(deviceId, id);
         setLiveIdentity(id);
-    }, [identity]);
+    }, [deviceId]);
 
     const handleAvatarChange = useCallback((dataUrl: string | null) => {
         if (dataUrl) {
             saveMyAvatar(dataUrl);
-            setCachedAvatar(identity, dataUrl);
+            setCachedAvatar(deviceId, dataUrl);
         } else {
             clearMyAvatar();
-            clearCachedAvatar(identity);
+            clearCachedAvatar(deviceId);
         }
         setMyAvatar(dataUrl);
-    }, [identity]);
+    }, [deviceId]);
 
 
     useEffect(() => {
@@ -109,11 +110,12 @@ export default function App() {
         window.electronAPI?.saveSession?.(null);
     };
 
-    const handleCreateRoom = async (req: CreateRoomRequest) => {
-        const room = await addRoom({ ...req, deviceId: identity });
-        if (room.adminSecret) {
-            saveAdminSecret(room.id, room.adminSecret);
-        }
+    const handleCreateRoom = async (req: NewRoom) => {
+        const salt = req.password ? newRoomSalt() : undefined;
+        const password = req.password && salt
+            ? { salt, key: (await deriveRoomKeys(req.password, salt)).authKey }
+            : undefined;
+        const room = await addRoom({ name: req.name, maxParticipants: req.maxParticipants, password });
         if (req.password) {
             saveRoomPassword(room.id, req.password);
         }
@@ -174,7 +176,7 @@ export default function App() {
                     rooms={rooms}
                     roomsError={roomsError}
                     activeRoom={activeRoom}
-                    identity={liveIdentity || identity}
+                    identity={liveIdentity ?? ''}
                     displayName={displayName}
                     myAvatarUrl={myAvatar}
                     onRename={setDisplayName}
@@ -204,7 +206,6 @@ export default function App() {
                     <RoomView
                         roomName={activeRoom}
                         name={displayName}
-                        identity={identity}
                         hashPassword={route.hashPassword}
                         myAvatarUrl={myAvatar}
                         settings={settings}

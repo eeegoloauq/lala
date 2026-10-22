@@ -127,10 +127,9 @@ Identity is an HMAC of a stable device UUID, so the same device is always the sa
 
 ## Security
 
-- End-to-end encryption with LiveKit's E2EE (AES-GCM), keyed from the room password
+- End-to-end encryption with LiveKit's E2EE (AES-GCM); the media key and the key the server checks are derived separately from the room password on the client, so the server never sees either the password or the media key
 - HMAC identity that cannot be forged without the API secret
-- Passwords stored as scrypt hashes, constant-time comparison
-- Admin secrets: 128-bit random, Redis-only (never in room metadata)
+- Room creators moderate by identity; rights are LiveKit grants, so the media server enforces them, and a ban revokes the tokens the banned client holds
 - Optional server password with an HttpOnly session cookie and a limit on failed attempts
 - Rate limiting in nginx and Express; null bytes, RTL overrides and control chars stripped from input
 - CSP without inline scripts; containers with `no-new-privileges` and memory limits, the API as a non-root user
@@ -140,7 +139,8 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md).
 ## Local dev
 
 ```bash
-cd packages/api && npm ci && npm run dev   # :3001
+e2e/redis.sh &                                              # Redis on :6380, the API needs it
+cd packages/api && npm ci && REDIS_URL=redis://127.0.0.1:6380 npm run dev   # :3001
 cd packages/web && npm ci && npm run dev   # :3000
 ```
 

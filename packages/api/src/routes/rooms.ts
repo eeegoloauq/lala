@@ -1,201 +1,172 @@
-import { Router, Request, Response } from 'express';
-import type { RoomInfo, CreateRoomRequest } from '@lala/shared';
-import { getRoomService } from '../lib/livekit';
-import { generateRoomId, hashPassword, parseRoomMeta } from '../lib/roomMeta';
-import { cacheRoomMeta, evictRoomMeta } from '../lib/roomStore';
+import { Router, type Request, type Response } from 'express';
+import { TrackSource } from 'livekit-server-sdk';
+import type { CreateRoomRequest, RoomInfo } from '@lala/shared';
+import { getRoomService, isNotFound } from '../lib/livekit';
+import { callerIdentity } from '../lib/identity';
+import { hashRoomKey } from '../lib/passwords';
+import { isModerator } from '../lib/rights';
+import { OPEN_RIGHTS, claimRoom, dropRoom, generateRoomId, getRoom, listMuted, listRoomStates, type RoomState } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
-import { randomBytes } from 'crypto';
-import { getAuthedRoom } from '../lib/auth';
-import { deriveIdentity } from '../lib/identity';
 
-// In-memory cache for the aggregated room list — GET /api/rooms is unauthenticated
-// and fans out a listParticipants() call per room, so without a cache it's an N+1
-// amplification against LiveKit on every poll (including the docker healthcheck
-// every 15s). TTL is short enough that SSE-driven UI refreshes still see fresh-enough
-// data; the webhook handler also invalidates it explicitly on room-changing events.
-const ROOMS_CACHE_TTL_MS = 2000;
-let roomsCache: { data: RoomInfo[]; expiresAt: number } | null = null;
-let roomsCacheInflight: Promise<RoomInfo[]> | null = null;
+type ListedRoom = Omit<RoomInfo, 'canModerate'> & { state: RoomState };
 
-/** Drop the cached room list so the next GET /api/rooms fetches fresh data. */
+// GET /api/rooms is unauthenticated and fans out one LiveKit call per room, and every
+// client refetches it when anyone joins or leaves, so the list is cached briefly. The
+// webhook invalidates it on room events.
+const CACHE_TTL_MS = 2000;
+let cache: { rooms: ListedRoom[]; expiresAt: number } | null = null;
+let inflight: Promise<ListedRoom[]> | null = null;
+let generation = 0;
+
 export function invalidateRoomsCache(): void {
-    roomsCache = null;
-    roomsCacheInflight = null;
+    generation++;
+    cache = null;
+    inflight = null;
 }
 
-async function listRoomsAggregated(): Promise<RoomInfo[]> {
-    const now = Date.now();
-    if (roomsCache && roomsCache.expiresAt > now) {
-        return roomsCache.data;
-    }
-    // Single-flight: concurrent requests during a refresh share one in-flight promise
-    // instead of each triggering their own fan-out of listRooms/listParticipants calls.
-    if (roomsCacheInflight) {
-        return roomsCacheInflight;
-    }
+function readDeafened(metadata: string): boolean {
+    try { return JSON.parse(metadata || '{}').deafened === true; } catch { return false; }
+}
 
-    const roomService = getRoomService();
-    roomsCacheInflight = (async () => {
-        const rooms = await roomService.listRooms();
+async function describe(state: RoomState): Promise<ListedRoom> {
+    const [participants, serverMuted] = await Promise.all([
+        getRoomService().listParticipants(state.id).catch((err) => {
+            if (isNotFound(err)) return [];   // created a moment ago, LiveKit has no room yet
+            throw err;
+        }),
+        listMuted(state.id),
+    ]);
+    const withTrack = (source: TrackSource, muted?: boolean) => participants
+        .filter((p) => p.tracks.some((t) => t.source === source && (muted === undefined || t.muted === muted)))
+        .map((p) => p.identity);
+    return {
+        state,
+        id: state.id,
+        displayName: state.name,
+        numParticipants: participants.length,
+        maxParticipants: state.maxParticipants,
+        passwordSalt: state.password?.salt,
+        creationTime: state.createdAt,
+        participants: participants.map((p) => ({ identity: p.identity, name: p.name || p.identity })),
+        adminIdentity: state.creator,
+        screenSharingParticipants: withTrack(TrackSource.SCREEN_SHARE),
+        mutedParticipants: withTrack(TrackSource.MICROPHONE, true),
+        deafenedParticipants: participants.filter((p) => readDeafened(p.metadata)).map((p) => p.identity),
+        serverMutedParticipants: serverMuted,
+    };
+}
 
-        const result: RoomInfo[] = await Promise.all(
-            rooms.map(async (room): Promise<RoomInfo> => {
-                const participants = await roomService.listParticipants(room.name);
-                const meta = parseRoomMeta(room.metadata);
-                // TrackSource: SCREEN_SHARE=3, MICROPHONE=2 in LiveKit protobuf enum
-                const screenSharingParticipants = participants
-                    .filter(p => p.tracks?.some(t => t.source === 3))
-                    .map(p => p.identity);
-                const mutedParticipants = participants
-                    .filter(p => p.tracks?.some(t => t.source === 2 && t.muted))
-                    .map(p => p.identity);
-                const deafenedParticipants = participants
-                    .filter(p => {
-                        try { return !!JSON.parse(p.metadata || '{}').deafened; } catch { return false; }
-                    })
-                    .map(p => p.identity);
-                const serverMutedParticipants = participants
-                    .filter(p => p.permission && p.permission.canPublish === false)
-                    .map(p => p.identity);
-                return {
-                    id: room.name,
-                    displayName: meta?.displayName ?? room.name,
-                    numParticipants: participants.length,
-                    maxParticipants: meta?.maxParticipants ?? Number(room.maxParticipants),
-                    hasPassword: !!meta?.passwordHash,
-                    creationTime: Number(room.creationTime),
-                    participants: participants.map((p) => ({ identity: p.identity, name: p.name || p.identity })),
-                    adminIdentity: meta?.creatorIdentity,
-                    screenSharingParticipants,
-                    mutedParticipants,
-                    deafenedParticipants,
-                    serverMutedParticipants,
-                };
-            }),
-        );
-
-        roomsCache = { data: result, expiresAt: Date.now() + ROOMS_CACHE_TTL_MS };
-        return result;
+async function listRooms(): Promise<ListedRoom[]> {
+    if (cache && cache.expiresAt > Date.now()) return cache.rooms;
+    if (inflight) return inflight;
+    const started = generation;
+    const fetch = (async () => {
+        const states = await listRoomStates();
+        const rooms = await Promise.all(states.sort((a, b) => a.createdAt - b.createdAt).map(describe));
+        // A webhook may have invalidated the list while this was in flight.
+        if (generation === started) cache = { rooms, expiresAt: Date.now() + CACHE_TTL_MS };
+        return rooms;
     })();
-
+    inflight = fetch;
     try {
-        return await roomsCacheInflight;
+        return await fetch;
     } finally {
-        roomsCacheInflight = null;
+        if (inflight === fetch) inflight = null;
     }
+}
+
+/** The cached part is the same for everyone; whether the caller may moderate is not. */
+function forCaller(req: Request, { state, ...room }: ListedRoom): RoomInfo {
+    return { ...room, canModerate: isModerator(callerIdentity(req), state) };
+}
+
+function parsePassword(input: unknown): CreateRoomRequest['password'] | null {
+    if (input === undefined) return undefined;
+    const { salt, key } = (input ?? {}) as Record<string, unknown>;
+    const valid = (v: unknown) => typeof v === 'string' && v.length > 0 && v.length <= 200;
+    return valid(salt) && valid(key) ? { salt: salt as string, key: key as string } : null;
+}
+
+/**
+ * State that LiveKit has no room for (a missed webhook, a crash mid-create) would list
+ * rooms nobody can join. Rooms LiveKit has without state are left alone: they hold live
+ * calls, can't be joined again and end once empty.
+ */
+export async function dropStaleRooms(): Promise<void> {
+    const [states, live] = await Promise.all([listRoomStates(), getRoomService().listRooms()]);
+    const liveIds = new Set(live.map((r) => r.name));
+    const cutoff = Date.now() - 60_000;
+    const stale = states.filter((s) => !liveIds.has(s.id) && s.createdAt < cutoff);
+    await Promise.all(stale.map((s) => dropRoom(s.id)));
+    if (stale.length > 0) invalidateRoomsCache();
 }
 
 export function createRoomsRouter(): Router {
     const router = Router();
 
-    /** List all active rooms (public info only) */
-    router.get('/', async (_req: Request, res: Response): Promise<void> => {
-        try {
-            const result = await listRoomsAggregated();
-            res.json({ rooms: result });
-        } catch (error) {
-            console.error('Failed to list rooms:', error);
-            res.status(500).json({ error: 'server_error' });
-        }
+    router.get('/', async (req: Request, res: Response) => {
+        res.json({ rooms: (await listRooms()).map((room) => forCaller(req, room)) });
     });
 
-    /** Create a new room */
-    router.post('/', async (req: Request, res: Response): Promise<void> => {
-        try {
-            // Partial<> because the body is untrusted input — every field is
-            // validated below before use.
-            const { name, password, maxParticipants, deviceId } = (req.body ?? {}) as Partial<CreateRoomRequest>;
-
-            if (!name || typeof name !== 'string' || !name.trim()) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-
-            // Input validation
-            if (password !== undefined && (typeof password !== 'string' || password.length > 200)) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-            if (maxParticipants !== undefined && (typeof maxParticipants !== 'number' || !Number.isInteger(maxParticipants) || maxParticipants < 1 || maxParticipants > 100)) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-            if (deviceId !== undefined && (typeof deviceId !== 'string' || deviceId.length > 100)) {
-                res.status(400).json({ error: 'invalid_input' });
-                return;
-            }
-
-            // Sanitize: strip null bytes, RTL/LTR override chars, and control characters
-            const displayName = sanitizeDisplayText(name, 50);
-            const limit = maxParticipants && maxParticipants > 0 ? Math.min(maxParticipants, 100) : 0;
-
-            const adminSecret = randomBytes(16).toString('hex');
-
-            const meta = {
-                displayName,
-                passwordHash: password ? await hashPassword(password) : undefined,
-                maxParticipants: limit,
-                createdAt: Date.now(),
-                creatorIdentity: deviceId ? deriveIdentity(deviceId) : undefined,
-            };
-
-            const roomService = getRoomService();
-            // Generate unique room ID with collision check
-            let roomId = generateRoomId();
-            for (let attempt = 0; attempt < 5; attempt++) {
-                const existing = await roomService.listRooms([roomId]);
-                if (existing.length === 0) break;
-                if (attempt === 4) {
-                    res.status(500).json({ error: 'server_error' });
-                    return;
-                }
-                roomId = generateRoomId();
-            }
-            const room = await roomService.createRoom({
-                name: roomId,
-                emptyTimeout: 300,
-                maxParticipants: limit,
-                // adminSecret is NOT stored in LiveKit metadata — it would be broadcast to all participants
-                metadata: JSON.stringify(meta),
-            });
-
-            // adminSecret stored only in Redis cache — never in LiveKit metadata
-            await cacheRoomMeta(roomId, { ...meta, adminSecret });
-            invalidateRoomsCache();
-
-            // adminSecret is returned ONCE here — client must persist it locally
-            const created: RoomInfo = {
-                id: room.name,
-                displayName: meta.displayName,
-                numParticipants: 0,
-                maxParticipants: limit,
-                hasPassword: !!meta.passwordHash,
-                creationTime: Number(room.creationTime),
-                participants: [],
-                adminSecret,
-            };
-            res.json(created);
-        } catch (error) {
-            console.error('Failed to create room:', error);
-            res.status(500).json({ error: 'server_error' });
+    router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
+        const room = (await listRooms()).find((r) => r.id === req.params.id);
+        if (!room) {
+            res.status(404).json({ error: 'room_not_found' });
+            return;
         }
+        res.json(forCaller(req, room));
     });
 
-    /** Delete a room (requires adminSecret) */
-    router.delete('/:id', async (req, res: Response): Promise<void> => {
-        try {
-            const { id } = req.params;
-            const { adminSecret } = (req.body ?? {}) as { adminSecret?: string };
-            const ctx = await getAuthedRoom(id, adminSecret, res);
-            if (!ctx) return;
-            await ctx.roomService.deleteRoom(id);
-            await evictRoomMeta(id);
-            invalidateRoomsCache();
-            res.json({ ok: true });
-        } catch (error) {
-            console.error('Failed to delete room:', error);
-            res.status(500).json({ error: 'server_error' });
+    router.post('/', async (req: Request, res: Response) => {
+        const body = (req.body ?? {}) as Record<string, unknown>;
+        const name = typeof body.name === 'string' ? sanitizeDisplayText(body.name, 50) : '';
+        const max = body.maxParticipants ?? 0;
+        const password = parsePassword(body.password);
+        const creator = callerIdentity(req);
+        if (!name || password === null || !Number.isInteger(max) || (max as number) < 0 || (max as number) > 100) {
+            res.status(400).json({ error: 'invalid_input' });
+            return;
         }
+        if (!creator) {
+            res.status(400).json({ error: 'identity_required' });
+            return;
+        }
+
+        const { room, created } = await claimRoom({
+            id: generateRoomId(),
+            name,
+            createdAt: Date.now(),
+            creator,
+            maxParticipants: max as number,
+            password: password && { salt: password.salt, verifier: await hashRoomKey(password.key) },
+            rights: OPEN_RIGHTS,
+        });
+        if (created) {
+            try {
+                await getRoomService().createRoom({ name: room.id, emptyTimeout: 300, maxParticipants: room.maxParticipants });
+            } catch (err) {
+                await dropRoom(room.id);
+                throw err;
+            }
+            invalidateRoomsCache();
+        }
+        res.status(created ? 201 : 200).json(forCaller(req, await describe(room)));
+    });
+
+    router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => {
+        const room = await getRoom(req.params.id);
+        if (!room) {
+            res.status(404).json({ error: 'room_not_found' });
+            return;
+        }
+        if (!isModerator(callerIdentity(req), room)) {
+            res.status(403).json({ error: 'forbidden' });
+            return;
+        }
+        await getRoomService().deleteRoom(room.id).catch((err) => { if (!isNotFound(err)) throw err; });
+        await dropRoom(room.id);
+        invalidateRoomsCache();
+        res.json({ ok: true });
     });
 
     return router;

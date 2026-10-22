@@ -1,10 +1,10 @@
 import { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { RoomInfo, CreateRoomRequest } from '../../lib/types';
+import type { RoomInfo, NewRoom } from '../../lib/types';
 import { APP_NAME } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
-import { getRoomPassword, getAdminSecret } from '../../lib/passwords';
+import { getRoomPassword } from '../../lib/passwords';
 import { createAccessInvite } from '../../lib/api';
 import { useAccessRequired } from '../access/accessContext';
 import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
@@ -16,7 +16,6 @@ import { ChannelUserRow } from './ChannelUserRow';
 import { useTheme } from '../settings/ThemeProvider';
 import type { Theme } from '../settings/ThemeProvider';
 import { useLiveParticipants } from '../../lib/roomStatusStore';
-import { getAdminBridge } from '../../lib/adminBridge';
 import { buildAdminActions } from '../room/hooks/useAdminActions';
 import '../settings/settings.css';
 import './channel-sidebar.css';
@@ -33,7 +32,7 @@ interface ChannelSidebarProps {
     myAvatarUrl?: string | null;
     onRename: (name: string) => void;
     onJoinRoom: (id: string) => void;
-    onCreateRoom: (req: CreateRoomRequest) => Promise<void>;
+    onCreateRoom: (req: NewRoom) => Promise<void>;
     onOpenSettings: () => void;
     onClose?: () => void;
     volumes?: Map<string, number>;
@@ -51,14 +50,8 @@ interface ContextMenuState {
 interface RoomContextMenuState {
     roomId: string;
     roomName: string;
-    adminSecret: string;
     x: number;
     y: number;
-}
-
-interface BansModalState {
-    roomId: string;
-    adminSecret: string;
 }
 
 function LockIcon({ title }: { title?: string }) {
@@ -104,7 +97,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenuState | null>(null);
-    const [bansModal, setBansModal] = useState<BansModalState | null>(null);
+    const [bansRoomId, setBansRoomId] = useState<string | null>(null);
     const [copiedRoom, setCopiedRoom] = useState<string | null>(null);
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState('');
@@ -146,7 +139,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     };
 
     const accessRequired = useAccessRequired();
-    const handleCopyInvite = useCallback((e: React.MouseEvent, roomId: string, hasPassword?: boolean) => {
+    const handleCopyInvite = useCallback((e: React.MouseEvent, roomId: string, hasPassword: boolean) => {
         e.stopPropagation();
         // The room password and the server invite go in the fragment, which browsers never send to a server.
         const buildUrl = async () => {
@@ -170,16 +163,13 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         setContextMenu({ identity: participantIdentity, name: participantName, roomId, x: e.clientX, y: e.clientY });
     }, []);
 
-    // Room-level right-click menu (banned users / delete room) — creator/admin only.
-    // Presence of a saved adminSecret for this room IS the creator/admin check
-    // (see lib/passwords.ts getAdminSecret); if it's absent, let the default
-    // browser context menu show instead of hijacking the right-click.
-    const handleRoomContextMenu = useCallback((e: React.MouseEvent, roomId: string, roomName: string) => {
-        const secret = getAdminSecret(roomId);
-        if (!secret) return;
+    // Room-level right-click menu (banned users / delete room) for moderators only;
+    // everyone else gets the browser's own context menu.
+    const handleRoomContextMenu = useCallback((e: React.MouseEvent, room: RoomInfo) => {
+        if (!room.canModerate) return;
         e.preventDefault();
         e.stopPropagation();
-        setRoomContextMenu({ roomId, roomName, adminSecret: secret, x: e.clientX, y: e.clientY });
+        setRoomContextMenu({ roomId: room.id, roomName: room.displayName, x: e.clientX, y: e.clientY });
     }, []);
 
     // Keep room participants in a ref for the long-press callback
@@ -203,30 +193,12 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         }
     }, []);
 
-    // Same buildAdminActions builder the tile context menu uses (useAdminActions.ts),
-    // so kick/ban/mute from the sidebar behave identically — HTTP call, broadcast,
-    // system message, TTS, suppressLeave — instead of re-implementing a partial
-    // version that skipped all but the HTTP call.
     const getAdminProps = useCallback((roomId: string, participantIdentity: string) => {
-        const secret = getAdminSecret(roomId);
-        if (!secret) return undefined;
         const room = rooms.find(r => r.id === roomId);
-        const serverMuted = room?.serverMutedParticipants?.includes(participantIdentity) ?? false;
-        // The sidebar can show participants of rooms we're NOT currently connected to
-        // (they come from the SSE room snapshot, not a live LiveKit connection) — only
-        // wire up the data-channel broadcast/system-message/TTS bridge when the target
-        // room is the one we actually have a live connection to (registered by
-        // useAdminActions while RoomShell is mounted for that room). Otherwise the
-        // HTTP admin call still goes through, it just can't announce itself over a
-        // data channel that doesn't exist from here.
-        const bridge = getAdminBridge();
-        const sameRoomBridge = bridge && bridge.roomId === roomId ? bridge : undefined;
-        const actions = buildAdminActions(roomId, secret, {
-            broadcast: sameRoomBridge?.broadcast,
-            onError: sameRoomBridge?.onError,
-        });
+        if (!room?.canModerate) return undefined;
+        const serverMuted = room.serverMutedParticipants.includes(participantIdentity);
+        const actions = buildAdminActions(roomId);
         return {
-            adminSecret: secret,
             roomId,
             serverMuted,
             onKick: () => actions.onKick(participantIdentity),
@@ -287,7 +259,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                         <div
                             className={`channel-item ${activeRoom === room.id ? 'active' : ''}`}
                             onClick={() => onJoinRoom(room.id)}
-                            onContextMenu={(e) => handleRoomContextMenu(e, room.id, room.displayName)}
+                            onContextMenu={(e) => handleRoomContextMenu(e, room)}
                         >
                             <svg className="channel-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -295,7 +267,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
                             </svg>
                             <span className="channel-name">{room.displayName}</span>
-                            {room.hasPassword && <LockIcon title={t('sidebar.passwordProtected')} />}
+                            {room.passwordSalt && <LockIcon title={t('sidebar.passwordProtected')} />}
                             {((room.id === activeRoom ? liveParticipants.size : room.numParticipants) > 0 || room.maxParticipants > 0) && (
                                 <span className="channel-count">
                                     {room.id === activeRoom ? liveParticipants.size : room.numParticipants}
@@ -304,7 +276,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                             )}
                             <button
                                 className={`channel-copy-btn${copiedRoom === room.id ? ' copied' : ''}`}
-                                onClick={(e) => handleCopyInvite(e, room.id, room.hasPassword)}
+                                onClick={(e) => handleCopyInvite(e, room.id, !!room.passwordSalt)}
                                 title={t('sidebar.copyLink')}
                             >
                                 {copiedRoom === room.id ? (
@@ -447,19 +419,17 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 <RoomContextMenu
                     roomId={roomContextMenu.roomId}
                     roomName={roomContextMenu.roomName}
-                    adminSecret={roomContextMenu.adminSecret}
                     x={roomContextMenu.x}
                     y={roomContextMenu.y}
-                    onOpenBans={(roomId, adminSecret) => setBansModal({ roomId, adminSecret })}
+                    onOpenBans={setBansRoomId}
                     onClose={() => setRoomContextMenu(null)}
                 />
             )}
 
-            {bansModal && (
+            {bansRoomId && (
                 <BannedUsersModal
-                    roomId={bansModal.roomId}
-                    adminSecret={bansModal.adminSecret}
-                    onClose={() => setBansModal(null)}
+                    roomId={bansRoomId}
+                    onClose={() => setBansRoomId(null)}
                 />
             )}
         </div>

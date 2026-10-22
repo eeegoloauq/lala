@@ -10,48 +10,74 @@
 
 /** Room info returned by GET /api/rooms and GET /api/rooms/:id */
 export interface RoomInfo {
-    id: string;            // opaque LiveKit room name (e.g. "a3f8c2d1e9")
-    displayName: string;   // human-readable name from metadata
+    id: string;            // opaque room ID, also the LiveKit room name
+    displayName: string;
     numParticipants: number;
     maxParticipants: number; // 0 = unlimited
-    hasPassword: boolean;
-    creationTime: number;
+    passwordSalt?: string;   // present when the room has a password; input to the client-side key derivation
+    creationTime: number;    // ms since epoch
     participants: Array<{ identity: string; name: string }>;
     adminIdentity?: string;          // creator's identity, shown as crown in UI
-    screenSharingParticipants?: string[];  // identities currently screen sharing
-    mutedParticipants?: string[];         // identities with mic muted
-    deafenedParticipants?: string[];      // identities who are deafened (from participant metadata)
-    serverMutedParticipants?: string[];   // identities server-muted by admin (canPublish === false)
-    adminSecret?: string;            // only present in POST /api/rooms response — store and don't share
+    canModerate: boolean;            // whether the caller (X-Lala-Device) may kick, ban, mute and delete
+    screenSharingParticipants: string[];
+    mutedParticipants: string[];         // mic muted by the participant
+    deafenedParticipants: string[];      // from participant metadata
+    serverMutedParticipants: string[];   // muted by a moderator
 }
 
-/** One banned participant, from GET /api/rooms/:id/admin/bans. Only identities are stored server-side, so `name` is currently always absent — kept optional so a future name-carrying ban store is a non-breaking change. */
-export interface RoomBan { identity: string; name?: string; }
+/** One banned participant, from GET /api/rooms/:id/admin/bans. */
+export interface RoomBan { identity: string; name: string; }
 /** Response from GET /api/rooms/:id/admin/bans */
 export interface BansResponse { bans: RoomBan[]; }
 
-/** Payload for POST /api/rooms */
-export interface CreateRoomRequest {
-    name: string;
-    password?: string;
-    maxParticipants?: number;
-    deviceId?: string; // creator's device UUID — the server stores only the identity derived from it
+/**
+ * Keys derived on the client from a room password (see the web client's roomKeys): the
+ * server checks `key` and never sees the password or the encryption key.
+ */
+export interface RoomPassword {
+    salt: string;
+    key: string;
 }
 
-/** Payload for POST /api/token */
+/**
+ * Payload for POST /api/rooms. The caller (X-Lala-Device) becomes the creator. When a live
+ * room already has this name, the response is that room and nothing is created.
+ */
+export interface CreateRoomRequest {
+    name: string;
+    password?: RoomPassword;
+    maxParticipants?: number;
+}
+
+/** Payload for POST /api/token; the identity comes from the X-Lala-Device header. */
 export interface TokenRequest {
     room: string;
-    name: string;     // display name shown to others
-    deviceId?: string; // stable device UUID — server derives a deterministic identity from it via HMAC
-    password?: string;
-    adminSecret?: string; // skip password check when rejoining own room
+    name?: string;        // display name shown to others
+    passwordKey?: string; // RoomPassword.key derived with the room's passwordSalt
 }
 
 /** Response from POST /api/token */
 export interface TokenResponse {
     token: string;
-    identity: string; // HMAC-derived from deviceId — stable per device, cannot be forged without server secret
+    identity: string; // derived from the device ID; public
     url: string;      // LiveKit WebSocket URL to connect with this token
+    canModerate: boolean;
+}
+
+/** Payload for POST /api/rooms/:id/admin/{kick,ban,unban} */
+export interface ModerationRequest { identity: string; }
+/** Payload for POST /api/rooms/:id/admin/mute */
+export interface MuteRequest { identity: string; muted: boolean; }
+
+/** Data topic of moderation events. Only the server publishes on it. */
+export type ModerationTopic = 'lala.moderation';
+
+/** Sent by the server to everyone in the room after a moderation action succeeds. */
+export interface ModerationEvent {
+    action: 'kicked' | 'banned' | 'muted' | 'unmuted';
+    target: string;     // identity
+    targetName: string;
+    byName: string;
 }
 
 /** Response from GET /api/access. POST /api/access takes `{ password }` or `{ invite }` and sets the session cookie. */
@@ -79,6 +105,7 @@ export type ApiErrorCode =
     | 'invalid_invite'
     | 'invalid_json'
     | 'invalid_signature'
+    | 'identity_required'
     | 'not_found'
     | 'password_required'
     | 'payload_too_large'
@@ -87,7 +114,6 @@ export type ApiErrorCode =
     | 'room_not_found'
     | 'room_required'
     | 'server_error'
-    | 'server_misconfigured'
     | 'server_unavailable'
     | 'too_many_connections'
     | 'wrong_password';

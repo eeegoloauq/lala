@@ -1,12 +1,11 @@
-import { Router, Request, Response } from 'express';
-import { WebhookReceiver } from 'livekit-server-sdk';
+import { Router, type Request, type Response } from 'express';
+import { WebhookReceiver, type WebhookEvent } from 'livekit-server-sdk';
 import { broadcastSse } from '../lib/sse';
-import { evictRoomMeta } from '../lib/roomStore';
+import { dropRoom } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
 
-// LiveKit webhook events that change the room list visible to users.
-// Note: track mute/unmute and metadata changes are NOT webhook events in LiveKit —
-// real-time state is propagated via LiveKit data channel in RoomShell instead.
+// LiveKit events that change the room list. Mute and metadata changes are not webhook
+// events; clients in the room get those over LiveKit itself.
 const ROOM_EVENTS = new Set([
     'participant_joined',
     'participant_left',
@@ -17,45 +16,31 @@ const ROOM_EVENTS = new Set([
 ]);
 
 export function createWebhookRouter(): Router {
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    if (!apiKey || !apiSecret) throw new Error('LIVEKIT_API_KEY and LIVEKIT_API_SECRET must be set');
+    const receiver = new WebhookReceiver(apiKey, apiSecret);
+
     const router = Router();
 
-    /**
-     * POST /api/webhook
-     * Receives signed events from LiveKit server.
-     * Must be mounted BEFORE express.json() to receive the raw body for signature verification.
-     */
-    router.post('/', async (req: Request, res: Response): Promise<void> => {
-        const apiKey = process.env.LIVEKIT_API_KEY;
-        const apiSecret = process.env.LIVEKIT_API_SECRET;
-
-        if (!apiKey || !apiSecret) {
-            res.status(500).json({ error: 'server_misconfigured' });
+    // Mounted before express.json(): the signature covers the raw body.
+    router.post('/', async (req: Request, res: Response) => {
+        let event: WebhookEvent;
+        try {
+            event = await receiver.receive((req.body as Buffer).toString(), req.get('Authorization') ?? '');
+        } catch (err) {
+            console.warn('[webhook] rejected:', err instanceof Error ? err.message : err);
+            res.status(401).json({ error: 'invalid_signature' });
             return;
         }
 
-        try {
-            const receiver = new WebhookReceiver(apiKey, apiSecret);
-            const body = req.body instanceof Buffer ? req.body.toString() : String(req.body);
-            const event = await receiver.receive(body, req.get('Authorization') ?? '');
-
-            if (ROOM_EVENTS.has(event.event)) {
-                // Invalidate before broadcasting so clients that refetch GET /api/rooms
-                // in response to the SSE event don't race the cache's own 2s TTL.
-                invalidateRoomsCache();
-                broadcastSse('rooms_updated', { trigger: event.event });
-            }
-
-            // Clean up Redis when LiveKit destroys a room
-            if (event.event === 'room_finished' && event.room?.name) {
-                await evictRoomMeta(event.room.name);
-            }
-
-            res.json({ ok: true });
-        } catch (err) {
-            // Invalid signature or malformed payload
-            console.warn('[webhook] rejected:', err instanceof Error ? err.message : err);
-            res.status(401).json({ error: 'invalid_signature' });
+        if (event.event === 'room_finished' && event.room?.name) await dropRoom(event.room.name);
+        if (ROOM_EVENTS.has(event.event)) {
+            // Invalidated before broadcasting, so clients that refetch on the event get fresh data.
+            invalidateRoomsCache();
+            broadcastSse('rooms_updated', { trigger: event.event });
         }
+        res.json({ ok: true });
     });
 
     return router;

@@ -151,12 +151,18 @@ test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
     await adminAction('Server mute');
     await expect(alice.page.locator('.p-tile', { hasText: 'Bob' }).getByTitle('Muted by admin')).toBeVisible({ timeout: 10_000 });
     await expect.poll(async () => (await media(alice.page)).audio, { timeout: 10_000 }).toBe(0);
+    // The mute is the server's: rejoining does not lift it.
+    await bob.page.reload();
+    await expect(alice.page.locator('.p-tile', { hasText: 'Bob' }).getByTitle('Muted by admin')).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => (await media(alice.page)).audio, { timeout: 10_000 }).toBe(0);
     await adminAction('Allow microphone');
     await expect(alice.page.locator('.p-tile', { hasText: 'Bob' }).getByTitle('Muted by admin')).toBeHidden({ timeout: 10_000 });
 
-    // A kicked participant lands back on the lobby and may rejoin.
+    // A kicked participant lands back on the lobby and may rejoin. The server tells the room.
+    await alice.page.getByRole('button', { name: 'Chat' }).click();
     await adminAction('Kick');
     await bob.page.waitForURL(url => !url.pathname.startsWith('/room/'), { timeout: 10_000 });
+    await expect(alice.page.getByText('Alice kicked Bob')).toBeVisible();
     await join();
 
     // A banned one may not.
@@ -173,4 +179,43 @@ test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
     await alice.page.getByRole('button', { name: 'Click again to delete' }).click();
     expect((await deleted).status()).toBe(200);
     await expect(bob.page.locator('.channel-item', { hasText: 'Admin room' })).toBeHidden({ timeout: 10_000 });
+});
+
+/** Calls the API from the page, which holds the server password cookie, as the given device. */
+const api = (page: Page, device: string, method: string, path: string, body?: object) =>
+    page.evaluate(async ({ device, method, path, body }) => {
+        const res = await fetch(`/api${path}`, {
+            method,
+            headers: { 'X-Lala-Device': device, 'Content-Type': 'application/json' },
+            body: body && JSON.stringify(body),
+        });
+        return { status: res.status, body: await res.json() };
+    }, { device, method, path, body });
+
+test('only the creator moderates, and one name is one live room', async ({ browser }) => {
+    const { page } = await enter(browser, 'Alice');
+
+    const created = await api(page, 'device-alice', 'POST', '/rooms', { name: 'Shared name' });
+    expect(created.status).toBe(201);
+    expect(created.body.canModerate).toBe(true);
+    const id = created.body.id;
+
+    // The same name, in any case, while the room is live: Bob gets Alice's room, not a second one.
+    const again = await api(page, 'device-bob', 'POST', '/rooms', { name: ' shared NAME ' });
+    expect(again.status).toBe(200);
+    expect(again.body.id).toBe(id);
+    expect(again.body.canModerate).toBe(false);
+
+    for (const action of ['kick', 'ban', 'mute']) {
+        const res = await api(page, 'device-bob', 'POST', `/rooms/${id}/admin/${action}`, { identity: 'anyone', muted: true });
+        expect(res.status, action).toBe(403);
+    }
+    expect((await api(page, 'device-bob', 'DELETE', `/rooms/${id}`)).status).toBe(403);
+    expect((await api(page, 'device-alice', 'DELETE', `/rooms/${id}`)).status).toBe(200);
+
+    // Deleting the room frees its name.
+    const reborn = await api(page, 'device-bob', 'POST', '/rooms', { name: 'Shared name' });
+    expect(reborn.status).toBe(201);
+    expect(reborn.body.id).not.toBe(id);
+    expect(reborn.body.canModerate).toBe(true);
 });

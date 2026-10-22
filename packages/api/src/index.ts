@@ -7,7 +7,8 @@ import { createAdminRouter } from './routes/admin';
 import { createWebhookRouter } from './routes/webhook';
 import { createEventsRouter } from './routes/events';
 import { createAccessRouter, requireAccess } from './routes/access';
-import { connectRedis } from './lib/roomStore';
+import { connectRedis, redisReady } from './lib/redis';
+import { dropStaleRooms } from './routes/rooms';
 
 /**
  * Lala API Server
@@ -46,8 +47,9 @@ app.use('/api/webhook', express.raw({ type: '*/*' }), createWebhookRouter());
 app.use(express.json({ limit: '16kb' }));
 
 // Health check
+// Room state lives in Redis, so the API is not healthy without it.
 app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'lala-api' });
+    res.status(redisReady() ? 200 : 503).json({ status: redisReady() ? 'ok' : 'redis_unavailable', service: 'lala-api' });
 });
 
 // Everything registered after the gate needs the instance password when one is set;
@@ -62,7 +64,7 @@ app.use('/api/token', limiter(25), createTokenRouter());   // ~100/min (password
 // admin first means its requests are fully handled (and rate-limited) here and never
 // fall through to the rooms(30) limiter below — avoiding double-counting a single
 // admin action against both rate-limit windows.
-app.use('/api/rooms/:id/admin', limiter(20), createAdminRouter()); // 80/min — admin actions are authed, need headroom for mute toggling
+app.use('/api/rooms/:id/admin', limiter(20), createAdminRouter()); // 80/min — headroom for mute toggling
 // Every client refetches the room list when anyone joins or leaves, so list reads get
 // their own budget: otherwise a busy room behind one IP locks it out of creating and
 // deleting rooms. The list is served from a 2s cache.
@@ -106,6 +108,9 @@ process.on('uncaughtException', (err) => {
 // Start
 (async () => {
     await connectRedis();
+    const dropStale = () => dropStaleRooms().catch((err) => console.error('[rooms] dropping stale rooms failed:', err));
+    await dropStale();
+    setInterval(dropStale, 5 * 60 * 1000);
     app.listen(port, '0.0.0.0', () => {
         console.log(`[lala-api] listening on port ${port}`);
         console.log(`[lala-api] LiveKit: ${process.env.LIVEKIT_URL}`);

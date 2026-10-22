@@ -33,9 +33,11 @@ Lala is a monorepo with four packages:
 Changing an API response shape? Change it in `packages/shared` **first** —
 api and web both consume it as a `file:` dependency.
 
-For a full local stack (LiveKit, Redis) you'll also need Docker and the
-`.env` described in the [README](README.md#self-hosting); for most UI work,
-`api` + `web` in dev mode against an existing LiveKit instance is enough.
+The API keeps room state in Redis and won't start without it: `e2e/redis.sh`
+and `e2e/livekit.sh` run the versions production uses on 6380 and 7880. Then
+start the API with `REDIS_URL=redis://127.0.0.1:6380`, `LIVEKIT_URL=ws://127.0.0.1:7880`
+and the key pair from `e2e/livekit-e2e.yaml` as `LIVEKIT_API_KEY` /
+`LIVEKIT_API_SECRET`.
 
 ## Testing your changes
 

@@ -3,18 +3,20 @@ import { isTrackReference } from '@livekit/components-react';
 import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { RemoteParticipant, Track } from 'livekit-client';
 import type { Participant, RemoteTrackPublication } from 'livekit-client';
-import type { AdminActions, ParticipantContextMenuProps } from '../VideoGrid/ParticipantContextMenu';
+import type { ParticipantContextMenuProps } from '../VideoGrid/ParticipantContextMenu';
 import { useRoomUIContext } from '../RoomUIContext';
+import { isMicRevoked } from '../lib/permissions';
 
 /**
  * Admin-action wiring shared by VideoGrid and FocusLayout: both accept identity-scoped
  * kick/ban/mute callbacks and let this hook bind them to the currently open menu's identity.
  */
-export type ParticipantAdminActions = Omit<AdminActions, 'serverMuted' | 'onKick' | 'onBan' | 'onToggleMute'> & {
-    onKick: (identity: string) => void;
-    onBan: (identity: string) => void;
-    onToggleMute: (identity: string, serverMuted: boolean) => void;
-};
+export interface ParticipantAdminActions {
+    roomId: string;
+    onKick: (identity: string) => Promise<void>;
+    onBan: (identity: string) => Promise<void>;
+    onToggleMute: (identity: string, serverMuted: boolean) => Promise<void>;
+}
 
 export interface ContextMenuState {
     identity: string;
@@ -77,7 +79,7 @@ export function useParticipantContextMenu({
             hasScreenAudio,
             hasScreenSharePub: !!screenPub,
             screenShareHidden: !!screenPub && !screenPub.isSubscribed,
-            serverMuted: participant.permissions?.canPublish === false,
+            serverMuted: isMicRevoked(participant),
             x,
             y,
         });
@@ -99,7 +101,6 @@ export function useParticipantContextMenu({
             screenVolume: contextMenu.hasScreenAudio ? (screenVolumes.get(identity) ?? 100) : undefined,
             onScreenVolumeChange: contextMenu.hasScreenAudio ? (vol) => onScreenVolumeChange(identity, vol) : undefined,
             admin: admin && contextMenu.isRemote ? {
-                adminSecret: admin.adminSecret,
                 roomId: admin.roomId,
                 serverMuted: contextMenu.serverMuted,
                 onKick: () => admin.onKick(identity),

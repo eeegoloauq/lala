@@ -4,7 +4,6 @@ import { stripTemplatePasswords } from './roomTemplates';
 
 const PASS_POOL_KEY = 'lala_passwords';
 const ROOM_PW_PREFIX = 'lala_room_pw_';
-const ADMIN_PREFIX = 'lala_admin_';
 const MAX_POOL = 20;
 
 /** Read saved password pool. */
@@ -43,16 +42,6 @@ export function getRoomPassword(roomId: string): string | null {
 /** Remove the saved password for a specific room. */
 export function removeRoomPassword(roomId: string): void {
     secureRemove(ROOM_PW_PREFIX + roomId);
-}
-
-/** Save the admin secret for a room the user created. */
-export function saveAdminSecret(roomId: string, secret: string): void {
-    secureSet(ADMIN_PREFIX + roomId, secret);
-}
-
-/** Get the admin secret for a room, if this device created it. */
-export function getAdminSecret(roomId: string): string | null {
-    return secureGet(ADMIN_PREFIX + roomId);
 }
 
 /** Wipe every stored password: pool, per-room passwords, template passwords. */
