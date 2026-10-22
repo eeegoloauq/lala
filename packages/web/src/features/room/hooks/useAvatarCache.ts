@@ -19,7 +19,7 @@ export interface UseAvatarCacheOptions {
  * in-memory cache without it being threaded through App/RoomView/RoomShell props.
  * Three sources feed it, in the same order they ran as separate effects in RoomShell:
  *  1. Pre-population from localStorage for participants already in the room on mount
- *     (name-based fallback so avatars survive identity rotation across page refreshes).
+
  *  2. `useAvatarSync`, which broadcasts our own avatar and receives others' over the
  *     data channel.
  *  3. The local participant's own avatar (from `myAvatarUrl`), persisted to

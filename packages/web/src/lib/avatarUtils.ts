@@ -35,7 +35,6 @@ const AVATAR_SIZE = 128;
 const AVATAR_QUALITY = 0.72;
 const MY_AVATAR_KEY = 'lala_my_avatar';
 const CACHED_PREFIX = 'lala_av_';
-const CACHED_NAME_PREFIX = 'lala_avn_';
 // Cache is bounded: avatars are up to ~50 KB each and used to accumulate for
 // every participant ever seen, eventually exhausting the localStorage quota.
 const MAX_CACHED_AVATARS = 60;
@@ -44,7 +43,7 @@ const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days, same as volume cache
 interface CachedEntry { d: string; t: number }
 
 function isCacheKey(key: string): boolean {
-    return key.startsWith(CACHED_PREFIX) || key.startsWith(CACHED_NAME_PREFIX);
+    return key.startsWith(CACHED_PREFIX);
 }
 
 /** Read a cache entry; supports the legacy raw-dataURL format (treated as stale). */
@@ -140,26 +139,15 @@ export function clearMyAvatar(): void {
     localStorage.removeItem(MY_AVATAR_KEY);
 }
 
-/** Look up cached avatar by identity UUID, with optional display name fallback for cross-session hits */
-export function getCachedAvatar(identity: string, displayName?: string): string | null {
-    return readEntry(CACHED_PREFIX + identity)?.d
-        ?? (displayName ? readEntry(CACHED_NAME_PREFIX + displayName)?.d : null)
-        ?? null;
+/** Cached by identity only: a name can be anyone's. */
+export function getCachedAvatar(identity: string): string | null {
+    return readEntry(CACHED_PREFIX + identity)?.d ?? null;
 }
 
 export function setCachedAvatar(identity: string, dataUrl: string): void {
     writeEntry(CACHED_PREFIX + identity, dataUrl);
 }
 
-/** Also cache by display name so avatars survive identity rotation (server-assigned UUID changes each session) */
-export function setCachedAvatarByName(name: string, dataUrl: string): void {
-    writeEntry(CACHED_NAME_PREFIX + name, dataUrl);
-}
-
 export function clearCachedAvatar(identity: string): void {
     localStorage.removeItem(CACHED_PREFIX + identity);
-}
-
-export function clearCachedAvatarByName(name: string): void {
-    localStorage.removeItem(CACHED_NAME_PREFIX + name);
 }

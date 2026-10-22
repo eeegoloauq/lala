@@ -54,7 +54,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
 
     const isMuted = isActiveRoom ? liveMuted : staticMuted;
     const isDeafened = isActiveRoom ? liveDeafened : staticDeafened;
-    const avatarUrl = liveAvatar || getCachedAvatar(identity, name) || undefined;
+    const avatarUrl = liveAvatar || getCachedAvatar(identity) || undefined;
 
     return (
         <div

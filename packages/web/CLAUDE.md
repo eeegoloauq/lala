@@ -57,8 +57,8 @@ Two tiers, by design:
 
 ### Avatar System
 1. Upload -> `compressAvatar()` -> 128x128 JPEG -> `saveMyAvatar()` in localStorage
-2. `useAvatarSync` publishes via participant attributes (`lala.avatar` key) -- server delivers to late joiners automatically; sends `''` on deletion. Legacy `publishData` receive path kept until ~2026-10 for old clients.
-3. Cached as `lala_av_<identity>` + `lala_avn_<name>` (fallback), in-memory layer in `roomStatusStore`
+2. `useAvatarSync` publishes via participant attributes (`lala.avatar` key) -- server delivers to late joiners automatically; sends `''` on deletion. Received values pass `parseAvatar` (`lib/peerInput.ts`: image data URL, size cap).
+3. Cached as `lala_av_<identity>` only (a name can be anyone's), in-memory layer in `roomStatusStore`
 
 ### Chat Panel
 Desktop (>=900px): docked flex sibling of the stage (`.cp-dock`), animates only `width` (0 -> 340px, 200ms); inner panel keeps fixed width so content never reflows mid-slide; stays mounted through the close transition. 641-899px: floating/resizable overlay with direct DOM mutation during drag. <=640px: fullscreen overlay. File sharing rides LiveKit byte streams (`streamBytes`/`registerByteStreamHandler`, topic `files`, 100MB cap) via `useFileTransfers` -- ephemeral like chat, NOT covered by media E2EE (same trust level as chat text).
@@ -83,7 +83,6 @@ Auto-saved after 30s. Up to 3, deduped by name. Sidebar shows offline templates 
 | `lala-display-name` | display name |
 | `lala_my_avatar` | own avatar data URL |
 | `lala_av_<identity>` | cached avatar by HMAC identity |
-| `lala_avn_<name>` | cached avatar by display name (fallback) |
 | `lala_volumes` | mic volumes Map JSON |
 | `lala_screen_volumes` | screen share volumes Map JSON |
 | `lala_language` | i18next preference |
