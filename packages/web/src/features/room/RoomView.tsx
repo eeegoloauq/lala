@@ -79,10 +79,8 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
     );
     useLiveSettings(room, settings);
 
-    // Bumped on every (re)connect attempt and on unmount; async work compares
-    // its captured generation to detect it went stale mid-flight (fast room
-    // switch), so a late token/E2EE worker can't attach to an abandoned attempt.
-    const connectGenRef = useRef(0);
+    // The join attempt in progress; a password typed into the prompt belongs to it.
+    const attemptRef = useRef<AbortSignal | null>(null);
 
     // Pre-acquired mic track for the CWAEC join-glitch mitigation (see the
     // audioOptions comment above). Populated by the join-flow effect below as
@@ -105,19 +103,20 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         return { data, e2eeKey: keys?.e2eeKey };
     };
 
-    const applyToken = async ({ token, url, canModerate }: TokenResponse, e2eeKey?: ArrayBuffer, pw?: string) => {
-        const gen = connectGenRef.current;
-        room.prepareConnection(url, token).catch(err => {
-            console.warn('[RoomView] prepareConnection failed:', err instanceof Error ? err.message : err);
-        });
+    /** `attempt` is aborted when this join is abandoned (room switch, retry, leave). */
+    const applyToken = async (attempt: AbortSignal, { token, url, canModerate }: TokenResponse, e2eeKey?: ArrayBuffer, pw?: string) => {
         if (e2eeKey && isE2EESupported()) {
+            // Setting up E2EE makes a new Room, so warming up this one would be wasted.
             const keyProvider = new ExternalE2EEKeyProvider();
             await keyProvider.setKey(e2eeKey);
-            if (connectGenRef.current !== gen) return;
-            const worker = new E2EEWorker();
-            setE2eeSetup({ keyProvider, worker });
+            if (attempt.aborted) return;
+            setE2eeSetup({ keyProvider, worker: new E2EEWorker() });
+        } else {
+            room.prepareConnection(url, token).catch(err => {
+                console.warn('[RoomView] prepareConnection failed:', err instanceof Error ? err.message : err);
+            });
         }
-        if (connectGenRef.current !== gen) return;
+        if (attempt.aborted) return;
         // Remember working password for this room (for invite links)
         if (pw) saveRoomPassword(roomName, pw);
         setConnection({ token, url, canModerate });
@@ -128,9 +127,9 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
     };
 
     useEffect(() => {
-        connectGenRef.current++;
-        const gen = connectGenRef.current;
-        const mounted = () => connectGenRef.current === gen;
+        const attempt = new AbortController();
+        attemptRef.current = attempt.signal;
+        const mounted = () => !attempt.signal.aborted;
         setConnection(null);
         setErrorCode(null);
         setNeedsPassword(false);
@@ -176,7 +175,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         const tryPassword = async (pw?: string) => {
             const { data, e2eeKey } = await fetchToken(pw);
             if (!mounted()) return;
-            await applyToken(data, e2eeKey, pw);
+            await applyToken(attempt.signal, data, e2eeKey, pw);
         };
         const isPasswordError = (err: unknown) =>
             err instanceof ApiError && (err.code === 'wrong_password' || err.code === 'password_required');
@@ -210,8 +209,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
 
         start();
         return () => {
-            // Invalidate in-flight async work from this attempt
-            connectGenRef.current++;
+            attempt.abort();
             // Release power save blocker on leave/unmount
             window.electronAPI?.setInCall?.(false);
             // Never leak a live capture: if this attempt's pre-acquired track
@@ -299,7 +297,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         try {
             const { data, e2eeKey } = await fetchToken(password);
             if (savePassword) saveToPool(password);
-            await applyToken(data, e2eeKey, password);
+            if (attemptRef.current) await applyToken(attemptRef.current, data, e2eeKey, password);
             setNeedsPassword(false);
         } catch (err) {
             if (err instanceof ApiError && err.code === 'wrong_password') {
