@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   # The e2e suite builds both packages (which typechecks them) and runs real calls
-  # against a local LiveKit and Redis. It gates the images.
+  # against a local LiveKit and Redis. It gates publishing the images.
   e2e:
     runs-on: ubuntu-24.04-arm
     steps:
@@ -32,15 +32,29 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            e2e/package-lock.json
+            packages/api/package-lock.json
+            packages/web/package-lock.json
+      # The scripts fetch LiveKit and build Redis from source; their versions live in the scripts.
+      - uses: actions/cache@v4
+        with:
+          path: e2e/.bin
+          key: e2e-bin-${{ runner.arch }}-${{ hashFiles('e2e/livekit.sh', 'e2e/redis.sh') }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.arch }}-${{ hashFiles('e2e/package-lock.json') }}
       - name: Install Playwright
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - name: Run e2e
         run: cd e2e && npm test
 
-  # Each architecture builds on its own native runner and is pushed untagged;
-  # the publish job tags the pair as one multi-arch image.
+  # Each architecture builds on its own native runner, alongside the tests, and is
+  # pushed untagged; the publish job tags the pair as one multi-arch image once the
+  # tests pass. Images of a failed run stay untagged and the cleanup removes them.
   build:
-    needs: e2e
     strategy:
       matrix:
         include:
@@ -77,7 +91,7 @@ jobs:
           path: digests
 
   publish:
-    needs: build
+    needs: [e2e, build]
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -141,12 +155,22 @@ jobs:
             : > in-use.txt
             for digest in $(awk '$1 == "kept" { print $2 }' plan.txt); do children "$digest" >> in-use.txt; done
 
+            : > deleted.txt
             for digest in $(awk '$1 == "old" { print $2 }' plan.txt); do
               children "$digest" > old-children.txt
               for child in $(cat old-children.txt); do
-                grep -qxF "$child" in-use.txt || for id in $(id_of "$child"); do gh api -X DELETE "$versions/$id"; done
+                grep -qxF "$child" in-use.txt && continue
+                for id in $(id_of "$child"); do gh api -X DELETE "$versions/$id"; done
+                echo "$child" >> deleted.txt
               done
               gh api -X DELETE "$versions/$(id_of "$digest")"
+            done
+
+            # Per-arch images of a run whose tests failed were never tagged, and no image
+            # points to them. A day's margin spares a run still in progress on another ref.
+            cutoff=$(date -u -d '1 day ago' +%FT%TZ)
+            for digest in $(jq -r --arg cutoff "$cutoff" '.[] | select((.metadata.container.tags | length) == 0 and .created_at < $cutoff) | .name' all.json); do
+              grep -qxF "$digest" in-use.txt deleted.txt || gh api -X DELETE "$versions/$(id_of "$digest")"
             done
           done
 
