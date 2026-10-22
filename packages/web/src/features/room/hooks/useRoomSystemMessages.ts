@@ -51,12 +51,11 @@ export function useRoomSystemMessages(
     const msgOrderRef = useRef(new Map<string, number>());
     const fileOrderRef = useRef(new Map<string, number>());
 
-    // Identities that were kicked or banned — suppress the redundant "left" system message for them.
-    // Cleared after 10s to avoid stale entries if the disconnect never arrives.
+    // Identities just kicked or banned: their disconnect is already announced. Used up by
+    // that disconnect, or dropped when they join again.
     const suppressLeaveRef = useRef(new Set<string>());
     const suppressLeave = useCallback((identity: string) => {
         suppressLeaveRef.current.add(identity);
-        setTimeout(() => suppressLeaveRef.current.delete(identity), 10_000);
     }, []);
 
     const addSystem = useCallback((text: string, id: string) => {
@@ -91,13 +90,7 @@ export function useRoomSystemMessages(
             played = true;
             if (fallbackTimer) clearTimeout(fallbackTimer);
             playJoinSound();
-            setSystemEntries([{
-                kind: 'system',
-                id: 'self-join',
-                timestamp: Date.now(),
-                order: orderCounterRef.current++,
-                text: t('system.youJoined'),
-            }]);
+            addSystem(t('system.youJoined'), 'self-join');
         };
 
         const onMicPublished = (pub: LocalTrackPublication) => {
@@ -133,13 +126,13 @@ export function useRoomSystemMessages(
     // Using settingsRef avoids stale closure (this effect runs once on mount)
     useEffect(() => {
         const onJoin = (p: Participant) => {
+            suppressLeaveRef.current.delete(p.identity);
             const displayName = p.name || p.identity;
             if (settingsRef.current.chatTTS) speak(t('system.joined', { name: displayName }), ttsOptsFromSettings(settingsRef.current));
             addSystem(t('system.joined', { name: displayName }), `join-${p.identity}-${Date.now()}`);
         };
         const onLeave = (p: Participant) => {
-            // Suppressed when this disconnect is caused by a kick/ban (already announced)
-            if (suppressLeaveRef.current.has(p.identity)) return;
+            if (suppressLeaveRef.current.delete(p.identity)) return;
             const displayName = p.name || p.identity;
             if (settingsRef.current.chatTTS) speak(t('system.left', { name: displayName }), ttsOptsFromSettings(settingsRef.current));
             addSystem(t('system.left', { name: displayName }), `leave-${p.identity}-${Date.now()}`);
