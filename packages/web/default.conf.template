@@ -38,11 +38,10 @@ server {
         index index.html;
         try_files $uri $uri/ /index.html;
 
-        # Hashed assets get long cache (Vite generates unique filenames)
+        # Hashed assets get long cache (Vite generates unique filenames). No add_header
+        # here: one would stop the server-level security headers from being inherited.
         location /assets/ {
             expires 1y;
-            add_header Cache-Control "public, immutable" always;
-            add_header X-Content-Type-Options "nosniff" always;
         }
     }
 
