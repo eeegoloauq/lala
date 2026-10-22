@@ -59,9 +59,9 @@
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 
-  /* Font */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  /* The system's own UI font: native on every OS, nothing to download. */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Menlo, monospace;
 
   /* ─────────────────────────────────────────────────────────
      STRUCTURAL VARIABLES — override in themes for zero-cost
