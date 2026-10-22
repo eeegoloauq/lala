@@ -98,6 +98,9 @@ export const unbanParticipant = (roomId: string, identity: string) =>
 export const muteParticipant = (roomId: string, identity: string, muted: boolean) =>
     request<void>(admin(roomId, 'mute'), send('POST', { identity, muted }));
 
+export const setVoice = (roomId: string, identity: string, allowed: boolean) =>
+    request<void>(admin(roomId, 'voice'), send('POST', { identity, allowed }));
+
 export async function getBans(roomId: string): Promise<RoomBan[]> {
     return (await request<BansResponse>(admin(roomId, 'bans'))).bans;
 }

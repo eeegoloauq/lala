@@ -14,6 +14,7 @@ export function CreateRoomModal({ onConfirm, onClose }: Props) {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [maxParticipants, setMaxParticipants] = useState(0);
+    const [stage, setStage] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const nameRef = useRef<HTMLInputElement>(null);
@@ -31,6 +32,7 @@ export function CreateRoomModal({ onConfirm, onClose }: Props) {
                 name: trimmed,
                 password: password || undefined,
                 maxParticipants: maxParticipants || undefined,
+                stage: stage || undefined,
             });
             onClose();
         } catch {
@@ -110,6 +112,14 @@ export function CreateRoomModal({ onConfirm, onClose }: Props) {
                             <span className="crm-limit-val">{maxParticipants === 0 ? '∞' : maxParticipants}</span>
                         </div>
                     </div>
+
+                    <label className="crm-check">
+                        <input type="checkbox" checked={stage} onChange={(e) => setStage(e.target.checked)} />
+                        <span>
+                            {t('createRoom.stage')}
+                            <span className="crm-optional">{t('createRoom.stageHint')}</span>
+                        </span>
+                    </label>
 
                     {error && <p className="crm-error">{error}</p>}
 

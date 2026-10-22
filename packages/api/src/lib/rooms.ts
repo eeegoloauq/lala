@@ -25,6 +25,7 @@ const ROOMS = 'lala:rooms';
 const roomKey = (id: string) => `lala:room-state:${id}`;
 const bansKey = (id: string) => `lala:room-bans:${id}`;
 const mutedKey = (id: string) => `lala:room-muted:${id}`;
+const voiceKey = (id: string) => `lala:room-voice:${id}`;
 const NAME_PREFIX = 'lala:room-name:';
 
 /** Live room names are unique regardless of case and surrounding spaces. */
@@ -50,7 +51,7 @@ return false
 // Drops a room and releases its name, unless a newer room already took the name over.
 const DROP = `
 if redis.call('GET', KEYS[5]) == ARGV[1] then redis.call('DEL', KEYS[5]) end
-redis.call('DEL', KEYS[1], KEYS[2], KEYS[3])
+redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[6])
 redis.call('SREM', KEYS[4], ARGV[1])
 `;
 
@@ -89,7 +90,7 @@ export async function listRoomStates(): Promise<RoomState[]> {
 export async function dropRoom(id: string): Promise<void> {
     const room = await getRoom(id);
     const name = room ? nameKey(room.name) : NAME_PREFIX;
-    await redis().eval(DROP, 5, roomKey(id), bansKey(id), mutedKey(id), ROOMS, name, id);
+    await redis().eval(DROP, 6, roomKey(id), bansKey(id), mutedKey(id), ROOMS, name, voiceKey(id), id);
 }
 
 /** Banned identities with the name each had when banned, so moderators can tell them apart. */
@@ -101,6 +102,17 @@ export const addBan = (id: string, identity: string, name: string) => redis().hs
 export const removeBan = (id: string, identity: string) => redis().hdel(bansKey(id), identity);
 
 export const listMuted = (id: string) => redis().smembers(mutedKey(id));
-export const isMuted = async (id: string, identity: string) => (await redis().sismember(mutedKey(id), identity)) === 1;
 export const setMuted = (id: string, identity: string, muted: boolean) =>
     muted ? redis().sadd(mutedKey(id), identity) : redis().srem(mutedKey(id), identity);
+
+/** Given the floor by a moderator in a room where they otherwise may not speak. */
+export const setVoice = (id: string, identity: string, voiced: boolean) =>
+    voiced ? redis().sadd(voiceKey(id), identity) : redis().srem(voiceKey(id), identity);
+
+/** What moderators have set for someone in a room. */
+export async function flagsOf(id: string, identity: string): Promise<Flags> {
+    const [muted, voiced] = await Promise.all([redis().sismember(mutedKey(id), identity), redis().sismember(voiceKey(id), identity)]);
+    return { muted: muted === 1, voiced: voiced === 1 };
+}
+
+export interface Flags { muted: boolean; voiced: boolean }

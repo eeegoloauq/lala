@@ -4,14 +4,14 @@ import { RoomEvent } from 'livekit-client';
 import type { RemoteParticipant, Room } from 'livekit-client';
 import { speak } from '../../../lib/tts';
 import { ttsOptsFromSettings } from '../lib/ttsOpts';
-import { kickParticipant, banParticipant, muteParticipant, banFromServer } from '../../../lib/api';
+import { kickParticipant, banParticipant, muteParticipant, setVoice, banFromServer } from '../../../lib/api';
 import { useMeContext } from '../../../lib/meContext';
 import type { ModerationEvent, ModerationTopic } from '../../../lib/types';
 import type { AppSettings } from '../../settings/types';
 import type { ParticipantAdminActions } from './useParticipantContextMenu';
 
 const MODERATION_TOPIC: ModerationTopic = 'lala.moderation';
-const ACTIONS: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'muted', 'unmuted']);
+const ACTIONS: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'muted', 'unmuted', 'voiced', 'unvoiced']);
 
 function parseModerationEvent(payload: Uint8Array): ModerationEvent | null {
     try {
@@ -33,6 +33,7 @@ export function buildAdminActions(roomId: string, serverAdmin: boolean): Omit<Pa
         onKick: (identity) => kickParticipant(roomId, identity),
         onBan: (identity) => banParticipant(roomId, identity),
         onToggleMute: (identity, serverMuted) => muteParticipant(roomId, identity, !serverMuted),
+        onToggleVoice: (identity, voiced) => setVoice(roomId, identity, !voiced),
         onServerBan: serverAdmin ? banFromServer : undefined,
     };
 }

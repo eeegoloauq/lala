@@ -49,6 +49,7 @@ export interface CreateRoomRequest {
     name: string;
     password?: RoomPassword;
     maxParticipants?: number;
+    stage?: boolean;   // only the creator and admins speak, show video or share a screen; others can be given the floor
 }
 
 /** One server ban, from GET /api/admin/bans; the address the person last used is banned for a day. */
@@ -83,13 +84,21 @@ export interface TokenResponse {
 export interface ModerationRequest { identity: string; }
 /** Payload for POST /api/rooms/:id/admin/mute */
 export interface MuteRequest { identity: string; muted: boolean; }
+/** Payload for POST /api/rooms/:id/admin/voice: give or take the floor */
+export interface VoiceRequest { identity: string; allowed: boolean; }
+
+/**
+ * Participant attributes. The server sets lala.server-muted and lala.voice ('1' or
+ * absent); a participant sets lala.hand on itself to ask for the floor.
+ */
+export type ParticipantAttribute = 'lala.server-muted' | 'lala.voice' | 'lala.hand';
 
 /** Data topic of moderation events. Only the server publishes on it. */
 export type ModerationTopic = 'lala.moderation';
 
 /** Sent by the server to everyone in the room after a moderation action succeeds. */
 export interface ModerationEvent {
-    action: 'kicked' | 'banned' | 'muted' | 'unmuted';
+    action: 'kicked' | 'banned' | 'muted' | 'unmuted' | 'voiced' | 'unvoiced';
     target: string;     // identity
     targetName: string;
     byName: string;

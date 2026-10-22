@@ -5,8 +5,8 @@ import type { TokenResponse } from '@lala/shared';
 import { getRoomService } from '../lib/livekit';
 import { callerIdentity, deriveIdentity } from '../lib/identity';
 import { verifyRoomKey } from '../lib/passwords';
-import { can, isModerator, permissionFor } from '../lib/rights';
-import { getRoom, isBanned, isMuted } from '../lib/rooms';
+import { attributesFor, can, isModerator, permissionFor } from '../lib/rights';
+import { flagsOf, getRoom, isBanned } from '../lib/rooms';
 import { isShutOut, recordIp } from '../lib/bans';
 import { sanitizeDisplayText } from '../lib/sanitize';
 
@@ -81,10 +81,12 @@ export function createTokenRouter(): Router {
         }
 
         await recordIp(identity, req.ip ?? '');
-        const permission = permissionFor(identity, room, await isMuted(room.id, identity));
+        const flags = await flagsOf(room.id, identity);
+        const permission = permissionFor(identity, room, flags);
         const token = new AccessToken(apiKey, apiSecret, {
             identity,
             name: (typeof name === 'string' && sanitizeDisplayText(name, 50)) || identity,
+            attributes: attributesFor(flags),
         });
         token.addGrant({
             room: room.id,

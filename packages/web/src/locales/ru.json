@@ -31,7 +31,9 @@
     "cancel": "Отмена",
     "creating": "Создаём...",
     "create": "Создать",
-    "createFailed": "Не удалось создать комнату"
+    "createFailed": "Не удалось создать комнату",
+    "stage": "Говорю только я",
+    "stageHint": "Остальные слушают и могут поднять руку, а вы даёте им слово"
   },
   "sidebar": {
     "passwordProtected": "Защищён паролем · E2EE",
@@ -92,7 +94,11 @@
     "itsYou": "Это вы",
     "rename": "Изменить имя",
     "settings": "Настройки",
-    "banServer": "Забанить на сервере"
+    "banServer": "Забанить на сервере",
+    "giveVoice": "Дать слово",
+    "takeVoice": "Забрать слово",
+    "raiseHand": "Поднять руку",
+    "lowerHand": "Опустить руку"
   },
   "admin": {
     "kicked": "{{by}} кикнул {{target}}",
@@ -100,7 +106,9 @@
     "muted": "{{by}} заглушил {{target}}",
     "unmuted": "{{by}} снял мут с {{target}}",
     "rateLimited": "Слишком много действий — подождите",
-    "failed": "Не получилось, попробуйте ещё раз"
+    "failed": "Не получилось, попробуйте ещё раз",
+    "voiced": "{{by}} дал слово {{target}}",
+    "unvoiced": "{{by}} забрал слово у {{target}}"
   },
   "theme": {
     "dark": "Тёмная",
@@ -167,7 +175,8 @@
     "flipCamera": "Отразить",
     "qualityExcellent": "Отлично",
     "qualityGood": "Хорошо",
-    "qualityPoor": "Плохой сигнал"
+    "qualityPoor": "Плохой сигнал",
+    "handRaised": "Хочет сказать"
   },
   "system": {
     "youJoined": "Вы присоединились",

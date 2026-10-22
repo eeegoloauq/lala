@@ -10,7 +10,7 @@ import { Avatar } from './Avatar';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../icons/Icons';
 import { useConnectionQuality } from '../hooks/useConnectionQuality';
 import { useParticipantState } from '../hooks/useParticipantState';
-import { isMicRevoked } from '../lib/permissions';
+import { hasAttribute, isServerMuted } from '../lib/permissions';
 import { readDeafened } from '../lib/participantMeta';
 
 interface ParticipantTileProps {
@@ -53,7 +53,11 @@ function useIsDeafenedFromMeta(participant: Participant): boolean {
 }
 
 function useIsServerMuted(participant: Participant): boolean {
-    return useParticipantState(participant, [ParticipantEvent.ParticipantPermissionsChanged], isMicRevoked);
+    return useParticipantState(participant, [ParticipantEvent.AttributesChanged], isServerMuted);
+}
+
+function useHandRaised(participant: Participant): boolean {
+    return useParticipantState(participant, [ParticipantEvent.AttributesChanged], (p) => hasAttribute(p, 'lala.hand'));
 }
 
 /** Reactively tracks screen share state. */
@@ -72,6 +76,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
     const deafenedFromMeta = useIsDeafenedFromMeta(participant);
     const isScreenSharing = useIsScreenSharing(participant);
     const isServerMuted = useIsServerMuted(participant);
+    const handRaised = useHandRaised(participant);
     // For local participant use the prop (immediate, no SSE delay); for remote read metadata
     const isDeafened = audioMuted !== undefined ? audioMuted : deafenedFromMeta;
 
@@ -112,6 +117,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
             <div className="p-tile-meta">
                 <span className="p-tile-name">{participant.name || participant.identity}</span>
                 <div className="p-tile-status">
+                    {handRaised && <span className="p-tile-status-icon p-tile-hand" title={t('tile.handRaised')}>✋</span>}
                     {micMuted && <span className={`p-tile-status-icon${isServerMuted ? ' server-muted' : ''}`} title={isServerMuted ? t('tile.serverMuted') : t('tile.micOff')}><MicOffIcon /></span>}
                     {isDeafened && <span className="p-tile-status-icon" title={t('tile.soundOff')}><SpeakerOffIcon /></span>}
                     {qualityStr && (

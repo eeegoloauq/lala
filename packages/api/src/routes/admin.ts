@@ -2,8 +2,8 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import type { BansResponse, ModerationEvent } from '@lala/shared';
 import { announceModeration, getRoomService, isNotFound } from '../lib/livekit';
 import { callerIdentity } from '../lib/identity';
-import { isModerator, permissionFor } from '../lib/rights';
-import { addBan, getRoom, listBans, removeBan, setMuted, type RoomState } from '../lib/rooms';
+import { attributesFor, isModerator, permissionFor } from '../lib/rights';
+import { addBan, flagsOf, getRoom, listBans, removeBan, setMuted, setVoice, type RoomState } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
 
 type ModerationRequest = Request<{ id: string }>;
@@ -15,6 +15,15 @@ const ignoreNotFound = (err: unknown) => { if (!isNotFound(err)) throw err; };
 async function nameOf(roomId: string, identity: string): Promise<string> {
     const participant = await getRoomService().getParticipant(roomId, identity).catch(ignoreNotFound);
     return participant?.name || identity;
+}
+
+/** Brings a connected participant's permission and markers in line with what is stored. */
+async function applyFlags(ctx: Context, extra: Record<string, string> = {}): Promise<void> {
+    const flags = await flagsOf(ctx.room.id, ctx.target);
+    await getRoomService().updateParticipant(ctx.room.id, ctx.target, {
+        permission: permissionFor(ctx.target, ctx.room, flags),
+        attributes: { ...attributesFor(flags), ...extra },
+    }).catch(ignoreNotFound);
 }
 
 /** Logged so the operator can see who moderated whom. */
@@ -89,10 +98,23 @@ export function createAdminRouter(): Router {
         }
         // Stored first: the token for a reconnect is built from it.
         await setMuted(ctx.room.id, ctx.target, muted);
-        const permission = permissionFor(ctx.target, ctx.room, muted);
-        await getRoomService().updateParticipant(ctx.room.id, ctx.target, { permission }).catch(ignoreNotFound);
+        await applyFlags(ctx);
         invalidateRoomsCache();
         await announce(ctx, muted ? 'muted' : 'unmuted', await nameOf(ctx.room.id, ctx.target));
+        res.json({ ok: true });
+    });
+
+    // Gives or takes the floor in a room where the person may not speak by right.
+    router.post('/voice', async (req, res: Response) => {
+        const ctx = res.locals.ctx as Context;
+        const { allowed } = req.body ?? {};
+        if (typeof allowed !== 'boolean') {
+            res.status(400).json({ error: 'invalid_input' });
+            return;
+        }
+        await setVoice(ctx.room.id, ctx.target, allowed);
+        await applyFlags(ctx, { 'lala.hand': '' });
+        await announce(ctx, allowed ? 'voiced' : 'unvoiced', await nameOf(ctx.room.id, ctx.target));
         res.json({ ok: true });
     });
 

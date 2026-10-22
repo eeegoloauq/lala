@@ -105,7 +105,7 @@ export default function App() {
         const password = req.password && salt
             ? { salt, key: (await deriveRoomKeys(req.password, salt)).authKey }
             : undefined;
-        const room = await addRoom({ name: req.name, maxParticipants: req.maxParticipants, password });
+        const room = await addRoom({ name: req.name, maxParticipants: req.maxParticipants, stage: req.stage, password });
         if (req.password) {
             saveRoomPassword(room.id, req.password);
         }
@@ -113,6 +113,7 @@ export default function App() {
             name: req.name,
             password: req.password || undefined,
             maxParticipants: req.maxParticipants || undefined,
+            stage: req.stage || undefined,
         });
         navigate('/room/' + room.id);
         setSidebarOpen(false);

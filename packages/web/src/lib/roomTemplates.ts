@@ -4,6 +4,7 @@ export interface RoomTemplate {
     name: string;
     password?: string;
     maxParticipants?: number;
+    stage?: boolean;
     lastVisited: number; // timestamp
 }
 

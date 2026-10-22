@@ -31,7 +31,9 @@
     "cancel": "Cancel",
     "creating": "Creating...",
     "create": "Create",
-    "createFailed": "Failed to create room"
+    "createFailed": "Failed to create room",
+    "stage": "Only I speak",
+    "stageHint": "Others listen and can raise a hand; you give them the floor"
   },
   "sidebar": {
     "passwordProtected": "Password protected · E2EE",
@@ -92,7 +94,11 @@
     "itsYou": "It's you",
     "rename": "Change name",
     "settings": "Settings",
-    "banServer": "Ban from server"
+    "banServer": "Ban from server",
+    "giveVoice": "Let speak",
+    "takeVoice": "Take the floor back",
+    "raiseHand": "Raise hand",
+    "lowerHand": "Lower hand"
   },
   "admin": {
     "kicked": "{{by}} kicked {{target}}",
@@ -100,7 +106,9 @@
     "muted": "{{by}} muted {{target}}",
     "unmuted": "{{by}} unmuted {{target}}",
     "rateLimited": "Too many actions — wait a moment",
-    "failed": "That didn't work, try again"
+    "failed": "That didn't work, try again",
+    "voiced": "{{by}} let {{target}} speak",
+    "unvoiced": "{{by}} took the floor back from {{target}}"
   },
   "theme": {
     "dark": "Dark",
@@ -167,7 +175,8 @@
     "flipCamera": "Flip camera",
     "qualityExcellent": "Excellent",
     "qualityGood": "Good",
-    "qualityPoor": "Poor signal"
+    "qualityPoor": "Poor signal",
+    "handRaised": "Wants to speak"
   },
   "system": {
     "youJoined": "You joined",

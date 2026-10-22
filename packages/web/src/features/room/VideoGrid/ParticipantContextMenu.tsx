@@ -11,6 +11,9 @@ export interface AdminActions {
     onBan: () => Promise<void>;
     onToggleMute: () => Promise<void>;
     onServerBan?: () => Promise<void>;
+    /** Give the floor to someone who may not speak, or take it back. */
+    voice?: 'give' | 'take';
+    onToggleVoice: () => Promise<void>;
 }
 
 export interface ParticipantContextMenuProps {
@@ -133,6 +136,12 @@ export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVo
 
                     {admin && (
                         <div className="ctx-menu-admin">
+                            {admin.voice && (
+                                <button className="ctx-menu-item" onClick={() => runAdmin(admin.onToggleVoice)}>
+                                    <span aria-hidden="true">✋</span>
+                                    {admin.voice === 'give' ? t('ctx.giveVoice') : t('ctx.takeVoice')}
+                                </button>
+                            )}
                             <button className="ctx-menu-item ctx-menu-item--warn" onClick={() => runAdmin(admin.onToggleMute)}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     {admin.serverMuted

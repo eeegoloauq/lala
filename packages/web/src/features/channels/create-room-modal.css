@@ -75,3 +75,17 @@
     color: var(--color-danger);
     margin-bottom: 12px;
 }
+
+.crm-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.crm-check .crm-optional {
+    display: block;
+    margin-top: 2px;
+}

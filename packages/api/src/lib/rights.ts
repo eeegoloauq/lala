@@ -1,6 +1,6 @@
 import { TrackSource, type ParticipantPermission } from 'livekit-server-sdk';
 import { config, type Level, type Right, type Role } from './config';
-import type { RoomState } from './rooms';
+import type { Flags, RoomState } from './rooms';
 
 const RANK: Record<Level, number> = { everyone: 0, members: 1, admins: 2 };
 
@@ -32,9 +32,9 @@ export function canCreateRooms(identity: string | undefined): boolean {
  * What a participant may publish. It goes into their token and, on a change, to LiveKit
  * directly, so the media server enforces it whatever the client does.
  */
-export function permissionFor(identity: string, room: RoomState, muted: boolean): Partial<ParticipantPermission> {
+export function permissionFor(identity: string, room: RoomState, { muted, voiced }: Flags): Partial<ParticipantPermission> {
     const sources: TrackSource[] = [];
-    if (can(identity, room, 'speak') && !muted) sources.push(TrackSource.MICROPHONE);
+    if ((can(identity, room, 'speak') || voiced) && !muted) sources.push(TrackSource.MICROPHONE);
     if (can(identity, room, 'video')) sources.push(TrackSource.CAMERA);
     if (can(identity, room, 'screen')) sources.push(TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO);
     return {
@@ -44,4 +44,12 @@ export function permissionFor(identity: string, room: RoomState, muted: boolean)
         canPublishData: can(identity, room, 'chat'),
         canUpdateMetadata: true,
     };
+}
+
+/**
+ * Shown on the participant so every client can mark them. Set by the server only; a
+ * participant clearing its own copy changes nothing but its icon.
+ */
+export function attributesFor({ muted, voiced }: Flags): Record<string, string> {
+    return { 'lala.server-muted': muted ? '1' : '', 'lala.voice': voiced ? '1' : '' };
 }

@@ -356,6 +356,35 @@ async function createRoom(page: Page, name: string, options: { stage?: boolean }
     await page.waitForURL(/\/room\//);
 }
 
+test('on a stage only the creator speaks until giving someone the floor', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    const bob = await enter(browser, 'Bob');
+    await createRoom(alice.page, 'Stage room', { stage: true });
+    await bob.page.goto(alice.page.url());
+    const bobTile = alice.page.locator('.p-tile', { hasText: 'Bob' });
+    await expect(bobTile).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);
+    expect((await media(alice.page)).audio).toBe(0);
+
+    // Bob asks for the floor and Alice gives it; his own mic button comes back.
+    await bob.page.getByRole('button', { name: 'Raise hand' }).click();
+    await expect(bobTile.getByTitle('Wants to speak')).toBeVisible();
+    await bobTile.click({ button: 'right' });
+    await alice.page.getByRole('button', { name: 'Let speak' }).click();
+    await bob.page.getByRole('button', { name: 'Unmute microphone' }).click();
+    await expect.poll(async () => (await media(alice.page)).audio, { timeout: 20_000 }).toBe(1);
+    await expect(bobTile.getByTitle('Wants to speak')).toBeHidden();
+
+    // And takes it back.
+    await bobTile.click({ button: 'right' });
+    await alice.page.getByRole('button', { name: 'Take the floor back' }).click();
+    await expect.poll(async () => (await media(alice.page)).audio, { timeout: 20_000 }).toBe(0);
+    await expect(bob.page.getByRole('button', { name: 'Raise hand' })).toBeVisible();
+
+    expect(alice.errors).toEqual([]);
+    expect(bob.errors).toEqual([]);
+});
+
 test('switching rooms keeps the microphone', async ({ browser }) => {
     const alice = await enter(browser, 'Alice');
     const bob = await enter(browser, 'Bob');

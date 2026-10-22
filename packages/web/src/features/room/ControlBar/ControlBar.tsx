@@ -1,4 +1,5 @@
-import { useDisconnectButton, useLocalParticipantPermissions } from '@livekit/components-react';
+import { useCallback, useEffect } from 'react';
+import { useDisconnectButton, useLocalParticipant, useLocalParticipantPermissions, useParticipantAttributes } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 import { useLocalControls } from '../hooks/useLocalControls';
 import { useScreenShare } from '../hooks/useScreenShare';
@@ -33,18 +34,41 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
     // What the server lets us publish here; a button for something we may not do stays off.
     const permissions = useLocalParticipantPermissions();
     const mayPublish = (source: number) => canPublishSource(permissions, source);
+    const mayTalk = mayPublish(MICROPHONE);
+
+    // Without the right to speak, the mic button becomes a raised hand; it goes down by
+    // itself once a moderator gives the floor.
+    const { localParticipant } = useLocalParticipant();
+    const handRaised = useParticipantAttributes({ participant: localParticipant }).attributes?.['lala.hand'] === '1';
+    const setHand = useCallback((raised: boolean) => {
+        localParticipant.setAttributes({ 'lala.hand': raised ? '1' : '' })
+            .catch(err => console.warn('[ControlBar] Raising the hand failed:', err));
+    }, [localParticipant]);
+    useEffect(() => {
+        if (mayTalk && handRaised) setHand(false);
+    }, [mayTalk, handRaised, setHand]);
 
     return (
         <div className="cb-wrap">
             <div className="cb-pill">
-                <button
-                    className={`cb-btn cb-anim-pulse${!mic.enabled ? ' cb-off' : ''}`}
-                    onClick={() => mic.toggle()}
-                    disabled={mic.pending || !mayPublish(MICROPHONE)}
-                    title={!mayPublish(MICROPHONE) ? t('controls.notAllowed') : mic.enabled ? t('controls.mute') : t('controls.unmute')}
-                >
-                    {mic.enabled ? <MicIcon /> : <MicOffIcon />}
-                </button>
+                {mayTalk ? (
+                    <button
+                        className={`cb-btn cb-anim-pulse${!mic.enabled ? ' cb-off' : ''}`}
+                        onClick={() => mic.toggle()}
+                        disabled={mic.pending}
+                        title={mic.enabled ? t('controls.mute') : t('controls.unmute')}
+                    >
+                        {mic.enabled ? <MicIcon /> : <MicOffIcon />}
+                    </button>
+                ) : (
+                    <button
+                        className={`cb-btn cb-anim-pulse${handRaised ? ' cb-active' : ''}`}
+                        onClick={() => setHand(!handRaised)}
+                        title={handRaised ? t('ctx.lowerHand') : t('ctx.raiseHand')}
+                    >
+                        <span aria-hidden="true">✋</span>
+                    </button>
+                )}
 
                 <button
                     className={`cb-btn cb-anim-pulse${audioMuted ? ' cb-off' : ''}`}

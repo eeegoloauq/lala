@@ -153,8 +153,10 @@ export function createRoomsRouter(): Router {
         const name = typeof body.name === 'string' ? sanitizeDisplayText(body.name, 50) : '';
         const max = body.maxParticipants ?? 0;
         const password = parsePassword(body.password);
+        const stage = body.stage ?? false;
         const creator = callerIdentity(req);
-        if (!name || password === null || !Number.isInteger(max) || (max as number) < 0 || (max as number) > 100) {
+        if (!name || password === null || typeof stage !== 'boolean'
+            || !Number.isInteger(max) || (max as number) < 0 || (max as number) > 100) {
             res.status(400).json({ error: 'invalid_input' });
             return;
         }
@@ -181,7 +183,8 @@ export function createRoomsRouter(): Router {
             creator,
             maxParticipants: max as number,
             password: password && { salt: password.salt, verifier: await hashRoomKey(password.key) },
-            rights: config().defaults,
+            // On a stage only the creator (and admins) speak, show video or share a screen.
+            rights: stage ? { ...config().defaults, speak: 'admins', video: 'admins', screen: 'admins' } : config().defaults,
         });
         if (created) {
             try {

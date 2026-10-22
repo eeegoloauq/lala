@@ -207,6 +207,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
             onKick: () => actions.onKick(participantIdentity),
             onBan: () => actions.onBan(participantIdentity),
             onToggleMute: () => actions.onToggleMute(participantIdentity, serverMuted),
+            onToggleVoice: () => actions.onToggleVoice(participantIdentity, false),
             onServerBan: actions.onServerBan && (() => actions.onServerBan!(participantIdentity)),
         };
     }, [rooms, me?.role]);
@@ -335,7 +336,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                 onClick={async () => {
                                     try {
                                         setTemplateError(null);
-                                        await onCreateRoom({ name: template.name, password: template.password, maxParticipants: template.maxParticipants });
+                                        await onCreateRoom({ name: template.name, password: template.password, maxParticipants: template.maxParticipants, stage: template.stage });
                                     } catch {
                                         setTemplateError(template.name);
                                         setTimeout(() => setTemplateError(null), 3000);
