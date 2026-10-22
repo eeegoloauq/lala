@@ -65,60 +65,56 @@ export function useFileTransfers(room: Room, localParticipant: LocalParticipant)
     useEffect(() => {
         const handler = (reader: ByteStreamReader, participantInfo: { identity: string }) => {
             const info = reader.info;
+            // The stream id is the sender's choice; scoped to the sender, one participant
+            // can't overwrite another's transfer.
+            const id = `${participantInfo.identity}:${info.id}`;
             const sender = room.getParticipantByIdentity(participantInfo.identity);
             const displayName = sender?.name || participantInfo.identity;
             const mimeType = info.mimeType || 'application/octet-stream';
             const isImage = mimeType.startsWith('image/');
             const fileName = sanitizeFileName(info.name || 'file');
             const timestamp = info.timestamp || Date.now();
+            const base = { id, direction: 'in' as const, identity: participantInfo.identity, displayName, fileName, size: info.size, mimeType, timestamp, isImage };
+            const tooLarge = () => upsert(id, { ...base, status: 'error', errorReason: 'tooLarge' });
 
+            const abort = new AbortController();
             if (info.size && info.size > MAX_FILE_SIZE) {
-                upsert(info.id, {
-                    id: info.id, direction: 'in', identity: participantInfo.identity, displayName,
-                    fileName, size: info.size, mimeType, timestamp, status: 'error', errorReason: 'tooLarge', isImage,
-                });
-                // Tear the reader down immediately instead of buffering it into a Blob we'd
-                // just discard — the pre-aborted signal makes readAll() reject on its first
-                // pull, releasing our reader lock right away.
-                const ac = new AbortController();
-                ac.abort();
-                reader.readAll({ signal: ac.signal }).catch(() => {});
+                tooLarge();
+                abort.abort();   // releases the reader without buffering anything
+                reader.readAll({ signal: abort.signal }).catch(() => {});
                 return;
             }
-
-            upsert(info.id, {
-                id: info.id, direction: 'in', identity: participantInfo.identity, displayName,
-                fileName, size: info.size, mimeType, timestamp, progress: 0, status: 'active', isImage,
-            });
+            upsert(id, { ...base, progress: 0, status: 'active' });
 
             // A sender that vanishes mid-stream (crashed tab, dropped connection) or a stalled
-            // reliable channel otherwise leaves this reader awaiting chunks that never arrive --
-            // no error, no completion, just a spinner forever. Fail it out after a period of no
-            // progress at all, releasing the reader the same way the oversize path does above.
-            const stallAbort = new AbortController();
-            let stallTimer: ReturnType<typeof setTimeout>;
+            // reliable channel otherwise leaves this reader waiting forever.
+            let stallTimer: ReturnType<typeof setTimeout> | undefined;
             const resetStallTimer = () => {
                 clearTimeout(stallTimer);
-                stallTimer = setTimeout(() => {
-                    stallAbort.abort(new Error('file receive stalled: no progress'));
-                }, STALL_TIMEOUT_MS);
+                stallTimer = setTimeout(() => abort.abort(new Error('file receive stalled: no progress')), STALL_TIMEOUT_MS);
             };
-            resetStallTimer();
 
-            reader.onProgress = (p) => {
+            // Read chunk by chunk: the declared size is the sender's word, the cap holds anyway.
+            (async () => {
+                const chunks: Uint8Array[] = [];
+                let received = 0;
                 resetStallTimer();
-                upsert(info.id, { progress: p ?? 0 });
-            };
-            reader.readAll({ signal: stallAbort.signal }).then((chunks) => {
-                clearTimeout(stallTimer);
-                const blob = new Blob(chunks as BlobPart[], { type: mimeType });
-                const blobUrl = URL.createObjectURL(blob);
-                upsert(info.id, { status: 'done', progress: 1, blobUrl });
-            }).catch((err) => {
-                clearTimeout(stallTimer);
+                for await (const chunk of reader.withAbortSignal(abort.signal)) {
+                    resetStallTimer();
+                    received += chunk.byteLength;
+                    if (received > MAX_FILE_SIZE) {
+                        tooLarge();
+                        return;
+                    }
+                    chunks.push(chunk);
+                    upsert(id, { progress: info.size ? received / info.size : undefined });
+                }
+                const blobUrl = URL.createObjectURL(new Blob(chunks as BlobPart[], { type: mimeType }));
+                upsert(id, { status: 'done', progress: 1, blobUrl });
+            })().catch((err) => {
                 console.warn('[Lala] file receive failed:', err);
-                upsert(info.id, { status: 'error' });
-            });
+                upsert(id, { status: 'error' });
+            }).finally(() => clearTimeout(stallTimer));
         };
 
         room.registerByteStreamHandler(FILE_STREAM_TOPIC, handler);

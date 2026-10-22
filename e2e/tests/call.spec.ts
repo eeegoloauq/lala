@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { SERVER_PASSWORD } from '../playwright.config';
 
@@ -416,4 +417,23 @@ test('changing a media setting in a call keeps the connection and the microphone
     await expect.poll(async () => { const now = await aliceTrack(); return now && now !== before; }, { timeout: 20_000 }).toBe(true);
     expect(signalSockets).toBe(1);
     expect(alice.errors).toEqual([]);
+});
+
+test('a file sent in the chat arrives whole', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    const bob = await enter(browser, 'Bob');
+    await createRoom(alice.page, 'File room');
+    await bob.page.goto(alice.page.url());
+    await expect(alice.page.locator('.p-tile', { hasText: 'Bob' })).toBeVisible({ timeout: 20_000 });
+
+    const content = 'x'.repeat(200_000);
+    await alice.page.getByRole('button', { name: 'Chat' }).click();
+    await alice.page.locator('input[type="file"]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from(content) });
+    await bob.page.getByRole('button', { name: 'Chat' }).click();
+    const download = bob.page.getByTitle('Download');
+    await expect(download).toBeVisible({ timeout: 20_000 });
+    const [file] = await Promise.all([bob.page.waitForEvent('download'), download.click()]);
+    expect(readFileSync(await file.path(), 'utf8')).toBe(content);
+    expect(alice.errors).toEqual([]);
+    expect(bob.errors).toEqual([]);
 });
