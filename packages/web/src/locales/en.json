@@ -369,7 +369,12 @@
     "micMonitorHint": "Hear your own mic through speakers"
   },
   "emoji": {
-    "recent": "Recent"
+    "recent": "Recent",
+    "faces": "Faces",
+    "hands": "Hands",
+    "objects": "Objects",
+    "food": "Food",
+    "hearts": "Hearts"
   },
   "app": {
     "openSidebar": "Open sidebar"

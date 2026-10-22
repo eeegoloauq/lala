@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMOJI_CATEGORIES, getRecentEmoji, addRecentEmoji } from '../../../lib/emoji';
 import './emoji-picker.css';
@@ -9,7 +9,8 @@ interface EmojiPickerProps {
 
 export function EmojiPicker({ onPick }: EmojiPickerProps) {
     const { t } = useTranslation();
-    const recent = getRecentEmoji();
+    // Read at open; the list on screen stays put while picking, so it doesn't shift under the pointer.
+    const [recent] = useState(getRecentEmoji);
     const hasRecent = recent.length > 0;
     const scrollRef = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -47,7 +48,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
                 )}
                 {EMOJI_CATEGORIES.map(cat => (
                     <div key={cat.id} className="emoji-section" ref={setSectionRef(cat.id)}>
-                        <div className="emoji-section-header">{cat.label} {cat.id}</div>
+                        <div className="emoji-section-header">{cat.label} {t(`emoji.${cat.id}`)}</div>
                         <div className="emoji-grid">
                             {cat.emoji.map(emoji => (
                                 <button key={emoji} className="emoji-btn" onClick={() => handlePick(emoji)}>
@@ -70,7 +71,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
                         key={cat.id}
                         className="emoji-nav-btn"
                         onClick={() => scrollTo(cat.id)}
-                        title={cat.id}
+                        title={t(`emoji.${cat.id}`)}
                     >
                         {cat.label}
                     </button>
