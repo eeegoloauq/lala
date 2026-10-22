@@ -7,8 +7,10 @@ import { createAdminRouter } from './routes/admin';
 import { createWebhookRouter } from './routes/webhook';
 import { createEventsRouter } from './routes/events';
 import { createAccessRouter, requireAccess } from './routes/access';
+import { createMeRouter } from './routes/me';
+import { loadConfig } from './lib/config';
 import { connectRedis, redisReady } from './lib/redis';
-import { dropStaleRooms } from './routes/rooms';
+import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
 
 /**
  * Lala API Server
@@ -73,6 +75,7 @@ app.use('/api/rooms',
     limiter(30, req => req.method === 'GET'),   // 120/min
     createRoomsRouter());
 app.use('/api/events', limiter(5), createEventsRouter());
+app.use('/api/me', limiter(30), createMeRouter());
 
 // 404 handler — don't leak Express default page
 app.use((_req, res) => {
@@ -107,7 +110,9 @@ process.on('uncaughtException', (err) => {
 
 // Start
 (async () => {
+    loadConfig();
     await connectRedis();
+    await syncPermanentRooms();
     const dropStale = () => dropStaleRooms().catch((err) => console.error('[rooms] dropping stale rooms failed:', err));
     await dropStale();
     setInterval(dropStale, 5 * 60 * 1000);

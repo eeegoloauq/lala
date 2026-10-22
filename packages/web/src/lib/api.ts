@@ -1,4 +1,4 @@
-import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse } from './types';
+import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
 
@@ -57,6 +57,10 @@ export function submitAccessInvite(invite: string): Promise<void> {
 
 export async function createAccessInvite(): Promise<string> {
     return (await request<InviteResponse>('/access/invite', { method: 'POST' })).invite;
+}
+
+export function getMe(): Promise<Me> {
+    return request<Me>('/me');
 }
 
 export function getToken(req: TokenRequest): Promise<TokenResponse> {

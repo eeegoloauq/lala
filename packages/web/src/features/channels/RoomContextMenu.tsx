@@ -11,6 +11,8 @@ import '../room/VideoGrid/participant-context-menu.css';
 export interface RoomContextMenuProps {
     roomId: string;
     roomName: string;
+    /** Configured rooms can't be deleted from the app. */
+    permanent: boolean;
     x: number;
     y: number;
     onOpenBans: (roomId: string) => void;
@@ -18,7 +20,7 @@ export interface RoomContextMenuProps {
 }
 
 /** Right-click menu on a room row for its moderators; the server checks the right again. */
-export function RoomContextMenu({ roomId, roomName, x, y, onOpenBans, onClose }: RoomContextMenuProps) {
+export function RoomContextMenu({ roomId, roomName, permanent, x, y, onOpenBans, onClose }: RoomContextMenuProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -77,7 +79,7 @@ export function RoomContextMenu({ roomId, roomName, x, y, onOpenBans, onClose }:
                 {t('roomAdmin.bannedUsers')}
             </button>
 
-            <div className="ctx-menu-admin">
+            {!permanent && <div className="ctx-menu-admin">
                 <button
                     className="ctx-menu-item ctx-menu-item--danger"
                     onClick={handleDeleteClick}
@@ -92,7 +94,7 @@ export function RoomContextMenu({ roomId, roomName, x, y, onOpenBans, onClose }:
                     {confirmDelete ? t('roomAdmin.deleteConfirm') : t('roomAdmin.deleteRoom')}
                 </button>
                 {error && <div className="ctx-menu-local-note" style={{ color: 'var(--color-danger)', fontStyle: 'normal' }}>{error}</div>}
-            </div>
+            </div>}
         </div>
     );
 }

@@ -5,7 +5,7 @@ import type { TokenResponse } from '@lala/shared';
 import { getRoomService } from '../lib/livekit';
 import { callerIdentity, deriveIdentity } from '../lib/identity';
 import { verifyRoomKey } from '../lib/passwords';
-import { isModerator, permissionFor } from '../lib/rights';
+import { can, isModerator, permissionFor } from '../lib/rights';
 import { getRoom, isBanned, isMuted } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
 
@@ -46,6 +46,10 @@ export function createTokenRouter(): Router {
             res.status(404).json({ error: 'room_not_found' });
             return;
         }
+        if (!can(identity, room, 'join')) {
+            res.status(403).json({ error: 'not_allowed' });
+            return;
+        }
         if (await isBanned(room.id, identity)) {
             res.status(403).json({ error: 'banned' });
             return;
@@ -68,6 +72,11 @@ export function createTokenRouter(): Router {
                 res.status(403).json({ error: 'room_full' });
                 return;
             }
+        }
+
+        // A configured room exists in LiveKit only while someone is in it.
+        if (room.permanent) {
+            await getRoomService().createRoom({ name: room.id, emptyTimeout: 300, maxParticipants: room.maxParticipants });
         }
 
         const permission = permissionFor(identity, room, await isMuted(room.id, identity));

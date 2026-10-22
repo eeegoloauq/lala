@@ -27,10 +27,11 @@ interface SettingsModalProps {
   onRename?: (name: string) => void;
   myAvatar?: string | null;
   onAvatarChange?: (dataUrl: string | null) => void;
+  identity?: string;
 }
 
 
-export function SettingsModal({ settings, onUpdate, onClose, displayName, onRename, myAvatar, onAvatarChange }: SettingsModalProps) {
+export function SettingsModal({ settings, onUpdate, onClose, displayName, onRename, myAvatar, onAvatarChange, identity }: SettingsModalProps) {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<Section>('profile');
   const [micMonitor, setMicMonitor] = useState(false);
@@ -151,6 +152,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
               onRename={onRename}
               myAvatar={myAvatar}
               onAvatarChange={onAvatarChange}
+              identity={identity}
             />
 
             <SecuritySection headerRef={setSectionRef('security')} />

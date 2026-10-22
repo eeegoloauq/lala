@@ -27,7 +27,8 @@ interface ChannelSidebarProps {
     rooms: RoomInfo[];
     roomsError?: string | null;
     activeRoom: string | null;
-    identity: string;       // HMAC identity (or device UUID before room join) — for self-detection and admin ops
+    identity: string;       // own public identity, '' until known
+    canCreateRooms: boolean;
     displayName: string;    // display name shown in footer
     myAvatarUrl?: string | null;
     onRename: (name: string) => void;
@@ -50,6 +51,7 @@ interface ContextMenuState {
 interface RoomContextMenuState {
     roomId: string;
     roomName: string;
+    permanent: boolean;
     x: number;
     y: number;
 }
@@ -71,6 +73,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     roomsError,
     activeRoom,
     identity,
+    canCreateRooms,
     displayName,
     myAvatarUrl,
     onRename,
@@ -108,9 +111,9 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     const visibleTemplates = useMemo(() => {
         const templates = getTemplates();
         const liveNames = new Set(rooms.map(r => r.displayName.toLowerCase()));
-        return templates.filter(t => !liveNames.has(t.name.toLowerCase()));
+        return canCreateRooms ? templates.filter(t => !liveNames.has(t.name.toLowerCase())) : [];
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [rooms, templateVersion]);
+    }, [rooms, templateVersion, canCreateRooms]);
 
     const roomParticipants = useMemo(() => {
         const map = new Map<string, Array<{ identity: string; name: string }>>();
@@ -169,7 +172,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         if (!room.canModerate) return;
         e.preventDefault();
         e.stopPropagation();
-        setRoomContextMenu({ roomId: room.id, roomName: room.displayName, x: e.clientX, y: e.clientY });
+        setRoomContextMenu({ roomId: room.id, roomName: room.displayName, permanent: room.permanent, x: e.clientX, y: e.clientY });
     }, []);
 
     // Keep room participants in a ref for the long-press callback
@@ -226,16 +229,18 @@ export const ChannelSidebar = memo(function ChannelSidebar({
             >
                 <div className="sidebar-section-header">
                     <span className="sidebar-section-title">{t('sidebar.voiceChannels')}</span>
-                    <button
-                        className="sidebar-add-btn"
-                        onClick={() => setShowCreateModal(true)}
-                        title={t('sidebar.createChannel')}
-                    >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                    </button>
+                    {canCreateRooms && (
+                        <button
+                            className="sidebar-add-btn"
+                            onClick={() => setShowCreateModal(true)}
+                            title={t('sidebar.createChannel')}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
 
                 {rooms.length === 0 && visibleTemplates.length === 0 && (
@@ -257,8 +262,9 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 {rooms.map((room) => (
                     <div key={room.id}>
                         <div
-                            className={`channel-item ${activeRoom === room.id ? 'active' : ''}`}
-                            onClick={() => onJoinRoom(room.id)}
+                            className={`channel-item ${activeRoom === room.id ? 'active' : ''}${room.canJoin ? '' : ' channel-item-locked'}`}
+                            onClick={() => room.canJoin && onJoinRoom(room.id)}
+                            title={room.canJoin ? undefined : t('sidebar.membersOnly')}
                             onContextMenu={(e) => handleRoomContextMenu(e, room)}
                         >
                             <svg className="channel-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -419,6 +425,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 <RoomContextMenu
                     roomId={roomContextMenu.roomId}
                     roomName={roomContextMenu.roomName}
+                    permanent={roomContextMenu.permanent}
                     x={roomContextMenu.x}
                     y={roomContextMenu.y}
                     onOpenBans={setBansRoomId}

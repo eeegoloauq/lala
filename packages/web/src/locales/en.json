@@ -50,7 +50,8 @@
     "settings": "Settings",
     "close": "Close",
     "you": "you",
-    "anonymous": "Anonymous"
+    "anonymous": "Anonymous",
+    "membersOnly": "Members only"
   },
   "room": {
     "wrongPassword": "Wrong password",
@@ -73,7 +74,9 @@
     "connecting": "Connecting...",
     "reconnecting": "Reconnecting...",
     "screenShareFailed": "Screen share failed or was cancelled. On Linux/Wayland make sure xdg-desktop-portal and PipeWire are installed.",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "notAllowed": "Members only",
+    "notAllowedDesc": "The server admin has opened this room to members only."
   },
   "ctx": {
     "unmute": "Unmute",
@@ -143,7 +146,8 @@
     "cameraOn": "Turn on camera",
     "cameraOff": "Turn off camera",
     "chat": "Chat",
-    "leave": "Leave call"
+    "leave": "Leave call",
+    "notAllowed": "Not allowed in this room"
   },
   "focus": {
     "backToGrid": "Back to grid",
@@ -325,7 +329,10 @@
     "connectedTo": "Connected server",
     "disconnect": "Disconnect",
     "autoJoinLastRoom": "Join the last room",
-    "autoJoinLastRoomHint": "On launch, go straight into the room you were in last; it is created again if it has ended"
+    "autoJoinLastRoomHint": "On launch, go straight into the room you were in last; it is created again if it has ended",
+    "yourId": "Your ID",
+    "yourIdHint": "Give it to the server admin to become a member or admin. It belongs to this app on this device.",
+    "copy": "Copy"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",

@@ -40,7 +40,6 @@ interface RoomShellProps {
     canModerate: boolean;
     name: string;  // display name — used to call setName on join/change
     myAvatarUrl?: string | null;
-    onIdentityAssigned?: (identity: string) => void;
     onOpenSettings?: () => void;
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
@@ -51,7 +50,7 @@ interface RoomShellProps {
 /** Below this width the chat stays the existing floating/fullscreen overlay; at or above it, chat docks as a proper reflowing column. */
 const DESKTOP_CHAT_QUERY = '(min-width: 900px)';
 
-export function RoomShell({ canModerate, name, myAvatarUrl, onIdentityAssigned, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
+export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
     const [audioMuted, setAudioMuted] = useState(false);
@@ -109,7 +108,6 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onIdentityAssigned, 
         participants,
         localParticipant,
         myAvatarUrl,
-        onIdentityAssigned,
     });
 
     useRoomStatusSync({

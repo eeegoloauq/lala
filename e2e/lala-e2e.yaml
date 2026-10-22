@@ -1,0 +1,17 @@
+# Server config for the e2e suite. The IDs are the identities the test secret in
+# livekit-e2e.yaml gives the device IDs "e2e-admin-device" and "e2e-member-device".
+users:
+  admin:
+    role: admin
+    ids: [8f9e356ea233564e859aa89b8b518e6a15f0]
+  member:
+    role: member
+    ids: [9046178020158a6b425b6646b40e25c2ca74]
+
+rooms:
+  - name: Lobby
+  - name: Stage
+    speak: admins
+  - name: Members
+    join: members
+    password: members-password

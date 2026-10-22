@@ -10,7 +10,6 @@ export interface UseAvatarCacheOptions {
     participants: Participant[];
     localParticipant: LocalParticipant;
     myAvatarUrl?: string | null;
-    onIdentityAssigned?: (identity: string) => void;
 }
 
 /**
@@ -23,16 +22,14 @@ export interface UseAvatarCacheOptions {
  *     (name-based fallback so avatars survive identity rotation across page refreshes).
  *  2. `useAvatarSync`, which broadcasts our own avatar and receives others' over the
  *     data channel.
- *  3. The local participant's own avatar (from `myAvatarUrl`), plus notifying the
- *     parent of the freshly-assigned LiveKit identity and persisting to localStorage
- *     so ChannelSidebar can find it by identity too.
+ *  3. The local participant's own avatar (from `myAvatarUrl`), persisted to
+ *     localStorage so ChannelSidebar can find it by identity too.
  */
 export function useAvatarCache({
     room,
     participants,
     localParticipant,
     myAvatarUrl,
-    onIdentityAssigned,
 }: UseAvatarCacheOptions): Map<string, string> {
     // Pre-populate avatarCache from localStorage for participants already in the room.
     useEffect(() => {
@@ -47,16 +44,15 @@ export function useAvatarCache({
     useAvatarSync({ room, myAvatarUrl: myAvatarUrl ?? null, onAvatarReceived: setAvatarCacheEntry });
 
     // Keep own avatar in the cache so local participant tile shows it too.
-    // Also persist to localStorage (sidebar reads from there) and notify parent of LiveKit identity.
+    // Also persist to localStorage, where the sidebar reads it.
     useEffect(() => {
         const id = localParticipant.identity;
         if (!id) return;
-        onIdentityAssigned?.(id);
         setAvatarCacheEntry(id, myAvatarUrl ?? null);
         // Persist to localStorage so ChannelSidebar can find own avatar by LiveKit identity
         if (myAvatarUrl) setCachedAvatar(id, myAvatarUrl);
         else clearCachedAvatar(id);
-    }, [myAvatarUrl, localParticipant.identity, onIdentityAssigned]);
+    }, [myAvatarUrl, localParticipant.identity]);
 
     return useAvatarCacheMap();
 }

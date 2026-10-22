@@ -3,12 +3,13 @@ import { TrackSource } from 'livekit-server-sdk';
 import type { CreateRoomRequest, RoomInfo } from '@lala/shared';
 import { getRoomService, isNotFound } from '../lib/livekit';
 import { callerIdentity } from '../lib/identity';
-import { hashRoomKey } from '../lib/passwords';
-import { isModerator } from '../lib/rights';
-import { OPEN_RIGHTS, claimRoom, dropRoom, generateRoomId, getRoom, listMuted, listRoomStates, type RoomState } from '../lib/rooms';
+import { config } from '../lib/config';
+import { configRoomSalt, deriveRoomAuthKey, hashRoomKey } from '../lib/passwords';
+import { can, canCreateRooms, isModerator, mayEnter } from '../lib/rights';
+import { claimRoom, dropRoom, findRoomByName, generateRoomId, getRoom, listMuted, listRoomStates, putPermanentRoom, type RoomState } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
 
-type ListedRoom = Omit<RoomInfo, 'canModerate'> & { state: RoomState };
+type ListedRoom = Omit<RoomInfo, 'canModerate' | 'canJoin'> & { state: RoomState };
 
 // GET /api/rooms is unauthenticated and fans out one LiveKit call per room, and every
 // client refetches it when anyone joins or leaves, so the list is cached briefly. The
@@ -49,6 +50,7 @@ async function describe(state: RoomState): Promise<ListedRoom> {
         creationTime: state.createdAt,
         participants: participants.map((p) => ({ identity: p.identity, name: p.name || p.identity })),
         adminIdentity: state.creator,
+        permanent: state.permanent !== undefined,
         screenSharingParticipants: withTrack(TrackSource.SCREEN_SHARE),
         mutedParticipants: withTrack(TrackSource.MICROPHONE, true),
         deafenedParticipants: participants.filter((p) => readDeafened(p.metadata)).map((p) => p.identity),
@@ -62,7 +64,10 @@ async function listRooms(): Promise<ListedRoom[]> {
     const started = generation;
     const fetch = (async () => {
         const states = await listRoomStates();
-        const rooms = await Promise.all(states.sort((a, b) => a.createdAt - b.createdAt).map(describe));
+        // Configured rooms first, in config order, then the others by age.
+        const order = (s: RoomState) => s.permanent?.position ?? Number.MAX_SAFE_INTEGER;
+        states.sort((a, b) => order(a) - order(b) || a.createdAt - b.createdAt);
+        const rooms = await Promise.all(states.map(describe));
         // A webhook may have invalidated the list while this was in flight.
         if (generation === started) cache = { rooms, expiresAt: Date.now() + CACHE_TTL_MS };
         return rooms;
@@ -75,9 +80,10 @@ async function listRooms(): Promise<ListedRoom[]> {
     }
 }
 
-/** The cached part is the same for everyone; whether the caller may moderate is not. */
+/** The cached part is the same for everyone; what the caller may do is not. */
 function forCaller(req: Request, { state, ...room }: ListedRoom): RoomInfo {
-    return { ...room, canModerate: isModerator(callerIdentity(req), state) };
+    const caller = callerIdentity(req);
+    return { ...room, canModerate: isModerator(caller, state), canJoin: can(caller, state, 'join') };
 }
 
 function parsePassword(input: unknown): CreateRoomRequest['password'] | null {
@@ -96,16 +102,40 @@ export async function dropStaleRooms(): Promise<void> {
     const [states, live] = await Promise.all([listRoomStates(), getRoomService().listRooms()]);
     const liveIds = new Set(live.map((r) => r.name));
     const cutoff = Date.now() - 60_000;
-    const stale = states.filter((s) => !liveIds.has(s.id) && s.createdAt < cutoff);
+    const stale = states.filter((s) => !s.permanent && !liveIds.has(s.id) && s.createdAt < cutoff);
     await Promise.all(stale.map((s) => dropRoom(s.id)));
     if (stale.length > 0) invalidateRoomsCache();
+}
+
+/** Makes the stored configured rooms match the config: added, updated and removed. */
+export async function syncPermanentRooms(): Promise<void> {
+    const rooms = config().rooms;
+    const existing = await listRoomStates();
+    for (const [position, room] of rooms.entries()) {
+        const salt = room.password && configRoomSalt(room.id);
+        await putPermanentRoom({
+            id: room.id,
+            name: room.name,
+            createdAt: existing.find((s) => s.id === room.id)?.createdAt ?? Date.now(),
+            maxParticipants: room.maxParticipants,
+            password: room.password && salt
+                ? { salt, verifier: await hashRoomKey(await deriveRoomAuthKey(room.password, salt)) }
+                : undefined,
+            rights: room.rights,
+            permanent: { position },
+        });
+    }
+    const listed = new Set(rooms.map((r) => r.id));
+    await Promise.all(existing.filter((s) => s.permanent && !listed.has(s.id)).map((s) => dropRoom(s.id)));
+    invalidateRoomsCache();
 }
 
 export function createRoomsRouter(): Router {
     const router = Router();
 
     router.get('/', async (req: Request, res: Response) => {
-        res.json({ rooms: (await listRooms()).map((room) => forCaller(req, room)) });
+        const rooms = mayEnter(callerIdentity(req)) ? await listRooms() : [];
+        res.json({ rooms: rooms.map((room) => forCaller(req, room)) });
     });
 
     router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
@@ -131,6 +161,13 @@ export function createRoomsRouter(): Router {
             res.status(400).json({ error: 'identity_required' });
             return;
         }
+        // Someone who may not create rooms still gets a live room by its name.
+        if (!canCreateRooms(creator)) {
+            const existing = await findRoomByName(name);
+            if (existing && mayEnter(creator)) res.json(forCaller(req, await describe(existing)));
+            else res.status(403).json({ error: 'not_allowed' });
+            return;
+        }
 
         const { room, created } = await claimRoom({
             id: generateRoomId(),
@@ -139,7 +176,7 @@ export function createRoomsRouter(): Router {
             creator,
             maxParticipants: max as number,
             password: password && { salt: password.salt, verifier: await hashRoomKey(password.key) },
-            rights: OPEN_RIGHTS,
+            rights: config().defaults,
         });
         if (created) {
             try {
@@ -159,7 +196,8 @@ export function createRoomsRouter(): Router {
             res.status(404).json({ error: 'room_not_found' });
             return;
         }
-        if (!isModerator(callerIdentity(req), room)) {
+        // A configured room exists for as long as the config lists it.
+        if (room.permanent || !isModerator(callerIdentity(req), room)) {
             res.status(403).json({ error: 'forbidden' });
             return;
         }

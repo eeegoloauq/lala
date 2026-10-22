@@ -13,7 +13,8 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "ioredis": "^6.0.0",
-    "livekit-server-sdk": "^2.9.0"
+    "livekit-server-sdk": "^2.9.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@lala/shared": "file:../shared",

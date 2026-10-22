@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compressAvatar } from '../../../lib/avatarUtils';
 
@@ -7,10 +8,20 @@ interface ProfileSectionProps {
   onRename?: (name: string) => void;
   myAvatar?: string | null;
   onAvatarChange?: (dataUrl: string | null) => void;
+  identity?: string;
 }
 
-export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange }: ProfileSectionProps) {
+export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange, identity }: ProfileSectionProps) {
   const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  const copyIdentity = () => {
+    if (!identity) return;
+    navigator.clipboard.writeText(identity).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }, (err) => console.warn('[ProfileSection] Copying the ID failed:', err));
+  };
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,6 +85,18 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
             )}
           </div>
         </div>
+        {identity && (
+          <div className="settings-row">
+            <div>
+              <div className="settings-row-label">{t('settings.yourId')}</div>
+              <div className="settings-row-desc">{t('settings.yourIdHint')}</div>
+              <code className="settings-identity">{identity}</code>
+            </div>
+            <button className="accent-reset-btn" onClick={copyIdentity}>
+              {copied ? t('settings.copied') : t('settings.copy')}
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

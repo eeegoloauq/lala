@@ -26,9 +26,10 @@ async function openPage(browser: Browser): Promise<{ page: Page; errors: string[
     return { page, errors };
 }
 
-/** Opens Lala, passes the server password and sets a name. */
-async function enter(browser: Browser, name: string, settings?: object): Promise<{ page: Page; errors: string[] }> {
+/** Opens Lala, passes the server password and sets a name; a fixed device ID makes it a person from lala-e2e.yaml. */
+async function enter(browser: Browser, name: string, settings?: object, deviceId?: string): Promise<{ page: Page; errors: string[] }> {
     const { page, errors } = await openPage(browser);
+    if (deviceId) await page.addInitScript(id => localStorage.setItem('lala-device-id', id), deviceId);
     if (settings) await page.addInitScript(s => localStorage.setItem('lala-settings', s), JSON.stringify(settings));
     await page.goto('/');
     await page.getByLabel('Server password').fill(SERVER_PASSWORD);
@@ -157,11 +158,11 @@ test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
     await join();
 
     // The public room list names the creator by identity; the device ID behind it stays private.
-    const { rooms, deviceId, identity } = await alice.page.evaluate(async () => ({
-        rooms: (await (await fetch('/api/rooms')).json()).rooms,
-        deviceId: localStorage.getItem('lala-device-id'),
-        identity: localStorage.getItem('lala_cached_hmac_identity'),
-    }));
+    const { rooms, deviceId, identity } = await alice.page.evaluate(async () => {
+        const deviceId = localStorage.getItem('lala-device-id')!;
+        const me = await (await fetch('/api/me', { headers: { 'X-Lala-Device': deviceId } })).json();
+        return { rooms: (await (await fetch('/api/rooms')).json()).rooms, deviceId, identity: me.identity };
+    });
     expect(deviceId).toBeTruthy();
     expect(JSON.stringify(rooms)).not.toContain(deviceId);
     expect(rooms.find((r: { displayName: string }) => r.displayName === 'Admin room').adminIdentity).toBe(identity);
@@ -263,3 +264,40 @@ test('auto-join brings friends launching together into one room', async ({ brows
     expect(new URL(bob.page.url()).pathname).toBe(room);
     await expect.poll(async () => (await media(alice.page)).audio, { timeout: 20_000 }).toBe(1);
 });
+
+test('configured rooms: always listed, members only, admins speak, password from the config', async ({ browser }) => {
+    const admin = await enter(browser, 'Admin', undefined, 'e2e-admin-device');
+    const member = await enter(browser, 'Member', undefined, 'e2e-member-device');
+    const guest = await enter(browser, 'Guest');
+    const room = (page: Page, name: string) => page.locator('.channel-item', { hasText: new RegExp(`^${name}`) });
+
+    // Listed while empty, first and in config order.
+    await expect(guest.page.locator('.channel-item').nth(0)).toContainText('Lobby');
+    await expect(guest.page.locator('.channel-item').nth(1)).toContainText('Stage');
+
+    // Members only: locked for the guest, and the server refuses a token too.
+    await expect(room(guest.page, 'Members')).toHaveClass(/channel-item-locked/);
+    const membersId = (await api(guest.page, 'unused', 'GET', '/rooms')).body.rooms.find((r: { displayName: string }) => r.displayName === 'Members').id;
+    const guestDevice = await guest.page.evaluate(() => localStorage.getItem('lala-device-id'));
+    expect((await api(guest.page, guestDevice!, 'POST', '/token', { room: membersId })).status).toBe(403);
+
+    // The member gets in with the configured password: the server derived the same key the browser does.
+    await room(member.page, 'Members').click();
+    await member.page.getByPlaceholder('Password...').fill('members-password');
+    await member.page.getByPlaceholder('Password...').press('Enter');
+    await expect(member.page.getByRole('button', { name: 'Turn on camera' })).toBeVisible({ timeout: 20_000 });
+
+    // Stage: the admin speaks, the guest only listens.
+    await room(admin.page, 'Stage').click();
+    await room(guest.page, 'Stage').click();
+    await expect.poll(async () => (await media(guest.page)).audio, { timeout: 20_000 }).toBe(1);
+    await expect(guest.page.getByRole('button', { name: 'Not allowed in this room' }).first()).toBeDisabled();
+    await expect(admin.page.locator('.p-tile', { hasText: 'Guest' })).toBeVisible();
+    expect((await media(admin.page)).audio).toBe(0);
+
+    expect(admin.errors).toEqual([]);
+    expect(member.errors).toEqual([]);
+    // The browser logs the refused token request above as an error.
+    expect(guest.errors.filter(e => !e.includes('status of 403'))).toEqual([]);
+});
+

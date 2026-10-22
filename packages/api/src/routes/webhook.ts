@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { WebhookReceiver, type WebhookEvent } from 'livekit-server-sdk';
 import { broadcastSse } from '../lib/sse';
-import { dropRoom } from '../lib/rooms';
+import { dropRoom, getRoom } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
 
 // LiveKit events that change the room list. Mute and metadata changes are not webhook
@@ -34,7 +34,10 @@ export function createWebhookRouter(): Router {
             return;
         }
 
-        if (event.event === 'room_finished' && event.room?.name) await dropRoom(event.room.name);
+        if (event.event === 'room_finished' && event.room?.name) {
+            const room = await getRoom(event.room.name);
+            if (room && !room.permanent) await dropRoom(room.id);
+        }
         if (ROOM_EVENTS.has(event.event)) {
             // Invalidated before broadcasting, so clients that refetch on the event get fresh data.
             invalidateRoomsCache();

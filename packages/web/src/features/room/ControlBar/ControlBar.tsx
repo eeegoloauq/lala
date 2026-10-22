@@ -1,4 +1,4 @@
-import { useDisconnectButton } from '@livekit/components-react';
+import { useDisconnectButton, useLocalParticipantPermissions } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 import { useLocalControls } from '../hooks/useLocalControls';
 import { useScreenShare } from '../hooks/useScreenShare';
@@ -12,6 +12,7 @@ import {
 } from '../icons/Icons';
 import './control-bar.css';
 import { IS_ELECTRON as isElectron } from '../../../lib/env';
+import { CAMERA, MICROPHONE, SCREEN_SHARE, canPublishSource } from '../lib/permissions';
 
 const canScreenShare = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
 
@@ -29,6 +30,9 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
     const { mic, cam } = useLocalControls();
     const { enabled: screenEnabled, pending: screenPending } = useScreenShare();
     const { buttonProps: leaveProps } = useDisconnectButton({});
+    // What the server lets us publish here; a button for something we may not do stays off.
+    const permissions = useLocalParticipantPermissions();
+    const mayPublish = (source: number) => canPublishSource(permissions, source);
 
     return (
         <div className="cb-wrap">
@@ -36,8 +40,8 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
                 <button
                     className={`cb-btn cb-anim-pulse${!mic.enabled ? ' cb-off' : ''}`}
                     onClick={() => mic.toggle()}
-                    disabled={mic.pending}
-                    title={mic.enabled ? t('controls.mute') : t('controls.unmute')}
+                    disabled={mic.pending || !mayPublish(MICROPHONE)}
+                    title={!mayPublish(MICROPHONE) ? t('controls.notAllowed') : mic.enabled ? t('controls.mute') : t('controls.unmute')}
                 >
                     {mic.enabled ? <MicIcon /> : <MicOffIcon />}
                 </button>
@@ -56,8 +60,8 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
                     <button
                         className={`cb-btn cb-anim-rise${screenEnabled ? ' cb-active' : ''}`}
                         onClick={onScreenShareClick}
-                        disabled={screenPending}
-                        title={screenEnabled ? t('controls.screenShareStop') : t('controls.screenShareStart')}
+                        disabled={screenPending || !mayPublish(SCREEN_SHARE)}
+                        title={!mayPublish(SCREEN_SHARE) ? t('controls.notAllowed') : screenEnabled ? t('controls.screenShareStop') : t('controls.screenShareStart')}
                     >
                         {screenEnabled ? <ScreenShareOffIcon /> : <ScreenShareIcon />}
                     </button>
@@ -66,8 +70,8 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
                 <button
                     className={`cb-btn cb-anim-pulse${cam.enabled ? '' : ' cb-off-soft'}`}
                     onClick={() => cam.toggle()}
-                    disabled={cam.pending}
-                    title={cam.enabled ? t('controls.cameraOff') : t('controls.cameraOn')}
+                    disabled={cam.pending || !mayPublish(CAMERA)}
+                    title={!mayPublish(CAMERA) ? t('controls.notAllowed') : cam.enabled ? t('controls.cameraOff') : t('controls.cameraOn')}
                 >
                     {cam.enabled ? <VideoIcon /> : <VideoOffIcon />}
                 </button>

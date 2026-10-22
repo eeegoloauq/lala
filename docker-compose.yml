@@ -83,6 +83,10 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - LALA_ACCESS_PASSWORD=${LALA_ACCESS_PASSWORD:-}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@lala-redis:6379
+      - LALA_CONFIG=/config/lala.yaml
+    # A directory, not the file: without config/lala.yaml the API runs as an open server.
+    volumes:
+      - ./config:/config:ro
     security_opt:
       - no-new-privileges:true
     mem_limit: 512m

@@ -1,0 +1,38 @@
+# Lala server config. Copy to config/lala.yaml and restart the api container; calls
+# in progress keep going. Without the file everyone is a guest who may do everything.
+# A mistake here (an unknown key, a misspelled level) stops the API with a message
+# naming the line it means.
+
+# People are named by their ID: Settings → Profile → "Your ID" in the app. An ID belongs
+# to one browser or desktop app, so list each device someone uses.
+users:
+  # alex:
+  #   role: admin            # admin: moderates every room; member: gets "members" rights
+  #   ids:
+  #     - 0123456789abcdef0123456789abcdef0123
+  #     - fedcba9876543210fedcba9876543210fedc
+
+# Whether people not listed under users may use the server at all.
+guests: true
+
+# Who may do what, as everyone, members (members and admins) or admins. Rooms below can
+# override any of them; rooms people create get these.
+defaults:
+  createRooms: everyone    # or nobody, to allow only the rooms below
+  join: everyone
+  speak: everyone
+  video: everyone
+  screen: everyone         # screen sharing
+  chat: everyone           # chat and files
+
+# Rooms that always exist, shown first and in this order. Each takes name and,
+# optionally, password (also the encryption key), maxParticipants (0 = no limit) and
+# any of join, speak, video, screen, chat.
+rooms:
+  # - name: General
+  # - name: Stage
+  #   speak: admins          # everyone else listens and watches
+  #   screen: admins
+  # - name: Members
+  #   join: members
+  #   password: change-me

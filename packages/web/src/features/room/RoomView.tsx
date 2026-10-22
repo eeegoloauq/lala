@@ -21,13 +21,20 @@ interface RoomViewProps {
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onLeave: () => void;
-    onIdentityAssigned?: (identity: string) => void;
     onOpenSettings: () => void;
     volumes: Map<string, number>;
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onIdentityAssigned, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
+/** Join failures that get their own explanation instead of the bare error code. */
+const ERROR_SCREENS: Record<string, { title: string; desc: string }> = {
+    room_not_found: { title: 'room.notFound', desc: 'room.notFoundDesc' },
+    room_full: { title: 'room.full', desc: 'room.fullDesc' },
+    banned: { title: 'room.banned', desc: 'room.bannedDesc' },
+    not_allowed: { title: 'room.notAllowed', desc: 'room.notAllowedDesc' },
+};
+
+export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
     const [connection, setConnection] = useState<{ token: string; url: string; canModerate: boolean } | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -224,7 +231,6 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         const tryPassword = async (pw?: string) => {
             const { data, e2eeKey } = await fetchToken(pw);
             if (!mounted()) return;
-            onIdentityAssigned?.(data.identity);
             await applyToken(data, e2eeKey, pw);
         };
         const isPasswordError = (err: unknown) =>
@@ -359,7 +365,6 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         try {
             const { data, e2eeKey } = await fetchToken(password);
             if (savePassword) saveToPool(password);
-            onIdentityAssigned?.(data.identity);
             await applyToken(data, e2eeKey, password);
             setNeedsPassword(false);
         } catch (err) {
@@ -446,31 +451,12 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         );
     }
 
-    if (errorCode === 'room_not_found') {
+    const errorScreen = errorCode ? ERROR_SCREENS[errorCode] : undefined;
+    if (errorScreen) {
         return (
             <div className="empty-state">
-                <h2 className="empty-state-title">{t('room.notFound')}</h2>
-                <p className="empty-state-sub">{t('room.notFoundDesc')}</p>
-                <button className="empty-state-cta" onClick={onLeave}>{t('room.back')}</button>
-            </div>
-        );
-    }
-
-    if (errorCode === 'room_full') {
-        return (
-            <div className="empty-state">
-                <h2 className="empty-state-title">{t('room.full')}</h2>
-                <p className="empty-state-sub">{t('room.fullDesc')}</p>
-                <button className="empty-state-cta" onClick={onLeave}>{t('room.back')}</button>
-            </div>
-        );
-    }
-
-    if (errorCode === 'banned') {
-        return (
-            <div className="empty-state">
-                <h2 className="empty-state-title">{t('room.banned')}</h2>
-                <p className="empty-state-sub">{t('room.bannedDesc')}</p>
+                <h2 className="empty-state-title">{t(errorScreen.title)}</h2>
+                <p className="empty-state-sub">{t(errorScreen.desc)}</p>
                 <button className="empty-state-cta" onClick={onLeave}>{t('room.back')}</button>
             </div>
         );
@@ -506,7 +492,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
                 onDisconnected={onLeave}
                 style={{ height: '100%' }}
             >
-                <RoomShell canModerate={connection.canModerate} name={name} myAvatarUrl={myAvatarUrl} onIdentityAssigned={onIdentityAssigned} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
+                <RoomShell canModerate={connection.canModerate} name={name} myAvatarUrl={myAvatarUrl} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
             </LiveKitRoom>
         </div>
     );

@@ -15,6 +15,7 @@ Express server for token generation, room management, and admin actions. Uses `l
 | POST | `/api/rooms/:id/admin/{kick,ban,unban,mute}` | Moderation (moderator) |
 | GET | `/api/rooms/:id/admin/bans` | Banned identities with their names (moderator) |
 | GET | `/api/events` | SSE stream for room updates |
+| GET | `/api/me` | `{ identity, role, allowed, canCreateRooms }` for the caller |
 | GET | `/api/access` | `{ required, granted }`; renews a valid session cookie |
 | POST | `/api/access` | `{ password }` or `{ invite }` -> sets the `lala_access` cookie |
 | POST | `/api/access/invite` | `{ invite }`: 7-day stand-in for the password; needs a session |
@@ -31,7 +32,8 @@ With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access a
 - `src/routes/access.ts` -- optional instance password: `requireAccess` gate; stateless cookie `<expiry>.<hmac>` keyed from `LIVEKIT_API_SECRET` + password (changing either signs everyone out); invites are `<expiry>.<hmac>` under a separate label so they can't pass for cookies; fails startup if the password is under 12 chars or the secret is missing
 - `src/routes/webhook.ts` -- LiveKit webhook (signature-verified); broadcasts SSE; drops room state on `room_finished`
 - `src/lib/rooms.ts` -- room state in Redis: `RoomState`, name claim (Lua, atomic), bans, server mutes
-- `src/lib/rights.ts` -- `isModerator()`, `permissionFor()` (what a participant may publish)
+- `src/lib/config.ts` -- optional `LALA_CONFIG` YAML (`config/lala.example.yaml`): users by identity with roles, `guests`, `defaults` (levels per right and `createRooms`), permanent rooms; strict validation, a bad file stops startup
+- `src/lib/rights.ts` -- roles and levels: `mayEnter()`, `can()`, `canCreateRooms()`, `isModerator()`, `permissionFor()`
 - `src/lib/identity.ts` -- `deriveIdentity()`, `callerIdentity()` from the `X-Lala-Device` header
 - `src/lib/passwords.ts` -- scrypt hash of the client-derived room key
 - `src/lib/livekit.ts` -- `getRoomService()`; `announceModeration()` on the `lala.moderation` data topic
@@ -48,8 +50,12 @@ With `LALA_ACCESS_PASSWORD` set, every route except health, webhook and access a
 - Live room names are unique; claiming a name and storing the room is one Lua script.
 - State goes on `room_finished`; the sweep drops state LiveKit has no room for after a minute. LiveKit rooms without state are left to end on their own.
 
+### Roles and rooms
+- Ranks: admin (config) or the creator in their own room > member (config) > everyone. Each room's rights (`join`, `speak`, `video`, `screen`, `chat`) name the lowest rank allowed; created rooms take `defaults`.
+- Configured rooms have a stable id from their name, live in Redis with `permanent`, are listed first, created in LiveKit on the first token, survive `room_finished`, can't be deleted, and are synced to the config at startup. A password in the config is turned into the same auth key the client derives (`deriveRoomAuthKey`, which must match `roomKeys.ts`), with a salt fixed per room.
+
 ### Moderation
-- The room creator moderates (`isModerator`). Authority comes from the caller's identity; there are no admin secrets.
+- Admins moderate every room, a creator their own room (`isModerator`). Authority comes from the caller's identity; there are no admin secrets.
 - Rights are LiveKit grants (`canPublishSources`, `canPublishData`), so the media server enforces them. A server mute removes the microphone source live (`updateParticipant`) and is stored, so a rejoin keeps it.
 - A ban stores the identity and removes the participant with `revokeTokenTs`, which invalidates tokens it already holds.
 - Moderation events go out from the server on the `lala.moderation` topic; clients ignore that topic from participants.

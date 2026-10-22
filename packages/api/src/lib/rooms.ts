@@ -1,12 +1,6 @@
 import { randomBytes } from 'crypto';
 import { redis } from './redis';
-
-/** Who may use a right in a room. Room creators count as admins in their own room. */
-export type Level = 'everyone' | 'admins';
-export type Right = 'speak' | 'video' | 'screen' | 'chat';
-export type Rights = Record<Right, Level>;
-
-export const OPEN_RIGHTS: Rights = { speak: 'everyone', video: 'everyone', screen: 'everyone', chat: 'everyone' };
+import type { Rights } from './config';
 
 /**
  * The server's view of a room. Redis is the only place it lives: LiveKit holds media and
@@ -22,6 +16,8 @@ export interface RoomState {
     /** Salt for the client-side key derivation (public) and the scrypt hash of the derived key. */
     password?: { salt: string; verifier: string };
     rights: Rights;
+    /** A room from the config: it exists while it is listed there, empty or not. */
+    permanent?: { position: number };
 }
 
 // The old room cache used `lala:room:<id>` for a different shape; these keys must not overlap it.
@@ -64,9 +60,23 @@ export async function claimRoom(room: RoomState): Promise<{ room: RoomState; cre
     return existing ? { room: JSON.parse(existing), created: false } : { room, created: true };
 }
 
+/** Stores a configured room under its name, taking the name over from a live room that has it. */
+export async function putPermanentRoom(room: RoomState): Promise<void> {
+    await redis().multi()
+        .set(roomKey(room.id), JSON.stringify(room))
+        .set(nameKey(room.name), room.id)
+        .sadd(ROOMS, room.id)
+        .exec();
+}
+
 export async function getRoom(id: string): Promise<RoomState | undefined> {
     const raw = await redis().get(roomKey(id));
     return raw ? JSON.parse(raw) : undefined;
+}
+
+export async function findRoomByName(name: string): Promise<RoomState | undefined> {
+    const id = await redis().get(nameKey(name));
+    return id ? getRoom(id) : undefined;
 }
 
 export async function listRoomStates(): Promise<RoomState[]> {

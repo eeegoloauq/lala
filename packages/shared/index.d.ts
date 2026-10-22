@@ -18,7 +18,9 @@ export interface RoomInfo {
     creationTime: number;    // ms since epoch
     participants: Array<{ identity: string; name: string }>;
     adminIdentity?: string;          // creator's identity, shown as crown in UI
+    permanent: boolean;              // listed in the server config; exists even when empty, can't be deleted
     canModerate: boolean;            // whether the caller (X-Lala-Device) may kick, ban, mute and delete
+    canJoin: boolean;                // whether the caller may join (the config can limit a room to members)
     screenSharingParticipants: string[];
     mutedParticipants: string[];         // mic muted by the participant
     deafenedParticipants: string[];      // from participant metadata
@@ -47,6 +49,14 @@ export interface CreateRoomRequest {
     name: string;
     password?: RoomPassword;
     maxParticipants?: number;
+}
+
+/** Response from GET /api/me */
+export interface Me {
+    identity: string;   // public; what goes into the server config to make someone a member or admin
+    role: 'admin' | 'member' | 'guest';
+    allowed: boolean;   // false when the config turns guests away
+    canCreateRooms: boolean;
 }
 
 /** Payload for POST /api/token; the identity comes from the X-Lala-Device header. */
@@ -106,6 +116,7 @@ export type ApiErrorCode =
     | 'invalid_json'
     | 'invalid_signature'
     | 'identity_required'
+    | 'not_allowed'
     | 'not_found'
     | 'password_required'
     | 'payload_too_large'

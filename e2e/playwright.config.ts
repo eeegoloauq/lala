@@ -46,6 +46,7 @@ export default defineConfig({
                 LIVEKIT_API_KEY: 'e2e-key',
                 LIVEKIT_API_SECRET: 'e2e-secret-not-used-outside-tests-000',
                 REDIS_URL: 'redis://127.0.0.1:6380',
+                LALA_CONFIG: '../../e2e/lala-e2e.yaml',
             },
         },
         {

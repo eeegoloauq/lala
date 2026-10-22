@@ -6,14 +6,14 @@ import { RoomView } from './features/room';
 import { WaveformWelcome } from './features/welcome/WaveformWelcome';
 import { useSettings } from './features/settings';
 import { useRooms } from './hooks/useRooms';
+import { useMe } from './hooks/useMe';
 import { useRoute } from './hooks/useRoute';
 import { useDisplayName } from './hooks/useDisplayName';
 import { usePersistedVolumes } from './hooks/usePersistedVolumes';
-import { getDeviceId, getCachedHmacIdentity, saveCachedHmacIdentity } from './lib/identity';
 import type { NewRoom } from './lib/types';
 import { deriveRoomKeys, newRoomSalt } from './lib/roomKeys';
 import { MAX_NAME_LENGTH } from './lib/constants';
-import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
+import { getMyAvatar, saveMyAvatar, clearMyAvatar } from './lib/avatarUtils';
 import { saveRoomPassword, getRoomPassword } from './lib/passwords';
 import { getTemplates, saveTemplate } from './lib/roomTemplates';
 import { resetRoomSession } from './lib/roomStatusStore';
@@ -25,7 +25,7 @@ export default function App() {
     const { t } = useTranslation();
     const { rooms, error: roomsError, addRoom } = useRooms();
     const { displayName, setDisplayName } = useDisplayName();
-    const [deviceId] = useState(getDeviceId);
+    const me = useMe();
     const { settings, updateSettings } = useSettings();
     const route = useRoute();
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -33,23 +33,11 @@ export default function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { volumes, handleVolumeChange } = usePersistedVolumes();
     const [myAvatar, setMyAvatar] = useState(getMyAvatar);
-    const [liveIdentity, setLiveIdentity] = useState<string | null>(() => getCachedHmacIdentity(deviceId));
-
-    const handleIdentityAssigned = useCallback((id: string) => {
-        saveCachedHmacIdentity(deviceId, id);
-        setLiveIdentity(id);
-    }, [deviceId]);
-
     const handleAvatarChange = useCallback((dataUrl: string | null) => {
-        if (dataUrl) {
-            saveMyAvatar(dataUrl);
-            setCachedAvatar(deviceId, dataUrl);
-        } else {
-            clearMyAvatar();
-            clearCachedAvatar(deviceId);
-        }
+        if (dataUrl) saveMyAvatar(dataUrl);
+        else clearMyAvatar();
         setMyAvatar(dataUrl);
-    }, [deviceId]);
+    }, []);
 
 
     useEffect(() => {
@@ -189,7 +177,8 @@ export default function App() {
                     rooms={rooms}
                     roomsError={roomsError}
                     activeRoom={activeRoom}
-                    identity={liveIdentity ?? ''}
+                    identity={me?.identity ?? ''}
+                    canCreateRooms={me?.canCreateRooms ?? true}
                     displayName={displayName}
                     myAvatarUrl={myAvatar}
                     onRename={setDisplayName}
@@ -224,7 +213,6 @@ export default function App() {
                         settings={settings}
                         onUpdateSettings={updateSettings}
                         onLeave={handleLeave}
-                        onIdentityAssigned={handleIdentityAssigned}
                         onOpenSettings={() => setSettingsOpen(true)}
                         volumes={volumes}
                         onVolumeChange={handleVolumeChange}
@@ -244,6 +232,7 @@ export default function App() {
                         onRename={setDisplayName}
                         myAvatar={myAvatar}
                         onAvatarChange={handleAvatarChange}
+                        identity={me?.identity}
                     />
                 </Suspense>
             )}

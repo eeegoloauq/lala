@@ -89,6 +89,14 @@ docker build -f packages/web/Dockerfile -t local/lala-web:dev .
 | `LALA_ACCESS_PASSWORD` | Optional password for the whole server, at least 12 characters (`openssl rand -base64 18`) |
 | `CSP_CONNECT_SRC` | CSP connect-src (default `wss: ws:`, tighten for prod) |
 
+### Members, admins and permanent rooms
+
+Without a config, everyone who reaches the server may create rooms, and each room's creator
+moderates it. To name admins and members, set who may speak, share a screen or create rooms,
+and keep rooms that always exist, copy [`config/lala.example.yaml`](config/lala.example.yaml)
+to `config/lala.yaml` and restart the `api` container. People are listed by the ID shown in
+Settings → Profile; calls keep going through the restart.
+
 ### Private server
 
 Set `LALA_ACCESS_PASSWORD` to keep the server to people you give the password to. Without it nobody
