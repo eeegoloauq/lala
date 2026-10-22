@@ -1,9 +1,23 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { SERVER_PASSWORD } from '../playwright.config';
 
+// Each person in a test is a separate client to the API, as they would be in real use:
+// per-address limits (rate limits, SSE connections) must not add up across tests.
+let clients = 0;
+async function newClient(browser: Browser) {
+    const n = ++clients;
+    const address = `10.${test.info().workerIndex % 256}.${Math.floor(n / 256)}.${n % 256}`;
+    const context = await browser.newContext();
+    // Only API requests: on third-party ones the extra header would fail CORS preflight.
+    await context.route('**/api/**', route => route.continue({
+        headers: { ...route.request().headers(), 'x-forwarded-for': address },
+    }));
+    return context;
+}
+
 /** Opens Lala in a fresh browser profile, passes the server password and sets a name. */
 async function enter(browser: Browser, name: string, settings?: object): Promise<{ page: Page; errors: string[] }> {
-    const page = await (await browser.newContext()).newPage();
+    const page = await (await newClient(browser)).newPage();
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => {
@@ -72,7 +86,7 @@ test('two people talk in a password room', async ({ browser }) => {
     expect(link).toMatch(/#pw=room-password&invite=\d+\.[\w-]+$/);
 
     // Bob has never entered the server password: the link alone lets him in.
-    const bob = { page: await (await browser.newContext()).newPage(), errors: [] as string[] };
+    const bob = { page: await (await newClient(browser)).newPage(), errors: [] as string[] };
     bob.page.on('pageerror', e => bob.errors.push(e.message));
     await bob.page.goto(link);
     await bob.page.getByPlaceholder('Your name...').fill('Bob');

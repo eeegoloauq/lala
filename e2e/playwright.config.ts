@@ -7,7 +7,8 @@ export const SERVER_PASSWORD = 'e2e-server-password';
 export default defineConfig({
     testDir: './tests',
     timeout: 90_000,
-    workers: 1,
+    // Tests share one LiveKit, Redis and API and keep apart by room name and client address.
+    fullyParallel: true,
     reporter: [['list']],
     projects: [
         { name: 'web', testIgnore: /desktop\.spec\.ts/ },
