@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
-import { useLocalParticipant } from '@livekit/components-react';
+import { useLocalParticipant, useLocalParticipantPermissions } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 
 const EmojiPicker = lazy(() => import('./EmojiPicker').then(m => ({ default: m.EmojiPicker })));
@@ -109,6 +109,9 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
     const [text, setText] = useState('');
     const [showEmoji, setShowEmoji] = useState(false);
     const [rateLimited, setRateLimited] = useState(false);
+    const [sendFailed, setSendFailed] = useState(false);
+    // The room may not let us chat (the server config sets who may).
+    const mayChat = useLocalParticipantPermissions()?.canPublishData ?? true;
     const [dragActive, setDragActive] = useState(false);
     const [fileError, setFileError] = useState<string | null>(null);
     const [jumpToLatest, setJumpToLatest] = useState(false);
@@ -390,7 +393,15 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
 
         sendTimestamps.current.push(now);
         setText('');
-        await send(trimmed);
+        setSendFailed(false);
+        try {
+            await send(trimmed);
+        } catch (err) {
+            // Put the message back rather than lose it.
+            console.warn('[ChatPanel] Sending failed:', err instanceof Error ? err.message : err);
+            setText(current => current || trimmed);
+            setSendFailed(true);
+        }
     }, [text, isSending, rateLimited, send]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -479,20 +490,25 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
                 <div className="cp-rate-limit">{t('chat.tooFast')}</div>
             )}
 
+            {sendFailed && (
+                <div className="cp-rate-limit">{t('chat.sendFailed')}</div>
+            )}
+
             <div className="cp-input-area">
                 <textarea
                     ref={inputRef}
                     id="chat-input"
                     name="chat-input"
                     className="cp-input"
-                    placeholder={rateLimited ? t('chat.tooFast') : t('chat.placeholder')}
+                    placeholder={!mayChat ? t('chat.notAllowed') : rateLimited ? t('chat.tooFast') : t('chat.placeholder')}
+                    disabled={!mayChat}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onPaste={onSendFile ? handlePaste : undefined}
                     rows={1}
                 />
-                {onSendFile && (
+                {onSendFile && mayChat && (
                     <>
                         <input
                             ref={fileInputRef}
@@ -535,7 +551,7 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
                 <button
                     className="cp-send"
                     onClick={handleSend}
-                    disabled={!text.trim() || isSending || rateLimited}
+                    disabled={!mayChat || !text.trim() || isSending || rateLimited}
                     title={t('chat.send')}
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

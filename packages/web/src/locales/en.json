@@ -142,7 +142,9 @@
     "fileSent": "{{name}} sent a file",
     "fileTooLarge": "File is too large (max {{max}})",
     "jumpToLatest": "Jump to latest",
-    "openImage": "Open full size"
+    "openImage": "Open full size",
+    "sendFailed": "The message wasn't sent, try again",
+    "notAllowed": "Chat is off in this room"
   },
   "controls": {
     "mute": "Mute microphone",
