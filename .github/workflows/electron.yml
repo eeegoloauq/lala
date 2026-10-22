@@ -31,7 +31,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: packages/desktop
-        run: npm ci || npm install
+        run: npm ci
 
       - name: Generate icons
         working-directory: packages/desktop
@@ -67,7 +67,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: packages/desktop
-        run: npm ci || npm install
+        run: npm ci
 
       - name: Generate icons
         working-directory: packages/desktop
@@ -87,12 +87,13 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           TAG="v${VERSION}"
           # What changed comes from the annotated tag; the tables below are boilerplate.
+          NOTES="$RUNNER_TEMP/release-notes.md"
           git config --global --add safe.directory "$PWD"
-          : > /tmp/release-notes.md
-          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null || true
-          git tag -l --format='%(contents)' "$TAG" > /tmp/release-notes.md
-          if [ -s /tmp/release-notes.md ]; then printf '\n' >> /tmp/release-notes.md; fi
-          cat >> /tmp/release-notes.md <<EOF
+          # The checkout has the tagged commit but not the annotated tag object.
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          git tag -l --format='%(contents)' "$TAG" > "$NOTES"
+          if [ -s "$NOTES" ]; then printf '\n' >> "$NOTES"; fi
+          cat >> "$NOTES" <<EOF
           ## Downloads
 
           | Platform | File | Description |
@@ -110,5 +111,5 @@ jobs:
 
           **Linux (RPM)**: Install with \`sudo rpm -i lala-desktop-${VERSION}.x86_64.rpm\`
           EOF
-          sed -i 's/^          //' /tmp/release-notes.md
-          gh release edit "$TAG" --notes-file /tmp/release-notes.md
+          sed -i 's/^          //' "$NOTES"
+          gh release edit "$TAG" --notes-file "$NOTES"
