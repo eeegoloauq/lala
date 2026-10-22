@@ -7,6 +7,10 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        # These values are spliced into the config with sed; |, & and \ would corrupt it.
+        for v in "$$LIVEKIT_API_KEY" "$$LIVEKIT_API_SECRET" "$$REDIS_PASSWORD" "$$NODE_IP" "$$LIVEKIT_DOMAIN"; do
+          case "$$v" in *[\|\&\\]*) echo "LiveKit settings in .env must not contain |, & or \\" >&2; exit 1 ;; esac
+        done
         sed \
           -e 's|$${NODE_IP}|'"$$NODE_IP"'|g' \
           -e 's|$${LIVEKIT_DOMAIN}|'"$$LIVEKIT_DOMAIN"'|g' \
@@ -18,8 +22,8 @@ services:
     environment:
       - NODE_IP=${NODE_IP}
       - LIVEKIT_DOMAIN=${LIVEKIT_DOMAIN}
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY in .env}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET in .env}
       - REDIS_PASSWORD=${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
     mem_limit: 2g
     security_opt:
@@ -72,8 +76,8 @@ services:
     environment:
       - NODE_ENV=production
       - LIVEKIT_URL=${LIVEKIT_URL:?set LIVEKIT_URL in .env to the public wss:// URL clients connect to}
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY in .env}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET in .env}
       - API_PORT=3001
       - LIVEKIT_HOST=lala-livekit:7880
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
