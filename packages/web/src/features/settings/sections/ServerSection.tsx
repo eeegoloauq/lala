@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getServerBans, unbanFromServer } from '../../../lib/api';
-import { ApiError, type ServerBan } from '../../../lib/types';
+import type { ServerBan } from '../../../lib/types';
+import { errorMessage } from '../../../lib/errorMessage';
 
 interface ServerSectionProps {
   headerRef: (el: HTMLElement | null) => void;
@@ -13,10 +14,7 @@ export function ServerSection({ headerRef }: ServerSectionProps) {
   const [bans, setBans] = useState<ServerBan[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const errorText = useCallback(
-    (err: unknown) => t('room.errorCode', { code: err instanceof ApiError ? err.code : 'server_error' }),
-    [t],
-  );
+  const errorText = useCallback((err: unknown) => errorMessage(t, err), [t]);
 
   useEffect(() => {
     getServerBans().then(setBans, (err) => setError(errorText(err)));

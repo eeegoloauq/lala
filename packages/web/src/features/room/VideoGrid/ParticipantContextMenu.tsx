@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingsIcon, RenameIcon } from '../icons/Icons';
-import { ApiError } from '../../../lib/types';
+import { errorMessage } from '../../../lib/errorMessage';
 import './participant-context-menu.css';
 
 export interface AdminActions {
@@ -43,7 +43,7 @@ export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVo
     const runAdmin = (action: () => Promise<void>) => {
         setAdminError(null);
         action().then(onClose, (err) => {
-            setAdminError(err instanceof ApiError && err.code === 'rate_limited' ? t('admin.rateLimited') : t('admin.failed'));
+            setAdminError(errorMessage(t, err));
         });
     };
 

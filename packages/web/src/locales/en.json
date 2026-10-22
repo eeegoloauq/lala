@@ -30,7 +30,6 @@
     "cancel": "Cancel",
     "creating": "Creating...",
     "create": "Create",
-    "createFailed": "Failed to create room",
     "stage": "Only I speak",
     "stageHint": "Others listen and can raise a hand; you give them the floor"
   },
@@ -104,8 +103,6 @@
     "banned": "{{by}} banned {{target}}",
     "muted": "{{by}} muted {{target}}",
     "unmuted": "{{by}} unmuted {{target}}",
-    "rateLimited": "Too many actions — wait a moment",
-    "failed": "That didn't work, try again",
     "voiced": "{{by}} let {{target}} speak",
     "unvoiced": "{{by}} took the floor back from {{target}}"
   },
@@ -395,5 +392,12 @@
     "wrongPassword": "Wrong password",
     "tooManyAttempts": "Too many attempts. Try again in {{minutes}} min",
     "serverError": "Could not reach the server. Try again"
+  },
+  "errors": {
+    "rate_limited": "Too many requests, wait a moment",
+    "not_allowed": "The server doesn't allow this",
+    "banned": "You're banned here",
+    "forbidden": "You can't do that here",
+    "server_unavailable": "Can't reach the server"
   }
 }

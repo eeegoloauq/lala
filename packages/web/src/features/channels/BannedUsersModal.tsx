@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RoomBan } from '../../lib/types';
-import { ApiError } from '../../lib/types';
+import { errorMessage } from '../../lib/errorMessage';
 import { getBans, unbanParticipant } from '../../lib/api';
 import './banned-users-modal.css';
 
@@ -17,8 +17,6 @@ export function BannedUsersModal({ roomId, onClose }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [unbanning, setUnbanning] = useState<string | null>(null);
 
-    const toErrorMessage = (err: unknown) =>
-        t('room.errorCode', { code: err instanceof ApiError ? err.code : 'server_error' });
 
     const load = useCallback(async () => {
         setError(null);
@@ -26,7 +24,7 @@ export function BannedUsersModal({ roomId, onClose }: Props) {
             const list = await getBans(roomId);
             setBans(list);
         } catch (err) {
-            setError(toErrorMessage(err));
+            setError(errorMessage(t, err));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomId]);
@@ -41,7 +39,7 @@ export function BannedUsersModal({ roomId, onClose }: Props) {
             // Optimistic removal — avoids a round trip just to confirm what we already know.
             setBans((prev) => prev?.filter((b) => b.identity !== identity) ?? prev);
         } catch (err) {
-            setError(toErrorMessage(err));
+            setError(errorMessage(t, err));
         } finally {
             setUnbanning(null);
         }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NewRoom } from '../../lib/types';
+import { errorMessage } from '../../lib/errorMessage';
 import './create-room-modal.css';
 
 interface Props {
@@ -35,8 +36,8 @@ export function CreateRoomModal({ onConfirm, onClose }: Props) {
                 stage: stage || undefined,
             });
             onClose();
-        } catch {
-            setError(t('createRoom.createFailed'));
+        } catch (err) {
+            setError(errorMessage(t, err));
         } finally {
             setLoading(false);
         }

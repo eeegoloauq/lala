@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError } from '../../lib/types';
+import { errorMessage } from '../../lib/errorMessage';
 import { deleteRoom } from '../../lib/api';
 // Reuses the same themed .ctx-menu / .ctx-menu-item classes as the participant
 // right-click menu (winxp has hand-tuned overrides for these selectors already —
@@ -59,7 +59,7 @@ export function RoomContextMenu({ roomId, roomName, permanent, x, y, onOpenBans,
             // triggers useRooms' fetchRooms(), which drops the deleted room.
             onClose();
         } catch (err) {
-            setError(err instanceof ApiError ? t('room.errorCode', { code: err.code }) : t('room.errorCode', { code: 'server_error' }));
+            setError(errorMessage(t, err));
             setDeleting(false);
         }
     };
