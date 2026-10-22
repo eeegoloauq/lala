@@ -9,7 +9,8 @@ export default defineConfig({
     timeout: 90_000,
     // Tests share one LiveKit, Redis and API and keep apart by room name and client address.
     fullyParallel: true,
-    reporter: [['list']],
+    // In CI, failures also become annotations on the run, readable without its log.
+    reporter: process.env.CI ? [['github'], ['list']] : [['list']],
     projects: [
         { name: 'web', testIgnore: /desktop\.spec\.ts/ },
         { name: 'desktop', testMatch: /desktop\.spec\.ts/ },
@@ -17,6 +18,7 @@ export default defineConfig({
     use: {
         baseURL: 'http://127.0.0.1:3000',
         permissions: ['microphone', 'camera'],
+        trace: 'retain-on-failure',
         launchOptions: {
             args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'],
         },

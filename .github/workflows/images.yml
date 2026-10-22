@@ -38,11 +38,11 @@ jobs:
             packages/api/package-lock.json
             packages/web/package-lock.json
       # The scripts fetch LiveKit and build Redis from source; their versions live in the scripts.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: e2e/.bin
           key: e2e-bin-${{ runner.arch }}-${{ hashFiles('e2e/livekit.sh', 'e2e/redis.sh') }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.arch }}-${{ hashFiles('e2e/package-lock.json') }}
@@ -50,6 +50,13 @@ jobs:
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - name: Run e2e
         run: cd e2e && npm test
+      # Traces of failed tests: open with `npx playwright show-trace`.
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: e2e/test-results
+          retention-days: 7
 
   # Each architecture builds on its own native runner, alongside the tests, and is
   # pushed untagged; the publish job tags the pair as one multi-arch image once the
@@ -85,7 +92,7 @@ jobs:
             jq -r '."containerimage.digest"' meta.json > digests/$image-${{ matrix.arch }}
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.arch }}
           path: digests
@@ -96,7 +103,7 @@ jobs:
     permissions:
       packages: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: digests-*
           merge-multiple: true
