@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UpdateStatus } from '../../../types/electron';
 import { ICON_VARIANTS } from '../../../lib/iconVariants';
+import type { AppSettings } from '../types';
 
 interface DesktopSectionProps {
   headerRef: (el: HTMLElement | null) => void;
+  settings: AppSettings;
+  onUpdate: (patch: Partial<AppSettings>) => void;
 }
 
-export function DesktopSection({ headerRef }: DesktopSectionProps) {
+export function DesktopSection({ headerRef, settings, onUpdate }: DesktopSectionProps) {
   const { t } = useTranslation();
 
   return (
@@ -28,6 +31,21 @@ export function DesktopSection({ headerRef }: DesktopSectionProps) {
       <div className="settings-section">
         <div className="settings-section-title">{t('settings.startup')}</div>
         <AutoLaunchToggle />
+        <div className="settings-row">
+          <div>
+            <div className="settings-row-label">{t('settings.autoJoinLastRoom')}</div>
+            <div className="settings-row-desc">{t('settings.autoJoinLastRoomHint')}</div>
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              className="toggle-input"
+              checked={settings.autoJoinLastRoom}
+              onChange={(e) => onUpdate({ autoJoinLastRoom: e.target.checked })}
+            />
+            <span className="toggle-slider" />
+          </label>
+        </div>
       </div>
       <div className="settings-section">
         <div className="settings-section-title">{t('settings.appIcon')}</div>

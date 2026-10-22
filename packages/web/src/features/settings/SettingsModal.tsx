@@ -189,7 +189,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
               />
             )}
 
-            {isElectron && <DesktopSection headerRef={setSectionRef('desktop')} />}
+            {isElectron && <DesktopSection headerRef={setSectionRef('desktop')} settings={settings} onUpdate={onUpdate} />}
 
           {/* -- About -- */}
           <div className="settings-about">

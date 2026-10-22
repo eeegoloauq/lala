@@ -33,6 +33,7 @@ export interface AppSettings {
   ttsMaxLength: number;    // truncate message at this char count
   ttsVoice: string;        // SpeechSynthesis voice name, '' = default
   ambientMode: boolean;    // Ambient glow behind video (default on)
+  autoJoinLastRoom: boolean; // desktop: join the most recent room on launch
   simulcast: boolean;      // Encode multiple quality layers (off = saves CPU/upload for small rooms)
   soundJoinLeave: boolean;
   soundChat: boolean;
@@ -69,6 +70,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ttsMaxLength: 200,
   ttsVoice: '',
   ambientMode: true,
+  autoJoinLastRoom: false,
   simulcast: true,
   soundJoinLeave: true,
   soundChat: true,

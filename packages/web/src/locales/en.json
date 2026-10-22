@@ -323,7 +323,9 @@
     "stop": "Stop",
     "server": "Server",
     "connectedTo": "Connected server",
-    "disconnect": "Disconnect"
+    "disconnect": "Disconnect",
+    "autoJoinLastRoom": "Join the last room",
+    "autoJoinLastRoomHint": "On launch, go straight into the room you were in last; it is created again if it has ended"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",

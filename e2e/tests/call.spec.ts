@@ -238,3 +238,28 @@ test('only the creator moderates, and one name is one live room', async ({ brows
     expect(reborn.body.id).not.toBe(id);
     expect(reborn.body.canModerate).toBe(true);
 });
+
+test('auto-join brings friends launching together into one room', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice', { autoJoinLastRoom: true });
+    const bob = await enter(browser, 'Bob', { autoJoinLastRoom: true });
+
+    // Creating a room remembers it as the last one; Bob's create joins Alice's live room.
+    for (const { page } of [alice, bob]) {
+        await page.getByRole('button', { name: 'Create channel' }).click();
+        await page.getByPlaceholder('e.g. "General"').fill('Daily');
+        await page.getByRole('button', { name: 'Create', exact: true }).click();
+        await page.waitForURL(/\/room\//);
+    }
+    const ended = new URL(alice.page.url()).pathname;
+    expect(new URL(bob.page.url()).pathname).toBe(ended);
+
+    // The room ends, then both launch Lala at the same moment.
+    const device = await alice.page.evaluate(() => localStorage.getItem('lala-device-id'));
+    expect((await api(alice.page, device!, 'DELETE', `/rooms/${ended.split('/').pop()}`)).status).toBe(200);
+    await Promise.all([alice.page.goto('/'), bob.page.goto('/')]);
+    await Promise.all([alice, bob].map(({ page }) => page.waitForURL(/\/room\//)));
+    const room = new URL(alice.page.url()).pathname;
+    expect(room).not.toBe(ended);
+    expect(new URL(bob.page.url()).pathname).toBe(room);
+    await expect.poll(async () => (await media(alice.page)).audio, { timeout: 20_000 }).toBe(1);
+});

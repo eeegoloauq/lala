@@ -15,7 +15,7 @@ import { deriveRoomKeys, newRoomSalt } from './lib/roomKeys';
 import { MAX_NAME_LENGTH } from './lib/constants';
 import { getMyAvatar, saveMyAvatar, clearMyAvatar, setCachedAvatar, clearCachedAvatar } from './lib/avatarUtils';
 import { saveRoomPassword, getRoomPassword } from './lib/passwords';
-import { saveTemplate } from './lib/roomTemplates';
+import { getTemplates, saveTemplate } from './lib/roomTemplates';
 import { resetRoomSession } from './lib/roomStatusStore';
 import './App.css';
 
@@ -110,7 +110,8 @@ export default function App() {
         window.electronAPI?.saveSession?.(null);
     };
 
-    const handleCreateRoom = async (req: NewRoom) => {
+    const { navigate } = route;
+    const handleCreateRoom = useCallback(async (req: NewRoom) => {
         const salt = req.password ? newRoomSalt() : undefined;
         const password = req.password && salt
             ? { salt, key: (await deriveRoomKeys(req.password, salt)).authKey }
@@ -124,9 +125,21 @@ export default function App() {
             password: req.password || undefined,
             maxParticipants: req.maxParticipants || undefined,
         });
-        route.navigate('/room/' + room.id);
+        navigate('/room/' + room.id);
         setSidebarOpen(false);
-    };
+    }, [addRoom, navigate]);
+
+    // Desktop option: on launch, go into the most recent room, created again if it has
+    // ended. Creating by name returns the live room, so friends launching together meet
+    // in one room. Once per launch, and a room link opened at launch wins.
+    const autoJoinTried = useRef(false);
+    useEffect(() => {
+        if (autoJoinTried.current || !displayName) return;
+        autoJoinTried.current = true;
+        const last = getTemplates()[0];
+        if (!settings.autoJoinLastRoom || route.roomId || !last) return;
+        handleCreateRoom(last).catch(err => console.warn('[App] Joining the last room failed:', err));
+    }, [displayName, settings.autoJoinLastRoom, route.roomId, handleCreateRoom]);
 
     if (!displayName) {
         return (

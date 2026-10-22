@@ -119,6 +119,7 @@ IndexedDB (`lala-secure`); ciphertext lives under `lala_enc_<logical-key>`.
 | screenShareAudio | true | include system audio |
 | chatTTS | true | speak chat messages |
 | ambientMode | true | ambient canvas behind screen share |
+| autoJoinLastRoom | false | desktop: on launch, create-or-join the most recent room template (App.tsx) |
 | simulcast | true | multiple quality layers |
 | shortcutsEnabled | true | master toggle |
 | keyMic/keyCam/keyDeafen/keyChat/keyFullscreen/keyScreenShare | M/V/D/C/F/S | rebindable shortcuts |
