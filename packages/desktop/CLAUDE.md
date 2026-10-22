@@ -93,4 +93,6 @@ npm run build:linux      # AppImage, rpm, tar.gz
 npm run publish:win      # build + publish to GitHub Releases
 npm run publish:linux    # build + publish
 ```
+`overrides` in `package.json` force patched `undici` into the build toolchain: `^7` under `@electron/get`, `^6` under `node-gyp` (node-gyp 12 does not work with 7). Build-time only; drop them once the parents depend on fixed versions. A major bump of either breaks `npm ci`, which the Forgejo PR check now runs.
+
 Release: `./release.sh patch|minor|major|x.y.z <notes-file>` -> bumps version, commits, makes an annotated tag from the notes (the release body), pushes. CI on tag push.

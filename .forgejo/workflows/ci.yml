@@ -27,3 +27,10 @@ jobs:
           npm ci
           npm run lint
           npm run build
+      # The desktop client is built only on release tags, so a lockfile out of
+      # sync with package.json would otherwise surface first in a release or Copr.
+      - name: desktop
+        run: |
+          cd packages/desktop
+          npm ci
+          for f in main.js preload.js connection.js main/*.js; do node --check "$f"; done
