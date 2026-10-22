@@ -15,8 +15,7 @@
     "quality": "Quality",
     "frameRate": "Frame rate",
     "audio": "Audio",
-    "dontAsk": "Don't ask again",
-    "qualityLabel": "{{mbps}} Mbps · {{fps}}fps"
+    "dontAsk": "Don't ask again"
   },
   "createRoom": {
     "title": "New Channel",

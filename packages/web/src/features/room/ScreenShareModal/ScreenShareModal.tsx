@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ScreenShareQuality } from '../hooks/useScreenShare';
+import { getScreenShareQuality, type ScreenShareQuality } from '../hooks/useScreenShare';
 import type { AppSettings } from '../../settings/types';
 import type { DesktopSource } from '../../../types/electron';
 import { useEscapeKey } from '../../../hooks/useEscapeKey';
@@ -77,26 +77,15 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
         });
     }, [activeTab, sources, loading, showSourcePicker]);
 
-    const fps = SCREEN_SHARE_FPS_STEPS[fpsIdx];
-    const mbps = SCREEN_SHARE_BITRATE_STEPS[brIdx];
 
     const handleConfirm = () => {
-        const quality: ScreenShareQuality = {
-            id: `${mbps}mbps${fps}fps`,
-            label: `${screenShareBitrateLabel(mbps)} · ${fps}fps`,
-            description: `${mbps} Mbps`,
-            encoding: {
-                maxBitrate: mbps * 1_000_000,
-                maxFramerate: fps,
-            },
-        };
         onUpdateSettings({
             screenShareFpsIdx: fpsIdx,
             screenShareBrIdx: brIdx,
             screenShareSkipDialog: skipDialog,
             screenShareAudio: audio,
         });
-        onConfirm(quality, showSourcePicker ? selectedSourceId : undefined, audio);
+        onConfirm(getScreenShareQuality(fpsIdx, brIdx), showSourcePicker ? selectedSourceId : undefined, audio);
     };
 
     const screens = useMemo(() => sources.filter(s => s.id.startsWith('screen:')), [sources]);

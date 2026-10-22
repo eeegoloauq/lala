@@ -1,8 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useDisconnectButton, useLocalParticipant, useLocalParticipantPermissions, useParticipantAttributes } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
-import { useLocalControls } from '../hooks/useLocalControls';
-import { useScreenShare } from '../hooks/useScreenShare';
 import {
     MicIcon, MicOffIcon,
     VideoIcon, VideoOffIcon,
@@ -17,7 +15,12 @@ import { CAMERA, MICROPHONE, SCREEN_SHARE, canPublishSource } from '../lib/permi
 
 const canScreenShare = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
 
+type Toggle = { enabled: boolean; pending: boolean };
+
 interface ControlBarProps {
+    mic: Toggle & { toggle: () => void };
+    cam: Toggle & { toggle: () => void };
+    screen: Toggle;
     audioMuted: boolean;
     onToggleAudio: () => void;
     chatOpen: boolean;
@@ -26,10 +29,8 @@ interface ControlBarProps {
     onScreenShareClick?: () => void;
 }
 
-export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, unreadCount = 0, onScreenShareClick }: ControlBarProps) {
+export function ControlBar({ mic, cam, screen, audioMuted, onToggleAudio, chatOpen, onToggleChat, unreadCount = 0, onScreenShareClick }: ControlBarProps) {
     const { t } = useTranslation();
-    const { mic, cam } = useLocalControls();
-    const { enabled: screenEnabled, pending: screenPending } = useScreenShare();
     const { buttonProps: leaveProps } = useDisconnectButton({});
     // What the server lets us publish here; a button for something we may not do stays off.
     const permissions = useLocalParticipantPermissions();
@@ -82,12 +83,12 @@ export function ControlBar({ audioMuted, onToggleAudio, chatOpen, onToggleChat, 
 
                 {(canScreenShare || isElectron) && (
                     <button
-                        className={`cb-btn cb-anim-rise${screenEnabled ? ' cb-active' : ''}`}
+                        className={`cb-btn cb-anim-rise${screen.enabled ? ' cb-active' : ''}`}
                         onClick={onScreenShareClick}
-                        disabled={screenPending || !mayPublish(SCREEN_SHARE)}
-                        title={!mayPublish(SCREEN_SHARE) ? t('controls.notAllowed') : screenEnabled ? t('controls.screenShareStop') : t('controls.screenShareStart')}
+                        disabled={screen.pending || !mayPublish(SCREEN_SHARE)}
+                        title={!mayPublish(SCREEN_SHARE) ? t('controls.notAllowed') : screen.enabled ? t('controls.screenShareStop') : t('controls.screenShareStart')}
                     >
-                        {screenEnabled ? <ScreenShareOffIcon /> : <ScreenShareIcon />}
+                        {screen.enabled ? <ScreenShareOffIcon /> : <ScreenShareIcon />}
                     </button>
                 )}
 

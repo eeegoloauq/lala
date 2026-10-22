@@ -15,8 +15,7 @@
     "quality": "Качество",
     "frameRate": "Частота кадров",
     "audio": "Звук",
-    "dontAsk": "Не спрашивать",
-    "qualityLabel": "{{mbps}} Мбит/с · {{fps}}fps"
+    "dontAsk": "Не спрашивать"
   },
   "createRoom": {
     "title": "Новый канал",

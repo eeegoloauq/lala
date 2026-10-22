@@ -128,7 +128,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     useCameraProcessor(settings.cameraEffect);
 
     const { mic, cam } = useLocalControls();
-    const { enabled: screenEnabled, start: startScreen, stop: stopScreen } = useScreenShare();
+    const { enabled: screenEnabled, pending: screenPending, start: startScreen, stop: stopScreen } = useScreenShare();
 
     useJoinLeaveSound(settings.soundJoinLeave ?? true);
     useScreenShareSound(settings.soundScreenShare ?? true);
@@ -346,6 +346,9 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
 
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
                 <ControlBar
+                    mic={mic}
+                    cam={cam}
+                    screen={{ enabled: screenEnabled, pending: screenPending }}
                     audioMuted={audioMuted}
                     onToggleAudio={handleToggleAudio}
                     chatOpen={chatOpen}

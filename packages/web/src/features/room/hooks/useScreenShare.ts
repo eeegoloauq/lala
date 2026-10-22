@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import i18next from 'i18next';
 import { useLocalParticipant, useTracks, isTrackReference } from '@livekit/components-react';
 import { Track, AudioPresets } from 'livekit-client';
 import type { AudioCaptureOptions, VideoEncoding, VideoResolution } from 'livekit-client';
@@ -22,10 +21,8 @@ const screenShareAudioOptions: AudioCaptureOptions = {
 };
 
 export interface ScreenShareQuality {
-    id: string;
-    label: string;
-    description: string;
     encoding: VideoEncoding;
+    /** Capture limit that goes with the bitrate; none means the source's own size. */
     resolution?: VideoResolution;
 }
 
@@ -40,13 +37,7 @@ export function getScreenShareQuality(fpsIdx: number, brIdx: number): ScreenShar
     else if (mbps <= 8) resolution = { width: 2560, height: 1440 };
     else resolution = undefined; // original / 4K
 
-    return {
-        id: `${mbps}mbps${fps}fps`,
-        label: i18next.t('screenShare.qualityLabel', { mbps, fps }),
-        description: '',
-        encoding: { maxBitrate: mbps * 1_000_000, maxFramerate: fps },
-        resolution,
-    };
+    return { encoding: { maxBitrate: mbps * 1_000_000, maxFramerate: fps }, resolution };
 }
 
 export function useScreenShare() {
