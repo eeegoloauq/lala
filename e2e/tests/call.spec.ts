@@ -395,3 +395,25 @@ test('switching rooms keeps the microphone', async ({ browser }) => {
     await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);
     expect(alice.errors).toEqual([]);
 });
+
+test('changing a media setting in a call keeps the connection and the microphone', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    const bob = await enter(browser, 'Bob');
+    let signalSockets = 0;
+    alice.page.on('websocket', ws => { if (ws.url().includes('/rtc')) signalSockets++; });
+    await createRoom(alice.page, 'Settings room');
+    await bob.page.goto(alice.page.url());
+    const aliceTrack = () => bob.page.evaluate(() => [...document.querySelectorAll('audio')]
+        .flatMap(a => (a.srcObject as MediaStream | null)?.getAudioTracks() ?? [])
+        .find(t => t.readyState === 'live')?.id);
+    await expect.poll(aliceTrack, { timeout: 20_000 }).toBeTruthy();
+    const before = await aliceTrack();
+
+    // Echo cancellation is a capture setting: the microphone is published again.
+    await alice.page.getByTitle('Settings').click();
+    await alice.page.locator('.settings-row', { hasText: 'Echo cancellation' }).locator('.toggle').click();
+    await alice.page.keyboard.press('Escape');
+    await expect.poll(async () => { const now = await aliceTrack(); return now && now !== before; }, { timeout: 20_000 }).toBe(true);
+    expect(signalSockets).toBe(1);
+    expect(alice.errors).toEqual([]);
+});

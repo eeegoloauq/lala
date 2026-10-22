@@ -1,6 +1,6 @@
 import { LiveKitRoom } from '@livekit/components-react';
-import { AudioPresets, VideoPresets, ScreenSharePresets, ExternalE2EEKeyProvider, isE2EESupported, Room, createLocalAudioTrack, Track } from 'livekit-client';
-import type { AudioCaptureOptions, RoomOptions, LocalAudioTrack } from 'livekit-client';
+import { ExternalE2EEKeyProvider, isE2EESupported, Room, createLocalAudioTrack, Track } from 'livekit-client';
+import type { AudioCaptureOptions, LocalAudioTrack } from 'livekit-client';
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,8 @@ import { deriveRoomKeys } from '../../lib/roomKeys';
 import type { AppSettings } from '../settings/types';
 import { RoomShell } from './RoomShell';
 import { MICROPHONE, canPublishSource } from './lib/permissions';
+import { audioCaptureFrom, mediaOptionsFrom } from './lib/roomOptions';
+import { useLiveSettings } from './hooks/useLiveSettings';
 import './RoomView.css';
 
 interface RoomViewProps {
@@ -54,77 +56,28 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         return () => { e2eeSetup?.worker.terminate(); };
     }, [e2eeSetup]);
 
-    // Hoisted into useMemo (and placed before any early return below, so the hook
-    // itself always runs) so <LiveKitRoom> gets referentially-stable `audio`/`options`
-    // objects across re-renders instead of a fresh object every render — LiveKitRoom
-    // otherwise has no way to tell "same settings" from "settings changed".
-    //
-    // AEC defaults on — disabling it in a voice room creates echo that every
-    // other listener hears (speakerphone/laptop speakers), so the settings UI
-    // warns to only turn it off with headphones. Exposing the toggle matters
-    // because starting/stopping an echoCancellation:true capture retriggers
-    // Chromium's ChromeWideEchoCancellation feature: the audio service stops
-    // and reopens ALL of Chrome's currently-playing output streams as one
-    // mixed stream (OutputDeviceMixerImpl::StartListening), then switches back
-    // ~1s after the last AEC capture stops. On Linux/PipeWire that close/reopen
-    // is audible as a harsh ~0.5-1s glitch in whatever's playing. The join-time
-    // occurrence of this is mitigated below by pre-acquiring the mic track
-    // before any call audio plays; toggling AEC or switching the mic device
-    // mid-call still pays this cost, and headphone users gain quality with it
-    // off. Music / screen-share-audio uses a separate path with AEC always off.
-    const audioOptions: AudioCaptureOptions = useMemo(() => ({
-        autoGainControl: settings.autoGainControl,
-        noiseSuppression: settings.noiseSuppressionMode === 'browser',
-        echoCancellation: settings.echoCancellation,
-        deviceId: settings.audioInputDeviceId || undefined,
-    }), [settings.autoGainControl, settings.noiseSuppressionMode, settings.echoCancellation, settings.audioInputDeviceId]);
+    const audioOptions: AudioCaptureOptions = useMemo(() => audioCaptureFrom(settings), [settings]);
 
-    const roomOptions: RoomOptions = useMemo(() => {
-        const videoResolutionMap: Record<string, typeof VideoPresets.h720.resolution> = {
-            h1080: VideoPresets.h1080.resolution,
-            h720: VideoPresets.h720.resolution,
-            vga: VideoPresets.h360.resolution,
-        };
-        return {
-            ...(e2eeSetup ? { e2ee: { keyProvider: e2eeSetup.keyProvider, worker: e2eeSetup.worker } } : {}),
-            audioOutput: settings.audioOutputDeviceId ? { deviceId: settings.audioOutputDeviceId } : undefined,
-            audioCaptureDefaults: audioOptions,
-            videoCaptureDefaults: {
-                resolution: videoResolutionMap[settings.videoResolution] ?? VideoPresets.h720.resolution,
-                deviceId: settings.videoInputDeviceId || undefined,
-            },
-            publishDefaults: {
-                audioPreset: AudioPresets[settings.audioQuality],
-                // DTX (discontinuous transmission) stops sending audio packets during
-                // silence. On the music-quality presets, receivers' Opus decoders fill
-                // those gaps with comfort noise — audible as hiss right after a silent
-                // participant joins. Only the speech preset (voice-tuned, mono, lower
-                // bitrate) is worth the tradeoff; music presets keep the stream live.
-                dtx: settings.audioQuality === 'speech',
-                forceStereo: settings.audioQuality.includes('Stereo'),
-                videoEncoding: {
-                    maxBitrate: 1_500_000,
-                    maxFramerate: 30,
-                },
-                screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
-                simulcast: settings.simulcast,
-            },
-            adaptiveStream: true,
-            dynacast: true,
-        };
-    }, [e2eeSetup, audioOptions, settings.audioOutputDeviceId, settings.videoResolution, settings.videoInputDeviceId, settings.audioQuality, settings.simulcast]);
+
+
+    // Settings mirrored into a ref for code that must read the current values without
+    // re-running when they change: building the Room, handleConnected's push-to-talk check.
+    const settingsRef = useRef(settings);
+    useEffect(() => { settingsRef.current = settings; });
 
     // We construct the Room ourselves (instead of letting <LiveKitRoom> do it via
-    // `options`) so we can call `prepareConnection` on it as soon as the token
-    // arrives — warming up DNS/TLS while the E2EE setup is still in flight. Passing a `room` instance makes the `options` prop a
-    // no-op (per @livekit/components-react's LiveKitRoomProps doc), so options
-    // must be — and are, via roomOptions above — set at construction time here.
-    // Recreating the Room when roomOptions changes is correct: e2ee must be
-    // configured at construction, and this mirrors the prior behavior where
-    // <LiveKitRoom> itself recreated its internal Room whenever `options` changed
-    // identity. <LiveKitRoom> handles disconnecting the previous Room instance
-    // when the `room` prop changes, so no manual disconnect is needed here.
-    const room = useMemo(() => new Room(roomOptions), [roomOptions]);
+    // `options`) so we can call `prepareConnection` on it as soon as the token arrives,
+    // warming up DNS/TLS while the E2EE setup is still in flight. E2EE must be set at
+    // construction, so a new Room comes only with it; media settings reach the live Room
+    // through useLiveSettings. <LiveKitRoom> disconnects a previous Room on its own.
+    const room = useMemo(
+        () => new Room({
+            ...mediaOptionsFrom(settingsRef.current),
+            ...(e2eeSetup ? { e2ee: { keyProvider: e2eeSetup.keyProvider, worker: e2eeSetup.worker } } : {}),
+        }),
+        [e2eeSetup],
+    );
+    useLiveSettings(room, settings);
 
     // Bumped on every (re)connect attempt and on unmount; async work compares
     // its captured generation to detect it went stale mid-flight (fast room
@@ -141,12 +94,6 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
     // Connected fires for a *different* Room instance than last time.
     const handledRoomRef = useRef<Room | null>(null);
 
-    // Settings mirrored into a ref so handleConnected (registered once per
-    // `room`/`audioOptions` identity) can read the *current* push-to-talk
-    // setting without becoming a dependency that would recreate the callback
-    // (and re-fire LiveKitRoom's onConnected wiring) on every settings change.
-    const settingsRef = useRef(settings);
-    useEffect(() => { settingsRef.current = settings; });
 
     // The room's password salt, read at the start of each join attempt.
     const saltRef = useRef<string | undefined>(undefined);

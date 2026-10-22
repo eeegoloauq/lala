@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { Track, ParticipantEvent } from 'livekit-client';
 import type { LocalAudioTrack, LocalTrackPublication } from 'livekit-client';
@@ -12,7 +12,6 @@ interface AudioProcessorSettings {
 
 export function useAudioProcessor({ noiseSuppressionMode, silenceGate }: AudioProcessorSettings) {
     const { localParticipant } = useLocalParticipant();
-    const processorRef = useRef<LalaAudioProcessor | null>(null);
 
     useEffect(() => {
         const needsProcessor = noiseSuppressionMode === 'rnnoise' || silenceGate !== 0;
@@ -22,45 +21,26 @@ export function useAudioProcessor({ noiseSuppressionMode, silenceGate }: AudioPr
             return pub?.audioTrack as LocalAudioTrack | undefined;
         };
 
+        // Asks the track, not a remembered processor: a republished mic track starts bare.
         const applyProcessor = async (track: LocalAudioTrack | undefined) => {
             if (!track) return;
-
+            const current = track.getProcessor();
             if (!needsProcessor) {
-                if (processorRef.current) {
-                    await track.setProcessor(null as never);
-                    processorRef.current = null;
-                }
+                if (current) await track.stopProcessor();
                 return;
             }
-
-            const config = {
-                rnnoise: noiseSuppressionMode === 'rnnoise',
-                gateThreshold: silenceGate,
-            };
-
-            if (processorRef.current) {
-                // Update in-place — no restart needed
-                processorRef.current.updateConfig(config);
-            } else {
-                const processor = new LalaAudioProcessor(config);
-                processorRef.current = processor;
-                await track.setProcessor(processor);
-            }
+            const config = { rnnoise: noiseSuppressionMode === 'rnnoise', gateThreshold: silenceGate };
+            if (current instanceof LalaAudioProcessor) current.updateConfig(config);
+            else await track.setProcessor(new LalaAudioProcessor(config));
         };
 
         const run = () => {
             applyProcessor(getMicTrack()).catch(err => console.warn('[useAudioProcessor] failed to apply:', err.message));
         };
 
-        // Apply immediately in case a mic track already exists...
+        // Apply now, and again for every newly published mic track (unmuting after a
+        // settings change, or a republish), which starts without the processor.
         run();
-
-        // ...and re-apply whenever a new local mic track is published. Without
-        // this, muting -> changing NS mode/silence gate -> unmuting publishes a
-        // fresh, unprocessed track: the settings change above no-ops silently
-        // because there was no track to attach the processor to at the time.
-        // (Listening on the LocalParticipant instance, so this is the
-        // Participant-level event, not the identically-named Room-level one.)
         const onLocalTrackPublished = (pub: LocalTrackPublication) => {
             if (pub.source === Track.Source.Microphone) run();
         };
@@ -70,16 +50,10 @@ export function useAudioProcessor({ noiseSuppressionMode, silenceGate }: AudioPr
         };
     }, [noiseSuppressionMode, silenceGate, localParticipant]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
-            const track = localParticipant
-                .getTrackPublication(Track.Source.Microphone)
-                ?.audioTrack as LocalAudioTrack | undefined;
-            if (track && processorRef.current) {
-                track.setProcessor(null as never).catch(() => {});
-                processorRef.current = null;
-            }
+            const track = localParticipant.getTrackPublication(Track.Source.Microphone)?.audioTrack as LocalAudioTrack | undefined;
+            if (track?.getProcessor()) track.stopProcessor().catch(() => {});
         };
     }, [localParticipant]);
 }
