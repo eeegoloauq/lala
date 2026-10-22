@@ -346,7 +346,10 @@
     "copy": "Copy",
     "serverBans": "Banned from the server",
     "serverBansHint": "Banned people can join no room. The address each last used is banned for a day as well.",
-    "ipBannedUntil": "Address banned until {{time}}"
+    "ipBannedUntil": "Address banned until {{time}}",
+    "microphoneN": "Microphone {{n}}",
+    "speakerN": "Speaker {{n}}",
+    "cameraN": "Camera {{n}}"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",

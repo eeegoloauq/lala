@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppSettings } from '../types';
 import { Select } from '../../../ui/Select';
@@ -18,46 +18,35 @@ export function DevicesSection({ headerRef, settings, onUpdate, micMonitor, setM
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   useEffect(() => {
-    const fetchDevices = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        stream.getTracks().forEach(t => t.stop());
-        const dev = await navigator.mediaDevices.enumerateDevices();
-        setDevices(dev);
-      } catch (err) {
-        console.warn('Could not list devices', err);
+    let cancelled = false;
+    const show = (list: MediaDeviceInfo[]) => { if (!cancelled) setDevices(list); };
+    const list = async () => {
+      let found = await navigator.mediaDevices.enumerateDevices();
+      // Browsers hide device names until a capture is allowed. The microphone is expected
+      // here; the camera is not asked for, so cameras keep plain numbered names until used.
+      if (found.some(d => d.kind === 'audioinput' && !d.label)) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+        stream?.getTracks().forEach(track => track.stop());
+        if (stream) found = await navigator.mediaDevices.enumerateDevices();
       }
+      show(found);
     };
-    fetchDevices();
-    navigator.mediaDevices.addEventListener('devicechange', fetchDevices);
-    return () => navigator.mediaDevices.removeEventListener('devicechange', fetchDevices);
+    list().catch(err => console.warn('[DevicesSection] Listing devices failed:', err));
+    const onChange = () => { navigator.mediaDevices.enumerateDevices().then(show, () => {}); };
+    navigator.mediaDevices.addEventListener('devicechange', onChange);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices.removeEventListener('devicechange', onChange);
+    };
   }, []);
 
-  const DEFAULT_DEVICE: SelectOption = useMemo(() => ({ value: '', label: t('settings.defaultDevice') }), [t]);
-
-  const audioInputOptions = useMemo<SelectOption[]>(() => [
-    DEFAULT_DEVICE,
-    ...devices.filter(d => d.kind === 'audioinput').map(d => ({
-      value: d.deviceId,
-      label: d.label || 'Unknown Microphone',
-    })),
-  ], [devices, DEFAULT_DEVICE]);
-
-  const audioOutputOptions = useMemo<SelectOption[]>(() => [
-    DEFAULT_DEVICE,
-    ...devices.filter(d => d.kind === 'audiooutput').map(d => ({
-      value: d.deviceId,
-      label: d.label || 'Unknown Speaker',
-    })),
-  ], [devices, DEFAULT_DEVICE]);
-
-  const videoInputOptions = useMemo<SelectOption[]>(() => [
-    DEFAULT_DEVICE,
-    ...devices.filter(d => d.kind === 'videoinput').map(d => ({
-      value: d.deviceId,
-      label: d.label || 'Unknown Camera',
-    })),
-  ], [devices, DEFAULT_DEVICE]);
+  const optionsFor = useCallback((kind: MediaDeviceKind, unnamed: string): SelectOption[] => [
+    { value: '', label: t('settings.defaultDevice') },
+    ...devices.filter(d => d.kind === kind).map((d, i) => ({ value: d.deviceId, label: d.label || t(unnamed, { n: i + 1 }) })),
+  ], [devices, t]);
+  const audioInputOptions = useMemo(() => optionsFor('audioinput', 'settings.microphoneN'), [optionsFor]);
+  const audioOutputOptions = useMemo(() => optionsFor('audiooutput', 'settings.speakerN'), [optionsFor]);
+  const videoInputOptions = useMemo(() => optionsFor('videoinput', 'settings.cameraN'), [optionsFor]);
 
   return (
     <>
