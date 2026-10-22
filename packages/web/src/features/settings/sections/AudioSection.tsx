@@ -1,17 +1,18 @@
-import { useMemo, type MutableRefObject } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppSettings, AudioQualityPreset, NoiseSuppressionMode } from '../types';
 import { Select } from '../../../ui/Select';
+import { keyLabel, useKeyCapture } from '../useKeyCapture';
 import type { SelectOption } from '../../../ui/Select';
 
 interface AudioSectionProps {
   headerRef: (el: HTMLElement | null) => void;
   settings: AppSettings;
   onUpdate: (patch: Partial<AppSettings>) => void;
-  keybindCleanupRef: MutableRefObject<(() => void) | null>;
 }
 
-export function AudioSection({ headerRef, settings, onUpdate, keybindCleanupRef }: AudioSectionProps) {
+export function AudioSection({ headerRef, settings, onUpdate }: AudioSectionProps) {
+  const { listening, listen } = useKeyCapture<'pushToTalkKey'>((_, code) => onUpdate({ pushToTalkKey: code }));
   const { t } = useTranslation();
 
   const NS_OPTIONS: SelectOption[] = useMemo(() => [
@@ -94,20 +95,10 @@ export function AudioSection({ headerRef, settings, onUpdate, keybindCleanupRef 
           <div className="settings-row ptt-keybind-row">
             <div className="settings-row-label">{t('settings.keybind')}</div>
             <button
-              className="btn ptt-keybind-btn"
-              onClick={() => {
-                keybindCleanupRef.current?.();
-                const handleKey = (e: KeyboardEvent) => {
-                  e.preventDefault();
-                  onUpdate({ pushToTalkKey: e.code });
-                  window.removeEventListener('keydown', handleKey);
-                  keybindCleanupRef.current = null;
-                };
-                window.addEventListener('keydown', handleKey);
-                keybindCleanupRef.current = () => window.removeEventListener('keydown', handleKey);
-              }}
+              className={`btn ptt-keybind-btn${listening ? ' ptt-keybind-btn--listening' : ''}`}
+              onClick={() => listen('pushToTalkKey')}
             >
-              {settings.pushToTalkKey || t('settings.clickToSet')}
+              {listening ? '...' : settings.pushToTalkKey ? keyLabel(settings.pushToTalkKey) : t('settings.clickToSet')}
             </button>
           </div>
         )}

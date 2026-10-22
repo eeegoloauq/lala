@@ -39,12 +39,6 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
   const [micMonitor, setMicMonitor] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<Section, HTMLElement>>(new Map());
-  const keybindCleanupRef = useRef<(() => void) | null>(null);
-
-  // Clean up any dangling keybind listener on unmount
-  useEffect(() => {
-    return () => { keybindCleanupRef.current?.(); };
-  }, []);
 
   const NAV: { group: string; items: { id: Section; label: string }[] }[] = useMemo(() => [
     {
@@ -78,7 +72,6 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
 
   const handleClose = useCallback(() => {
     setMicMonitor(false);
-    keybindCleanupRef.current?.();
     onClose();
   }, [onClose]);
 
@@ -171,7 +164,6 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
               headerRef={setSectionRef('audio')}
               settings={settings}
               onUpdate={onUpdate}
-              keybindCleanupRef={keybindCleanupRef}
             />
 
             <VideoSection headerRef={setSectionRef('video')} settings={settings} onUpdate={onUpdate} />
@@ -189,8 +181,7 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
                 headerRef={setSectionRef('keybinds')}
                 settings={settings}
                 onUpdate={onUpdate}
-                keybindCleanupRef={keybindCleanupRef}
-              />
+                />
             )}
 
             {isElectron && <DesktopSection headerRef={setSectionRef('desktop')} settings={settings} onUpdate={onUpdate} />}
