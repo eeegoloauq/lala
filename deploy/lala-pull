@@ -1,22 +1,32 @@
 #!/usr/bin/env bash
 # Pull-based deploy. CI publishes the images and nothing more; this host decides
-# when to move, so no key of ours lives on the build machine and nothing there
-# can reach in here. The branch is read from GitHub and the images from GHCR:
-# this host sits outside the home network and reaches neither Forgejo nor its
-# registry.
+# when to move, so the build machine holds no key to it.
 #
-# What is running is read off the container rather than out of a file, so a run
-# that dies half way leaves nothing to repair. A release that does not come up
-# is put back, and its commit is remembered: without that the timer would try
-# the same broken release every five minutes for as long as it is at the tip.
+# A release that does not come up is rolled back and its commit remembered:
+# without that the timer would retry the same broken release on every run for as
+# long as it is at the tip of main.
 set -euo pipefail
+
+STATE=/var/lib/lala-pull
+SKIP=$STATE/rejected
+DEADLINE=120   # seconds to come up before this counts as a bad release
+
+exec 9>"$STATE/lock"
+flock -n 9 || { echo "$(date -Is) another run is in progress"; exit 0; }
 
 cd /opt/lala
 REGISTRY=$(grep -E '^LALA_REGISTRY=' .env | cut -d= -f2-)
-DEADLINE=120   # seconds to come up before this counts as a bad release
-SKIP=/var/lib/lala-pull/rejected
 
-running() { docker inspect -f '{{.Config.Image}}' lala-api 2>/dev/null | sed 's/.*://'; }
+is_sha() { [[ $1 =~ ^[0-9a-f]{40}$ ]]; }
+
+# Read off the container rather than out of a file, so a run that dies half way
+# leaves nothing to repair. A host started from a moving tag (latest, edge) has no
+# commit there; the checkout is the next best answer.
+running() {
+  local tag
+  tag=$(docker inspect -f '{{.Config.Image}}' lala-api 2>/dev/null | sed 's/.*://') || true
+  if is_sha "$tag"; then echo "$tag"; else git rev-parse HEAD; fi
+}
 
 alive() {
   local until=$((SECONDS + DEADLINE))
@@ -27,14 +37,16 @@ alive() {
   return 1
 }
 
-# Rollback cannot go through the deploy script: that one only fast-forwards.
-back_to() {
-  git -c advice.detachedHead=false checkout --quiet --detach "$1"
-  sed -i "s/^LALA_TAG=.*/LALA_TAG=$1/" .env
-  LALA_TAG="$1" docker compose up -d
+# Deploy and rollback are the same move: the checkout (compose file, LiveKit
+# template) and the images go to one commit together. The tag is persisted so a
+# reboot or a manual `docker compose up` stays on it. Chained with && because
+# callers use it as a condition, where errexit does not apply.
+deploy_to() {
+  git -c advice.detachedHead=false checkout --quiet --detach "$1" &&
+    sed -i "s/^LALA_TAG=.*/LALA_TAG=$1/" .env &&
+    LALA_TAG="$1" docker compose up -d
 }
 
-mkdir -p "$(dirname "$SKIP")"
 have=$(running)
 git fetch --quiet origin main
 want=$(git rev-parse origin/main)
@@ -50,9 +62,7 @@ if ! docker pull -q "$REGISTRY/lala-api:$want" >/dev/null 2>&1 \
 fi
 
 echo "$(date -Is) moving ${have:0:12} -> ${want:0:12}"
-/usr/local/bin/lala-deploy.sh "$want"
-
-if alive; then
+if deploy_to "$want" && alive; then
   echo "$(date -Is) ${want:0:12} is up"
   rm -f "$SKIP"
   exit 0
@@ -60,6 +70,10 @@ fi
 
 echo "$(date -Is) ${want:0:12} did not come up, going back to ${have:0:12}" >&2
 echo "$want" > "$SKIP"
-back_to "$have"
-alive && echo "$(date -Is) back on ${have:0:12}" >&2
+deploy_to "$have"
+if alive; then
+  echo "$(date -Is) back on ${have:0:12}" >&2
+else
+  echo "$(date -Is) ${have:0:12} did not come back either" >&2
+fi
 exit 1
