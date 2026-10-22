@@ -75,8 +75,8 @@ test('server password keeps the app closed', async ({ page }) => {
 });
 
 test('two people talk in a password room', async ({ browser }) => {
-    // Alice publishes her camera through the background blur processor and her mic through RNNoise.
-    const alice = await enter(browser, 'Alice', { cameraEffect: 'blur', noiseSuppressionMode: 'rnnoise' });
+    // Alice's mic goes through RNNoise.
+    const alice = await enter(browser, 'Alice', { noiseSuppressionMode: 'rnnoise' });
     await alice.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     await alice.page.getByRole('button', { name: 'Create channel' }).click();
     await alice.page.getByPlaceholder('e.g. "General"').fill('E2E room');
@@ -102,7 +102,7 @@ test('two people talk in a password room', async ({ browser }) => {
     await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);
 
     await alice.page.getByRole('button', { name: 'Turn on camera' }).click();
-    // Bob decodes Alice's encrypted, blurred video: frames have a size and keep advancing.
+    // Bob decodes Alice's encrypted video: frames have a size and keep advancing.
     await expect.poll(async () => (await media(bob.page)).videos.some(v => v.width > 0 && v.time > 1), { timeout: 20_000 }).toBe(true);
 
     await alice.page.getByRole('button', { name: 'Chat' }).click();
@@ -330,3 +330,19 @@ test('a server ban keeps someone out of every room, under a new device ID too', 
     expect((await api(guest.page, device, 'POST', '/token', { room: stage })).status).toBe(200);
     expect(admin.errors).toEqual([]);
 });
+
+test('background blur loads its model from the app under the production CSP', async ({ browser }) => {
+    // Only the loading: running blur on another person's decoded video is too heavy for CI.
+    const alice = await enter(browser, 'Alice', { cameraEffect: 'blur' });
+    await alice.page.getByRole('button', { name: 'Create channel' }).click();
+    await alice.page.getByPlaceholder('e.g. "General"').fill('Blur room');
+    await alice.page.getByRole('button', { name: 'Create', exact: true }).click();
+    await alice.page.waitForURL(/\/room\//);
+    const model = alice.page.waitForResponse(r => r.url().endsWith('/mediapipe/selfie_segmenter.tflite'), { timeout: 30_000 });
+    await alice.page.getByRole('button', { name: 'Turn on camera' }).click();
+    expect((await model).status()).toBe(200);
+    // A processor that fails to start says so in the console (collected by enter()).
+    await expect.poll(() => alice.page.evaluate(() => document.querySelector('video')?.videoWidth ?? 0), { timeout: 30_000 }).toBeGreaterThan(0);
+    expect(alice.errors).toEqual([]);
+});
+
