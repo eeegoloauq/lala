@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingsIcon, RenameIcon } from '../icons/Icons';
 import { errorMessage } from '../../../lib/errorMessage';
+import { useDismiss } from '../../../hooks/useDismiss';
 import './participant-context-menu.css';
 
 export interface AdminActions {
@@ -47,18 +48,7 @@ export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVo
         });
     };
 
-    useEffect(() => {
-        const onDown = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-        };
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('mousedown', onDown);
-        document.addEventListener('keydown', onKey);
-        return () => {
-            document.removeEventListener('mousedown', onDown);
-            document.removeEventListener('keydown', onKey);
-        };
-    }, [onClose]);
+    useDismiss(ref, onClose);
 
     const style: React.CSSProperties = {
         position: 'fixed',

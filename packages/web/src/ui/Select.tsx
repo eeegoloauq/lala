@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { useDismiss } from '../hooks/useDismiss';
 import './select.css';
 
 export interface SelectOption {
@@ -17,6 +18,7 @@ interface SelectProps {
 export function Select({ value, onChange, options, className = '', disabled = false }: SelectProps) {
     const [open, setOpen] = useState(false);
     const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});
+    const rootRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
 
     const selected = options.find(o => o.value === value);
@@ -34,27 +36,11 @@ export function Select({ value, onChange, options, className = '', disabled = fa
         setOpen(true);
     }, []);
 
-    useEffect(() => {
-        if (!open) return;
-        const handler = (e: MouseEvent) => {
-            if (triggerRef.current && !triggerRef.current.closest('.lala-select')?.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        const keyHandler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setOpen(false);
-        };
-        // Use mousedown so scroll events don't bubble as false closes
-        document.addEventListener('mousedown', handler);
-        document.addEventListener('keydown', keyHandler);
-        return () => {
-            document.removeEventListener('mousedown', handler);
-            document.removeEventListener('keydown', keyHandler);
-        };
-    }, [open]);
+    const close = useCallback(() => setOpen(false), []);
+    useDismiss(rootRef, close, open);
 
     return (
-        <div className={`lala-select${open ? ' open' : ''}${disabled ? ' disabled' : ''}${className ? ' ' + className : ''}`}>
+        <div ref={rootRef} className={`lala-select${open ? ' open' : ''}${disabled ? ' disabled' : ''}${className ? ' ' + className : ''}`}>
             <button
                 ref={triggerRef}
                 className="lala-select-trigger"

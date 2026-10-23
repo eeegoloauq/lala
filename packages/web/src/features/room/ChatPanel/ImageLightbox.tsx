@@ -1,6 +1,7 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import type { TFunction } from 'i18next';
 import { DownloadIcon } from './FileBubble';
+import { useEscapeKey } from '../../../hooks/useEscapeKey';
 
 interface ImageLightboxProps {
     /** Object URL of the already-downloaded image blob. */
@@ -19,13 +20,7 @@ interface ImageLightboxProps {
  * — never window.open — so it works the same way in the browser and in Electron.
  */
 export function ImageLightbox({ src, fileName, onClose, t }: ImageLightboxProps) {
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        document.addEventListener('keydown', onKey);
-        return () => document.removeEventListener('keydown', onKey);
-    }, [onClose]);
+    useEscapeKey(onClose);
 
     const handleDownload = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();

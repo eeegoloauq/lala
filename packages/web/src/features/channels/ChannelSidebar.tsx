@@ -1,7 +1,7 @@
 import { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RoomInfo, NewRoom } from '../../lib/types';
-import { APP_NAME } from '../../lib/constants';
+import { APP_NAME, MAX_NAME_LENGTH } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { getRoomPassword } from '../../lib/passwords';
@@ -15,10 +15,10 @@ import { BannedUsersModal } from './BannedUsersModal';
 import { ChannelUserRow } from './ChannelUserRow';
 import { useTheme } from '../settings/ThemeProvider';
 import { THEMES } from '../settings/themes';
-import { MAX_NAME_LENGTH } from '../../lib/constants';
 import { useLiveParticipants } from '../../lib/roomStatusStore';
 import { buildAdminActions } from '../room/hooks/useAdminActions';
 import { useMeContext } from '../../lib/meContext';
+import { useTimedValue } from '../../hooks/useTimedValue';
 import '../settings/settings.css';
 import './channel-sidebar.css';
 import { IS_TOUCH as isTouchDevice } from '../../lib/env';
@@ -100,12 +100,12 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenuState | null>(null);
     const [bansRoomId, setBansRoomId] = useState<string | null>(null);
-    const [copiedRoom, setCopiedRoom] = useState<string | null>(null);
+    const [copiedRoom, showCopiedRoom] = useTimedValue<string>(1500);
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const renameInputRef = useRef<HTMLInputElement>(null);
     const [templateVersion, setTemplateVersion] = useState(0);
-    const [templateError, setTemplateError] = useState<string | null>(null);
+    const [templateError, showTemplateError, clearTemplateError] = useTimedValue<string>(3000);
 
     const visibleTemplates = useMemo(() => {
         const templates = getTemplates();
@@ -155,10 +155,9 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         // Handing the clipboard a promise keeps the click's permission to write while the invite loads.
         const text = buildUrl().then(url => new Blob([url], { type: 'text/plain' }));
         navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]).then(() => {
-            setCopiedRoom(roomId);
-            setTimeout(() => setCopiedRoom(null), 1500);
+            showCopiedRoom(roomId);
         }).catch(err => console.warn('[ChannelSidebar] Copying the invite failed:', err));
-    }, [accessRequired]);
+    }, [accessRequired, showCopiedRoom]);
 
     const handleUserContextMenu = useCallback((e: React.MouseEvent, participantIdentity: string, participantName: string, roomId: string) => {
         e.preventDefault();
@@ -334,11 +333,10 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                 className={`channel-item channel-item-template${templateError === template.name ? ' channel-item-error' : ''}`}
                                 onClick={async () => {
                                     try {
-                                        setTemplateError(null);
+                                        clearTemplateError();
                                         await onCreateRoom({ name: template.name, password: template.password, maxParticipants: template.maxParticipants, stage: template.stage });
                                     } catch {
-                                        setTemplateError(template.name);
-                                        setTimeout(() => setTemplateError(null), 3000);
+                                        showTemplateError(template.name);
                                     }
                                 }}
                                 title={t('sidebar.recreateRoom')}

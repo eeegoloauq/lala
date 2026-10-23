@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compressAvatar } from '../../../lib/avatarUtils';
 import { useMeContext } from '../../../lib/meContext';
 import { MAX_NAME_LENGTH } from '../../../lib/constants';
+import { useTimedValue } from '../../../hooks/useTimedValue';
 
 interface ProfileSectionProps {
   headerRef: (el: HTMLElement | null) => void;
@@ -15,13 +15,12 @@ interface ProfileSectionProps {
 export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange }: ProfileSectionProps) {
   const { t } = useTranslation();
   const identity = useMeContext()?.identity;
-  const [copied, setCopied] = useState(false);
+  const [copied, showCopied] = useTimedValue<true>(1500);
 
   const copyIdentity = () => {
     if (!identity) return;
     navigator.clipboard.writeText(identity).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      showCopied(true);
     }, (err) => console.warn('[ProfileSection] Copying the ID failed:', err));
   };
 

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../lib/errorMessage';
 import { deleteRoom } from '../../lib/api';
+import { useDismiss } from '../../hooks/useDismiss';
 // Reuses the same themed .ctx-menu / .ctx-menu-item classes as the participant
 // right-click menu (winxp has hand-tuned overrides for these selectors already —
 // see globals.css `[data-theme="winxp"] .ctx-menu*`), so this menu is themed for
@@ -27,18 +28,7 @@ export function RoomContextMenu({ roomId, roomName, permanent, x, y, onOpenBans,
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const onDown = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-        };
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('mousedown', onDown);
-        document.addEventListener('keydown', onKey);
-        return () => {
-            document.removeEventListener('mousedown', onDown);
-            document.removeEventListener('keydown', onKey);
-        };
-    }, [onClose]);
+    useDismiss(ref, onClose);
 
     const style: React.CSSProperties = {
         position: 'fixed',
