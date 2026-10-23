@@ -6,20 +6,6 @@ import { ApiError } from '../../lib/types';
 import { AccessRequiredContext } from './accessContext';
 import './access-gate.css';
 
-/** Takes `invite` out of the URL fragment and leaves the rest (a room password) to the router. */
-function takeInviteFromHash(): string | null {
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const invite = params.get('invite');
-    if (invite === null) return null;
-    params.delete('invite');
-    const rest = params.toString();
-    window.history.replaceState(null, '', window.location.pathname + (rest ? `#${rest}` : ''));
-    return invite;
-}
-
-// Read once at load rather than in an effect, which can run twice.
-const inviteFromUrl = takeInviteFromHash();
-
 function errorText(err: unknown, t: TFunction): string {
     const code = err instanceof ApiError ? err.code : 'server_error';
     if (code === 'wrong_password') return t('access.wrongPassword');
@@ -30,8 +16,11 @@ function errorText(err: unknown, t: TFunction): string {
     return t('access.serverError');
 }
 
-/** Shows the instance password screen when the server has LALA_ACCESS_PASSWORD set. */
-export function AccessGate({ children }: { children: ReactNode }) {
+/**
+ * Shows the instance password screen when the server has LALA_ACCESS_PASSWORD set.
+ * `invite` comes from the link the app was opened with and lets its holder in instead.
+ */
+export function AccessGate({ invite, children }: { invite: string | null; children: ReactNode }) {
     const { t } = useTranslation();
     const [state, setState] = useState<'checking' | 'locked' | 'open'>('checking');
     const [required, setRequired] = useState(false);
@@ -45,12 +34,12 @@ export function AccessGate({ children }: { children: ReactNode }) {
             const status = await getAccess();
             if (!active) return;
             setRequired(status.required);
-            if (status.granted || !inviteFromUrl) {
+            if (status.granted || !invite) {
                 setState(status.granted ? 'open' : 'locked');
                 return;
             }
             try {
-                await submitAccessInvite(inviteFromUrl);
+                await submitAccessInvite(invite);
                 if (active) setState('open');
             } catch (err) {
                 if (!active) return;
@@ -66,7 +55,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
             active = false;
             window.removeEventListener(ACCESS_REQUIRED_EVENT, lock);
         };
-    }, []);
+    }, [invite]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();

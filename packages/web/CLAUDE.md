@@ -16,7 +16,7 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 ## Features
 
 ### Access (`features/access/`)
-- `AccessGate.tsx` -- wraps `App` in `main.tsx`; asks `GET /api/access` and shows the instance password screen when needed; any API `access_required` (dispatched by `lib/api.ts` as `lala:access-required`) brings it back. Redeems `#invite=` from the URL at load, leaving `#pw=` to `useRoute`
+- `AccessGate.tsx` -- wraps `App` in `main.tsx`; asks `GET /api/access` and shows the instance password screen when needed; any API `access_required` (dispatched by `lib/api.ts` as `lala:access-required`) brings it back. Redeems the `#invite=` that `main.tsx` takes from the URL at load (`inviteLink.ts`), leaving `#pw=` to `useRoute`
 - `accessContext.ts` -- `useAccessRequired()`; the sidebar adds a server invite to copied room links when true
 
 ### Room (`features/room/`)
