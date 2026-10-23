@@ -28,9 +28,11 @@ Thumbs.db
 *.swo
 *~
 
-# Claude Code settings, agents and skills stay local, out of the public repo
+# Agent settings and instructions stay local, out of the public repo
 .claude/
+CLAUDE.md
 CLAUDE.local.md
+AGENTS.md
 
 # Electron build output
 packages/desktop/out/
