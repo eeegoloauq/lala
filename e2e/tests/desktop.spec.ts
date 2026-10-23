@@ -9,8 +9,9 @@ test('desktop connects, calls and shares a screen through its picker', async () 
     const desktop = path.resolve(__dirname, '../../packages/desktop');
     const app = await electron.launch({
         executablePath: path.join(desktop, 'node_modules/electron/dist/electron'),
-        // --no-sandbox only matters when the suite runs as root.
-        args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', desktop],
+        // --no-sandbox only matters when the suite runs as root. No fake permission UI:
+        // the app's own handlers must grant media and screen capture.
+        args: ['--no-sandbox', '--use-fake-device-for-media-stream', desktop],
         // A fresh profile: no saved servers, so no auto-connect.
         env: { ...process.env, HOME: mkdtempSync(path.join(tmpdir(), 'lala-desktop-')) },
     });
@@ -22,8 +23,9 @@ test('desktop connects, calls and shares a screen through its picker', async () 
         await win.getByRole('button', { name: 'Continue' }).click();
         await win.getByPlaceholder('Your name...').fill('Desk');
         await win.getByRole('button', { name: 'Continue' }).click();
-        // The trusted server origin gets the bridge.
+        // The trusted server origin gets the bridge, and its permission handlers grant the microphone.
         expect(await win.evaluate(() => typeof (window as { electronAPI?: unknown }).electronAPI)).toBe('object');
+        expect(await win.evaluate(() => navigator.mediaDevices.getUserMedia({ audio: true }).then(() => 'granted', e => e.name))).toBe('granted');
 
         await win.getByRole('button', { name: 'Create channel' }).click();
         await win.getByPlaceholder('e.g. "General"').fill('Desk room');
