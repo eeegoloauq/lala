@@ -7,7 +7,7 @@ import { RemoteParticipant } from 'livekit-client';
 import type { Participant } from 'livekit-client';
 import { ConnectionQuality, ParticipantEvent } from 'livekit-client';
 import { Avatar } from './Avatar';
-import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../icons/Icons';
+import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon, FlipCameraIcon } from '../icons/Icons';
 import { useParticipantState } from '../hooks/useParticipantState';
 import { hasAttribute, isServerMuted } from '../lib/permissions';
 import { readDeafened } from '../lib/participantMeta';
@@ -139,11 +139,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
                     onClick={(e) => { e.stopPropagation(); onFlip(); }}
                     title={t('tile.flipCamera')}
                 >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 7h-3.5l-1.5-2h-6L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z" />
-                        <circle cx="12" cy="13" r="3.5" />
-                        <path d="M17 4l2 3-2 3" />
-                    </svg>
+                    <FlipCameraIcon size={16} strokeWidth={2} />
                 </button>
             )}
         </div>

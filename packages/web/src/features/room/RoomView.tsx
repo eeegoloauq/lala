@@ -14,6 +14,7 @@ import { RoomShell } from './RoomShell';
 import { MICROPHONE, canPublishSource } from './lib/permissions';
 import { audioCaptureFrom, mediaOptionsFrom } from './lib/roomOptions';
 import { useLiveSettings } from './hooks/useLiveSettings';
+import { LockIcon } from './icons/Icons';
 import './RoomView.css';
 
 interface RoomViewProps {
@@ -315,10 +316,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         return (
             <div className="empty-state">
                 <div className="empty-state-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
+                    <LockIcon size={32} strokeWidth={1.5} />
                 </div>
                 <h2 className="empty-state-title">{t('room.protected')}</h2>
                 <p className="empty-state-sub">{t('room.enterPassword')}</p>

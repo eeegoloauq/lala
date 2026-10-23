@@ -9,6 +9,7 @@ import { useParticipantContextMenu } from '../hooks/useParticipantContextMenu';
 import { useCameraFlip } from '../hooks/useCameraFlip';
 import { findTileIdentity } from '../lib/findTileIdentity';
 import { useRoomUIContext } from '../RoomUIContext';
+import { FlipCameraIcon, ScreenShareStatusIcon, VideoIcon } from '../icons/Icons';
 import './focus-layout.css';
 import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
 
@@ -301,27 +302,16 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
                             )}
                             <span className="fl-main-label">
                                 {focused.type === 'screen' ? (
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                        <rect x="2" y="3" width="20" height="14" rx="2" />
-                                        <line x1="8" y1="21" x2="16" y2="21" />
-                                        <line x1="12" y1="17" x2="12" y2="21" />
-                                    </svg>
+                                    <ScreenShareStatusIcon size={12} strokeWidth={2} style={{ flexShrink: 0 }} />
                                 ) : (
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                        <polygon points="23 7 16 12 23 17 23 7" />
-                                        <rect x="1" y="5" width="15" height="14" rx="2" />
-                                    </svg>
+                                    <VideoIcon size={12} strokeWidth={2} style={{ flexShrink: 0 }} />
                                 )}
                                 {focused.track.participant.name || focused.track.participant.identity}
                             </span>
                             {isTouchDevice && focused.type === 'camera' &&
                                 focused.track.participant.identity === localParticipant.identity && (
                                     <button className="fl-fullscreen-btn" onClick={handleFlip} title={t('focus.flipCamera')}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M20 7h-3.5l-1.5-2h-6L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z" />
-                                            <circle cx="12" cy="13" r="3.5" />
-                                            <path d="M17 4l2 3-2 3" />
-                                        </svg>
+                                        <FlipCameraIcon size={16} strokeWidth={2} />
                                     </button>
                                 )}
                             {fullscreenSupported && (

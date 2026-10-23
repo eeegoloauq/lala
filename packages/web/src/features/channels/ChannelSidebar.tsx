@@ -7,7 +7,7 @@ import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { getRoomPassword } from '../../lib/passwords';
 import { createAccessInvite } from '../../lib/api';
 import { useAccessRequired } from '../access/accessContext';
-import { SettingsIcon, MoonIcon } from '../room/icons/Icons';
+import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { CreateRoomModal } from './CreateRoomModal';
 import { RoomContextMenu } from './RoomContextMenu';
@@ -53,18 +53,6 @@ interface RoomContextMenuState {
     x: number;
     y: number;
 }
-
-function LockIcon({ title }: { title?: string }) {
-    return (
-        <span title={title} style={{ display: 'flex', flexShrink: 0 }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-        </span>
-    );
-}
-
 
 export const ChannelSidebar = memo(function ChannelSidebar({
     rooms,
@@ -267,13 +255,13 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                             title={room.canJoin ? undefined : t('sidebar.membersOnly')}
                             onContextMenu={(e) => handleRoomContextMenu(e, room)}
                         >
-                            <svg className="channel-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                            </svg>
+                            <SpeakerIcon className="channel-icon" size={14} />
                             <span className="channel-name">{room.displayName}</span>
-                            {room.passwordSalt && <LockIcon title={t('sidebar.passwordProtected')} />}
+                            {room.passwordSalt && (
+                                <span title={t('sidebar.passwordProtected')} style={{ display: 'flex', flexShrink: 0 }}>
+                                    <LockIcon size={11} strokeWidth={2.5} style={{ opacity: 0.5 }} />
+                                </span>
+                            )}
                             {((room.id === activeRoom ? liveParticipants.size : room.numParticipants) > 0 || room.maxParticipants > 0) && (
                                 <span className="channel-count">
                                     {room.id === activeRoom ? liveParticipants.size : room.numParticipants}
@@ -347,10 +335,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                 </svg>
                                 <span className="channel-name">{template.name}</span>
                                 {template.password && (
-                                    <svg className="channel-lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                    </svg>
+                                    <LockIcon className="channel-lock-icon" size={10} strokeWidth={2.5} />
                                 )}
                                 <button
                                     className="channel-template-remove"
