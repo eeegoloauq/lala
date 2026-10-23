@@ -91,8 +91,6 @@ export default function App() {
     const handleLeave = () => {
         route.navigate('/');
         resetRoomSession();
-        // Clear session for crash recovery
-        window.electronAPI?.saveSession?.(null);
     };
 
     const { navigate } = route;

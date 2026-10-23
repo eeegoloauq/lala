@@ -5,8 +5,8 @@ Electron 40+ desktop client wrapping the web app with native features.
 ## Key Files
 
 - `main.js` -- main process entry: Chromium switches, single instance lock, startup wiring and app lifecycle
-- `main/` -- the main process work, one module each: `constants` (platform flags, install channel, IPC names), `state` (the window, tray, trusted origin and other shared state), `trust` (URL and sender checks, permission handlers), `window` (window state, creation, error recovery, navigation lock, downloads), `tray` (tray and unread badges), `icons`, `screen-share`, `context-menu` (edit menu for text fields), `updater`, `crash` (crash logs, session file), `ipc` (the remaining channels)
-- `preload.js` -- contextBridge: `electronAPI` (screen share, update, badge, auto-launch, session, icon, `navigateBack()`, `loadUrl()`, `pingServer()`)
+- `main/` -- the main process work, one module each: `constants` (platform flags, install channel, IPC names), `state` (the window, tray, trusted origin and other shared state), `trust` (URL and sender checks, permission handlers), `window` (window state, creation, error recovery, navigation lock, downloads), `tray` (tray and unread badges), `icons`, `screen-share`, `context-menu` (edit menu for text fields), `updater`, `crash` (crash logs), `ipc` (the remaining channels)
+- `preload.js` -- contextBridge: `electronAPI` (screen share, update, badge, auto-launch, call state, icon, `navigateBack()`, `loadUrl()`, `pingServer()`)
 - `index.html` -- connection page markup/styles only (CSP `script-src 'self'`, no inline JS)
 - `connection.js` -- connection page logic: saved servers with editable labels, auto-connect, health check before `loadUrl()`, ping status dots. The check (`PING_SERVER` in `main/ipc.js`) uses `net.fetch`, so it shares the window's cookies, proxy and client certificates; any non-5xx answer counts as reachable
 - `electron-builder.yml` -- Win NSIS x64, Linux AppImage/rpm/tar.gz, macOS dmg
@@ -67,7 +67,7 @@ recovery flow, the tray "Change server" item, and the `NAVIGATE_BACK` IPC).
 - **Sensitive IPC channels**: `LOAD_URL` and `PING_SERVER` are callable only
   from the `file://` connection page (they're what *establish* trust, so a
   loaded server page must never be able to call them). Most other
-  state-changing channels (updater, auto-launch, icon, badge, session,
+  state-changing channels (updater, auto-launch, icon, badge,
   `NAVIGATE_BACK`) accept either the connection page or the trusted server
   origin. `SET_SCREEN_SHARE_SOURCE` / `SET_IN_CALL` are trusted-origin-only.
   See `classifySender()` / `isFileSender()` / `isTrustedSender()` /
@@ -83,7 +83,6 @@ recovery flow, the tray "Change server" item, and the `NAVIGATE_BACK` IPC).
 - **Power save**: `prevent-display-sleep` blocker during calls.
 - **Auto-updater**: GitHub Releases, `autoDownload: false`, `autoInstallOnAppQuit: false` — install only happens via the user-triggered `INSTALL_UPDATE` IPC (Settings "Update" button), never silently on quit.
 - **Crash logs**: `userData/crash-logs/` — written on `uncaughtException` / `render-process-gone`, pruned after 7 days.
-- **No session restore**: the renderer writes `userData/session.json` on every room join (`saveSession()`) and `running.lock` is written/removed around the app lifecycle, but neither is currently read back by the main process — there is no crash/restart session-restore flow wired up. (A previous `loadSession()` and `previousCrash` were dead code and have been removed.)
 
 ## Build & Release
 ```bash

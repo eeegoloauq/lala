@@ -6,17 +6,8 @@ const fs = require('fs');
 const { USER_DATA } = require('./constants');
 
 const CRASH_LOG_DIR = path.join(USER_DATA, 'crash-logs');
-const RUNNING_LOCK = path.join(USER_DATA, 'running.lock');
-const SESSION_FILE = path.join(USER_DATA, 'session.json');
 
 function setupCrashHandling() {
-    // Write running lock. Not currently read back by anything (no crash-based
-    // session-restore flow is wired up — see saveSession()/loadSession() note
-    // below); left in place as a cheap unclean-shutdown marker on disk.
-    try {
-        fs.writeFileSync(RUNNING_LOCK, String(Date.now()));
-    } catch { /* ignore */ }
-
     // Ensure crash-logs directory exists
     try {
         fs.mkdirSync(CRASH_LOG_DIR, { recursive: true });
@@ -71,28 +62,4 @@ function cleanupOldCrashLogs() {
     } catch {}
 }
 
-function cleanupRunningLock() {
-    try {
-        if (fs.existsSync(RUNNING_LOCK)) fs.unlinkSync(RUNNING_LOCK);
-    } catch { /* ignore */ }
-}
-
-// Writes the renderer's session snapshot (server + room) to disk. Nothing in
-// the main process currently reads SESSION_FILE back — there's no crash/restart
-// session-restore flow wired up despite this being written on every room
-// join. Kept as-is (low cost, and a restore feature may consume it later);
-// a previous `loadSession()` that was dead code (defined, never called) has
-// been removed. See packages/desktop/CLAUDE.md.
-function saveSession(data) {
-    try {
-        fs.writeFileSync(SESSION_FILE, JSON.stringify({ ...data, timestamp: Date.now() }));
-    } catch { /* ignore */ }
-}
-
-function clearSession() {
-    try {
-        if (fs.existsSync(SESSION_FILE)) fs.unlinkSync(SESSION_FILE);
-    } catch { /* ignore */ }
-}
-
-module.exports = { setupCrashHandling, cleanupRunningLock, saveSession, clearSession };
+module.exports = { setupCrashHandling };

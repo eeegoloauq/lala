@@ -21,11 +21,6 @@ export interface UpdateStatus {
     error?: string;
 }
 
-export interface SessionState {
-    serverUrl: string;
-    roomId?: string;
-}
-
 export type IconVariant = 'voice-wave' | 'dark-sphere' | 'single-wave' | 'double-wave';
 
 export interface ElectronAPI {
@@ -45,17 +40,8 @@ export interface ElectronAPI {
     /** Get app version and platform info */
     getAppInfo: () => Promise<AppInfo>;
 
-    /** Update window title (e.g. with room name) */
-    setTitleSuffix: (suffix: string) => void;
-
-    /** Show / focus the main window */
-    showWindow: () => void;
-
     /** Subscribe to URL load errors. Returns unsubscribe function. */
     onLoadUrlError: (callback: (error: { message: string }) => void) => () => void;
-
-    /** Subscribe to back navigation request. Returns unsubscribe function. */
-    onNavigateBack: (callback: () => void) => () => void;
 
     /** Check for updates */
     checkForUpdate: () => Promise<unknown>;
@@ -75,9 +61,6 @@ export interface ElectronAPI {
     /** Set auto-launch on system startup */
     setAutoLaunch: (enabled: boolean) => Promise<boolean>;
 
-    /** Save session state for crash recovery */
-    saveSession: (data: SessionState | null) => void;
-
     /** Notify main process about call state (for power save blocker) */
     setInCall: (inCall: boolean) => void;
 
@@ -92,9 +75,6 @@ export interface ElectronAPI {
 
     /** Navigate back to the connection page (server switching) */
     navigateBack: () => void;
-
-    /** Relaunch the app */
-    relaunch: () => void;
 
     /** Always true when running in Electron */
     isElectron: true;

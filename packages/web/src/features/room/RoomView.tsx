@@ -121,8 +121,6 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         // Remember working password for this room (for invite links)
         if (pw) saveRoomPassword(roomName, pw);
         setConnection({ token, url, canModerate });
-        // Save session for crash recovery
-        window.electronAPI?.saveSession?.({ serverUrl: window.location.origin, roomId: roomName });
         // Activate power save blocker
         window.electronAPI?.setInCall?.(true);
     };

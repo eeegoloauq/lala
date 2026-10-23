@@ -10,7 +10,6 @@ const { isUrlAllowed, isFileSender, isTrustedSender, isFileOrTrustedSender } = r
 const { ICON_VARIANTS, getIconPreference, saveIconPreference, applyIcon } = require('./icons');
 const { navigateToConnectionPage } = require('./window');
 const { setBadgeCount } = require('./tray');
-const { saveSession, clearSession } = require('./crash');
 
 function registerIpcHandlers() {
     // Ping a server (health check from connection page, bypasses CORS).
@@ -69,22 +68,6 @@ function registerIpcHandlers() {
         isWayland: IS_WAYLAND,
     }));
 
-    // Update window title
-    ipcMain.on(IPC.SET_TITLE_SUFFIX, (_event, suffix) => {
-        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
-            const safe = typeof suffix === 'string' ? suffix.slice(0, 200) : '';
-            state.mainWindow.setTitle(safe ? `Lala — ${safe}` : 'Lala');
-        }
-    });
-
-    // Show window (used by renderer to restore from tray)
-    ipcMain.on(IPC.SHOW_WINDOW, () => {
-        if (state.mainWindow) {
-            state.mainWindow.show();
-            state.mainWindow.focus();
-        }
-    });
-
     // Badge count for unread messages
     ipcMain.on(IPC.SET_BADGE_COUNT, (event, count) => {
         if (!isFileOrTrustedSender(event)) return;
@@ -118,24 +101,6 @@ function registerIpcHandlers() {
         saveIconPreference(name);
         applyIcon(name, { forceRedraw: true });
         return true;
-    });
-
-    ipcMain.on(IPC.RELAUNCH, (event) => {
-        if (!isFileOrTrustedSender(event)) return;
-        const options = { args: process.argv.slice(1) };
-        if (process.env.APPIMAGE) {
-            options.execPath = process.env.APPIMAGE;
-            options.args.unshift('--appimage-extract-and-run');
-        }
-        app.relaunch(options);
-        app.exit(0);
-    });
-
-    // Session persistence
-    ipcMain.on(IPC.SAVE_SESSION, (event, data) => {
-        if (!isFileOrTrustedSender(event)) return;
-        if (data) saveSession(data);
-        else clearSession();
     });
 
     // Navigate back to connection page (server switching)

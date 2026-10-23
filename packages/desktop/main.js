@@ -47,7 +47,7 @@ const { createWindow, saveWindowState, setupDownloadHandler } = require('./main/
 const { createTray, clearBadge } = require('./main/tray');
 const { setupScreenShareHandler, registerScreenShareIpc, clearPendingScreenShare } = require('./main/screen-share');
 const { setupAutoUpdater, registerUpdaterIpc } = require('./main/updater');
-const { setupCrashHandling, cleanupRunningLock } = require('./main/crash');
+const { setupCrashHandling } = require('./main/crash');
 const { registerIpcHandlers } = require('./main/ipc');
 
 // ─── Single Instance Lock ────────────────────────────────────────────────────
@@ -102,7 +102,6 @@ app.on('before-quit', () => {
     state.isQuitting = true;
     if (state.mainWindow) saveWindowState(state.mainWindow);
     clearPendingScreenShare();
-    cleanupRunningLock();
 });
 
 app.on('window-all-closed', () => {

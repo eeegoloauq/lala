@@ -35,21 +35,16 @@ const IPC = {
     GET_DESKTOP_SOURCES: 'lala:get-desktop-sources',
     SET_SCREEN_SHARE_SOURCE: 'lala:set-screen-share-source',
     GET_APP_INFO: 'lala:get-app-info',
-    SET_TITLE_SUFFIX: 'lala:set-title-suffix',
-    SHOW_WINDOW: 'lala:show-window',
     CHECK_UPDATE: 'lala:check-update',
     INSTALL_UPDATE: 'lala:install-update',
     SET_BADGE_COUNT: 'lala:set-badge-count',
     GET_AUTO_LAUNCH: 'lala:get-auto-launch',
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
-    SAVE_SESSION: 'lala:save-session',
     SET_IN_CALL: 'lala:set-in-call',
     GET_APP_ICON: 'lala:get-app-icon',
     SET_APP_ICON: 'lala:set-app-icon',
-    RELAUNCH: 'lala:relaunch',
 
     PING_SERVER: 'lala:ping-server',
-    // Bidirectional
     NAVIGATE_BACK: 'lala:navigate-back',
     // Main → Renderer
     LOAD_URL_ERROR: 'lala:load-url-error',
