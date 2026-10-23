@@ -45,6 +45,16 @@ function isIndexHtmlUrl(url) {
     }
 }
 
+/** True if `url` (a page, frame or serialized origin, with or without a trailing slash) is on the trusted server origin. */
+function isTrustedUrl(url) {
+    if (state.trustedOrigin === null) return false;
+    try {
+        return new URL(url).origin === state.trustedOrigin;
+    } catch {
+        return false;
+    }
+}
+
 function classifySender(event) {
     const frame = event.senderFrame;
     if (!frame || typeof frame.url !== 'string') {
@@ -56,15 +66,7 @@ function classifySender(event) {
     const isTopFrame = !!win && !win.isDestroyed() && frame === win.webContents.mainFrame;
     if (!isTopFrame) return { isFileTop: false, isTrustedTop: false };
 
-    if (frame.url.startsWith('file://')) {
-        return { isFileTop: true, isTrustedTop: false };
-    }
-    try {
-        const origin = new URL(frame.url).origin;
-        return { isFileTop: false, isTrustedTop: state.trustedOrigin !== null && origin === state.trustedOrigin };
-    } catch {
-        return { isFileTop: false, isTrustedTop: false };
-    }
+    return { isFileTop: frame.url.startsWith('file://'), isTrustedTop: isTrustedUrl(frame.url) };
 }
 
 /** True if the IPC event was sent from the top-level local connection page. */
@@ -83,45 +85,27 @@ function isFileOrTrustedSender(event) {
     return isFileTop || isTrustedTop;
 }
 
-/** True if a WebContents' current top-level URL is the trusted server origin. */
-function isWebContentsOriginTrusted(webContents) {
-    if (!webContents || webContents.isDestroyed() || state.trustedOrigin === null) return false;
-    try {
-        return new URL(webContents.getURL()).origin === state.trustedOrigin;
-    } catch {
-        return false;
-    }
-}
-
-// Restrict permissions — only allow what a voice/video chat app needs, and
-// only for the currently trusted server origin. The local file://
-// connection page needs none of these and is denied by
-// isWebContentsOriginTrusted() (it never matches trustedOrigin).
+// Only what a voice/video chat app needs, and only for the frame asking: an embedded
+// frame from another origin gets nothing even while the page around it is trusted.
+// The local file:// connection page needs none of these.
 function setupPermissionHandlers() {
     const ALLOWED_PERMISSIONS = ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'display-capture'];
 
-    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        callback(ALLOWED_PERMISSIONS.includes(permission) && isWebContentsOriginTrusted(webContents));
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+        callback(ALLOWED_PERMISSIONS.includes(permission) && isTrustedUrl(details.requestingUrl));
     });
 
     // Synchronous counterpart — required for APIs like enumerateDevices() that
     // check permission state directly instead of going through a request/
     // callback flow, which would otherwise bypass the handler above entirely.
     session.defaultSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
-        if (!ALLOWED_PERMISSIONS.includes(permission) || state.trustedOrigin === null) return false;
-        // requestingOrigin is a full URL (usually with a trailing slash), not a
-        // bare origin — normalize before comparing or every check is denied.
-        try {
-            return new URL(requestingOrigin).origin === state.trustedOrigin;
-        } catch {
-            return false;
-        }
+        return ALLOWED_PERMISSIONS.includes(permission) && isTrustedUrl(requestingOrigin);
     });
 }
 
 module.exports = {
-    ALLOWED_URL_PROTOCOLS,
     isUrlAllowed,
+    isTrustedUrl,
     isIndexHtmlUrl,
     isFileSender,
     isTrustedSender,

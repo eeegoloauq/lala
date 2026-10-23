@@ -48,17 +48,15 @@ recovery flow, the tray "Change server" item, and the `NAVIGATE_BACK` IPC).
   `loadURL`/`loadFile()` calls from the main process don't fire `will-navigate`, so
   recovery navigation is unaffected by this lock.
 - **Permissions** (`setPermissionRequestHandler` + `setPermissionCheckHandler`):
-  granted only when the requesting page's current top-level origin ===
-  `trustedOrigin`. The connection page needs none of these and is always denied.
+  granted only when the requesting frame is on `trustedOrigin` (`isTrustedUrl()`),
+  so a frame from another origin inside the trusted page gets nothing. The
+  connection page needs none of these and is always denied.
 - **Screen capture** (`GET_DESKTOP_SOURCES` IPC, `setDisplayMediaRequestHandler`):
-  the IPC channel checks `event.senderFrame` as above; the display-media
-  handler (`getDisplayCaptureDenyReason()`) trusts the origin of the URL the
-  window is *currently displaying* (`webContents.getURL()` origin match against
-  the normalized `request.securityOrigin`), denying sub-frames and the file://
-  connection page. Beware: `request.securityOrigin` (like `requestingOrigin` in
-  the permission check handler) is a serialized URL with a trailing slash — it
-  must be normalized via `new URL(...).origin` before comparing, never
-  string-compared to a bare `URL.origin` value.
+  the IPC channel checks `event.senderFrame` as above; the display-media handler
+  (`getDisplayCaptureDenyReason()`) accepts only the window's main frame on
+  `trustedOrigin`. `request.securityOrigin` and the permission check's
+  `requestingOrigin` are serialized URLs with a trailing slash, so every
+  comparison goes through `isTrustedUrl()`, never a string compare.
 - **Downloads** (`will-download` in `setupDownloadHandler()`): default Electron
   behavior kept (native Save As dialog — `setSavePath()` intentionally not
   called); handler only logs start/completed/cancelled/interrupted to stderr.

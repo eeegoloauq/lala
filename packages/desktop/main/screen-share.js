@@ -3,7 +3,7 @@
 const { ipcMain, session, desktopCapturer } = require('electron');
 const { IS_WAYLAND, IPC } = require('./constants');
 const { state } = require('./state');
-const { ALLOWED_URL_PROTOCOLS, isTrustedSender } = require('./trust');
+const { isTrustedSender, isTrustedUrl } = require('./trust');
 
 const THUMBNAIL_SIZE = { width: 320, height: 180 };
 const SCREEN_SHARE_SOURCE_TIMEOUT_MS = 30_000;
@@ -23,60 +23,19 @@ function clearPendingScreenShare() {
 }
 
 /**
- * Gate for setDisplayMediaRequestHandler: only the top-level frame of the
- * page the window is currently displaying may capture the screen. Silent
- * screen capture from a third-party frame/origin (e.g. an embedded iframe)
- * is exactly the vector this closes.
- *
- * Trust is derived from mainWindow.webContents.getURL() at request time:
- * the will-navigate lock already guarantees that URL is either our local
- * file:// connection page or the server the user picked, so a capture
- * request coming from the window's own loaded page is exactly as trusted
- * as the page itself. We deliberately do NOT compare against a separately
- * maintained value (the old check against `trustedOrigin` broke because
- * Electron's request.securityOrigin is a Chromium-serialized URL with a
- * trailing slash — "https://host/" — which never string-equals a bare
- * URL.origin, so every request was denied).
- *
- * Returns null when the request is trusted, otherwise a deny reason that
- * names both the requesting and the expected origin so reports are
- * self-diagnosing.
+ * Gate for setDisplayMediaRequestHandler: only the top-level frame of the trusted
+ * server page may capture the screen, never an embedded frame or the connection page.
+ * Returns null when the request is trusted, otherwise a reason for the log.
  */
 function getDisplayCaptureDenyReason(request) {
     const mainWindow = state.mainWindow;
     if (!mainWindow || mainWindow.isDestroyed()) return 'no window';
-
-    // Only the top-level frame may capture — never a sub-frame/iframe.
     if (request.frame && request.frame !== mainWindow.webContents.mainFrame) {
         return `sub-frame capture request (frame url: ${request.frame.url})`;
     }
-
-    // Expected origin = whatever page the window itself is showing. The
-    // file:// connection page (or an empty window) never captures.
-    let expectedOrigin;
-    const currentUrl = mainWindow.webContents.getURL();
-    try {
-        const parsed = new URL(currentUrl);
-        if (!ALLOWED_URL_PROTOCOLS.has(parsed.protocol)) {
-            return `window is not showing a server page (current url: ${currentUrl || '<none>'})`;
-        }
-        expectedOrigin = parsed.origin;
-    } catch {
-        return `window url is unparseable (current url: ${currentUrl || '<none>'})`;
-    }
-
-    // request.securityOrigin is a serialized URL (usually with a trailing
-    // slash), not a bare origin — normalize via new URL().origin before
-    // comparing, same as the permission check handler does.
-    const rawRequesting = request.securityOrigin || (request.frame && request.frame.url) || '';
-    let requestingOrigin;
-    try {
-        requestingOrigin = new URL(rawRequesting).origin;
-    } catch {
-        requestingOrigin = rawRequesting || '<unknown>';
-    }
-    if (requestingOrigin !== expectedOrigin) {
-        return `untrusted origin (requesting: ${requestingOrigin}, expected: ${expectedOrigin})`;
+    const requesting = request.securityOrigin || request.frame?.url || '';
+    if (!isTrustedUrl(requesting)) {
+        return `untrusted origin (requesting: ${requesting || '<unknown>'}, trusted: ${state.trustedOrigin ?? '<none>'})`;
     }
     return null;
 }
