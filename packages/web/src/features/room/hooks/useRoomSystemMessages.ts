@@ -7,7 +7,7 @@ import { playJoinSound } from '../../../lib/sounds';
 import { speak } from '../../../lib/tts';
 import { ttsOptsFromSettings } from '../lib/ttsOpts';
 import type { AppSettings } from '../../settings/types';
-import type { ChatEntry } from '../ChatPanel/ChatPanel';
+import type { ChatEntry } from '../ChatPanel/MessageList';
 import type { FileTransferItem } from '../../../lib/fileTransfer';
 
 export interface UseRoomSystemMessagesResult {

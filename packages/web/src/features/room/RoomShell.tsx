@@ -32,6 +32,8 @@ import { useReconnectingBanner } from './hooks/useReconnectingBanner';
 import { RoomUIProvider } from './RoomUIContext';
 import type { AppSettings } from '../settings/types';
 import { IS_ELECTRON as isElectron } from '../../lib/env';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useTimedValue } from '../../hooks/useTimedValue';
 
 const ScreenShareModal = lazy(() => import('./ScreenShareModal/ScreenShareModal').then(m => ({ default: m.ScreenShareModal })));
 const SCREEN_SHARE_TRACKS = [Track.Source.ScreenShare];
@@ -56,19 +58,11 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     const [audioMuted, setAudioMuted] = useState(false);
     const [screenShareModalOpen, setScreenShareModalOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState<string | null>(null);
-    const [screenShareError, setScreenShareError] = useState(false);
-    const screenShareErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [screenShareError, showScreenShareError, clearScreenShareError] = useTimedValue<true>(8000);
     const micWasEnabledRef = useRef(false);
 
     // Desktop: chat docks as a reflowing column (animated width). Mobile/narrow: existing overlay.
-    const [isDesktopChat, setIsDesktopChat] = useState(() =>
-        typeof window !== 'undefined' && window.matchMedia(DESKTOP_CHAT_QUERY).matches);
-    useEffect(() => {
-        const mq = window.matchMedia(DESKTOP_CHAT_QUERY);
-        const onChange = () => setIsDesktopChat(mq.matches);
-        mq.addEventListener('change', onChange);
-        return () => mq.removeEventListener('change', onChange);
-    }, []);
+    const isDesktopChat = useMediaQuery(DESKTOP_CHAT_QUERY);
 
     // Keep the docked ChatPanel mounted through its ~200ms close animation so the slide-out
     // shows real content sliding away, rather than the box shrinking around empty space.
@@ -78,16 +72,6 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
         if (e.target !== e.currentTarget || e.propertyName !== 'width') return;
         if (!chatOpen) setChatMounted(false);
     }, [chatOpen]);
-
-    const showScreenShareError = useCallback(() => {
-        setScreenShareError(true);
-        if (screenShareErrorTimerRef.current) clearTimeout(screenShareErrorTimerRef.current);
-        screenShareErrorTimerRef.current = setTimeout(() => setScreenShareError(false), 8000);
-    }, []);
-
-    useEffect(() => () => {
-        if (screenShareErrorTimerRef.current) clearTimeout(screenShareErrorTimerRef.current);
-    }, []);
 
     // Screen share volumes persisted separately
     const { volumes: screenVolumes, handleVolumeChange: handleScreenVolumeChange } =
@@ -173,7 +157,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
             stopScreen();
         } else if (settings.screenShareSkipDialog && (!isElectron || isWayland)) {
             console.log('[Lala] Screen share: skip dialog');
-            startScreen(getScreenShareQuality(settings.screenShareFpsIdx, settings.screenShareBrIdx)).catch(showScreenShareError);
+            startScreen(getScreenShareQuality(settings.screenShareFpsIdx, settings.screenShareBrIdx)).catch(() => showScreenShareError(true));
         } else {
             console.log('[Lala] Screen share: opening modal (isElectron:', isElectron, ', isWayland:', isWayland, ')');
             setScreenShareModalOpen(true);
@@ -183,7 +167,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
 
     const handleScreenShareModalConfirm = useCallback((quality: ScreenShareQuality, sourceId?: string, audio?: boolean) => {
         setScreenShareModalOpen(false);
-        startScreen(quality, sourceId, audio).catch(showScreenShareError);
+        startScreen(quality, sourceId, audio).catch(() => showScreenShareError(true));
     }, [startScreen, showScreenShareError]);
 
     // Single owner of the deafen mute/unmute sound: when deafening also toggles
@@ -247,6 +231,18 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
 
     const showReconnecting = useReconnectingBanner(connectionState);
 
+    const chatPanel = (overlay: boolean) => (
+        <ChatPanel
+            entries={chatEntries}
+            send={send}
+            isSending={isSending}
+            onClose={() => setChatOpen(false)}
+            onSendFile={sendFile}
+            onCancelFile={cancelSend}
+            overlay={overlay}
+        />
+    );
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
             <RoomAudioRenderer muted={audioMuted} />
@@ -260,41 +256,8 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
                 </div>
             )}
 
-            {isDesktopChat ? (
-                // Desktop: chat docks as a reflowing flex column beside the stage. Only the dock's
-                // width is animated (200ms ease-out); the stage reflows as a natural side effect of
-                // flexbox, and the fixed-width panel inside means its own content never reflows
-                // mid-slide. See chat-panel.css .cp-dock for the full rationale.
-                <div className="cp-stage-row" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
-                    <div className="cp-stage">
-                        <RoomUIProvider value={roomUIValue}>
-                            {isScreenSharing || focusedIdentity
-                                ? <FocusLayout
-                                    initialIdentity={focusedIdentity}
-                                    onExit={focusedIdentity && !isScreenSharing ? () => setFocusedIdentity(null) : undefined}
-                                />
-                                : <VideoGrid onFocusTile={setFocusedIdentity} onCamEnabled={setFocusedIdentity} />
-                            }
-                        </RoomUIProvider>
-                    </div>
-                    <div
-                        className={`cp-dock${chatOpen ? ' cp-dock-open' : ''}`}
-                        onTransitionEnd={handleDockTransitionEnd}
-                    >
-                        {chatMounted && (
-                            <ChatPanel
-                                entries={chatEntries}
-                                send={send}
-                                isSending={isSending}
-                                onClose={() => setChatOpen(false)}
-                                onSendFile={sendFile}
-                                onCancelFile={cancelSend}
-                            />
-                        )}
-                    </div>
-                </div>
-            ) : (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="cp-stage-row">
+                <div className="cp-stage">
                     <RoomUIProvider value={roomUIValue}>
                         {isScreenSharing || focusedIdentity
                             ? <FocusLayout
@@ -305,19 +268,17 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
                         }
                     </RoomUIProvider>
                 </div>
-            )}
+                {isDesktopChat && (
+                    <div
+                        className={`cp-dock${chatOpen ? ' cp-dock-open' : ''}`}
+                        onTransitionEnd={handleDockTransitionEnd}
+                    >
+                        {chatMounted && chatPanel(false)}
+                    </div>
+                )}
+            </div>
 
-            {!isDesktopChat && chatOpen && (
-                <ChatPanel
-                    entries={chatEntries}
-                    send={send}
-                    isSending={isSending}
-                    onClose={() => setChatOpen(false)}
-                    onSendFile={sendFile}
-                    onCancelFile={cancelSend}
-                    overlay
-                />
-            )}
+            {!isDesktopChat && chatOpen && chatPanel(true)}
 
             {screenShareModalOpen && (
                 <Suspense fallback={null}>
@@ -336,7 +297,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
                     <span>{t('room.screenShareFailed')}</span>
                     <button
                         className="screen-share-error-toast-close"
-                        onClick={() => setScreenShareError(false)}
+                        onClick={clearScreenShareError}
                         title={t('room.dismiss')}
                     >
                         ✕

@@ -12,13 +12,16 @@
   position: relative;
 }
 
-/* Stage/dock row rendered by RoomShell in desktop-chat mode (see .cp-dock below). */
+/* RoomShell's stage, with the docked chat beside it on desktop (see .cp-dock below).
+   The bottom padding leaves room for the absolutely positioned control bar. */
 .cp-stage-row {
   flex: 1;
   display: flex;
   flex-direction: row;
   overflow: hidden;
   min-height: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 .cp-stage {
@@ -32,7 +35,7 @@
 
 /* ─── Desktop docked chat (reflow, not overlay) ───
  * RoomShell renders this wrapper (instead of the `overlay` ChatPanel) once the
- * viewport is wide enough. Width is the only animated property: the wrapper starts
+ * viewport is at least 900px wide. Width is the only animated property: the wrapper starts
  * at 0 and grows to a fixed panel width, so the stage (VideoGrid/FocusLayout) beside
  * it reflows continuously as a natural side effect of flexbox — no separate stage
  * animation needed. `overflow: hidden` on the wrapper clips the panel during the
