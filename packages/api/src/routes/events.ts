@@ -45,9 +45,7 @@ export function createEventsRouter(): Router {
         addSseClient(res);
 
         // Keep-alive ping every 30s to prevent proxy/load-balancer timeouts
-        const ping = setInterval(() => {
-            try { res.write(': ping\n\n'); } catch { /* client gone */ }
-        }, 30_000);
+        const ping = setInterval(() => res.write(': ping\n\n'), 30_000);
 
         req.on('close', () => {
             activeSseConnections--;

@@ -11,13 +11,6 @@ export function removeSseClient(res: Response): void {
 }
 
 export function broadcastSse(event: string, data: unknown = {}): void {
-    const sanitizedEvent = event.replace(/[\r\n]/g, '');
-    const msg = `event: ${sanitizedEvent}\ndata: ${JSON.stringify(data)}\n\n`;
-    for (const res of clients) {
-        try {
-            res.write(msg);
-        } catch {
-            clients.delete(res);
-        }
-    }
+    const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    for (const res of clients) res.write(msg);
 }
