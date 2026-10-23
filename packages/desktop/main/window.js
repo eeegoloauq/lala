@@ -3,8 +3,8 @@
 const { BrowserWindow, app, screen, session, shell, powerSaveBlocker } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { IS_MAC, HAS_SYSTEM_TRAY, USER_DATA, IPC } = require('./constants');
-const { state, sendToRenderer } = require('./state');
+const { IS_MAC, HAS_SYSTEM_TRAY, USER_DATA } = require('./constants');
+const { state } = require('./state');
 const { isUrlAllowed, isIndexHtmlUrl } = require('./trust');
 const { getInitialWindowIcon } = require('./icons');
 const { setupContextMenu } = require('./context-menu');
@@ -60,6 +60,30 @@ function getValidatedWindowState() {
     return isVisible ? saved : null;
 }
 
+let showTimer = null;
+
+function showWindow() {
+    clearTimeout(showTimer);
+    const win = state.mainWindow;
+    if (win && !win.isDestroyed()) win.show();
+}
+
+/**
+ * Loads the server the user picked and trusts its origin. The window stays hidden until the
+ * server's page arrives, so a failed connection never flashes an error page; a load that never
+ * settles still gives the window back after 15 s.
+ */
+function loadServer(url) {
+    const win = state.mainWindow;
+    if (!win || win.isDestroyed()) return;
+    state.trustedOrigin = new URL(url).origin;
+    win.hide();
+    clearTimeout(showTimer);
+    showTimer = setTimeout(showWindow, 15_000);
+    // A failure arrives as did-fail-load.
+    win.loadURL(url).catch(() => {});
+}
+
 /**
  * Navigate back to the local connection page. Centralizes the three things
  * that must always happen together: stop the power-save blocker, drop trust
@@ -94,7 +118,7 @@ function createWindow() {
         titleBarStyle: IS_MAC ? 'hiddenInset' : 'default',
         autoHideMenuBar: true,
         icon: getInitialWindowIcon(),
-        show: false, // show after ready-to-show to avoid flash
+        show: false, // until the first page is in, see did-navigate
         backgroundColor: '#0f1117',
         webPreferences: {
             preload: path.join(__dirname, '..', 'preload.js'),
@@ -116,11 +140,6 @@ function createWindow() {
         mainWindow.maximize();
     }
 
-    // Show smoothly when ready
-    mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
-    });
-
     setupContextMenu(mainWindow.webContents);
 
     // F12 opens DevTools (dev builds only)
@@ -130,69 +149,22 @@ function createWindow() {
         }
     });
 
-    // Fix preload race condition on cross-origin navigation.
-    // When loadURL() navigates from file:// to https://, the preload script
-    // may not inject electronAPI before page scripts run. Detect this and
-    // reload once — same-origin reload guarantees correct preload timing.
-    let hasReloadedForPreload = false;
-    mainWindow.webContents.on('did-finish-load', () => {
-        const currentUrl = mainWindow.webContents.getURL();
-        // Only check on remote pages (not file:// index.html)
-        if (!currentUrl.startsWith('http')) return;
-        mainWindow.webContents.executeJavaScript('!!window.electronAPI')
-            .then(hasAPI => {
-                if (!hasAPI && !hasReloadedForPreload) {
-                    hasReloadedForPreload = true;
-                    console.log('[Lala] electronAPI not available after load, reloading once');
-                    mainWindow.webContents.reload();
-                }
-                // Reset flag on successful load so future navigations can also retry
-                if (hasAPI) {
-                    hasReloadedForPreload = false;
-                    if (!mainWindow.isVisible()) mainWindow.show();
-                }
-            })
-            .catch(() => {});
-    });
-
-    // Handle complete connection failures (DNS, refused, timeout, cert errors).
-    // Navigate back to connection page so user can retry or pick another server.
-    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-        if (!mainWindow || mainWindow.isDestroyed()) return;
-        // Only handle remote URLs, not file:// (index.html)
-        if (validatedURL.startsWith('file://')) return;
-        // Ignore aborted loads (user navigated away, e.g. loadFile called)
-        if (errorCode === -3) return;
+    // The server could not be reached at all (DNS, refused, timeout, certificate).
+    // Errors in embedded frames are the page's business, and -3 is a load we aborted ourselves.
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+        if (!isMainFrame || errorCode === -3 || validatedURL.startsWith('file://')) return;
         console.error(`[Lala] Page load failed: ${errorDescription} (${errorCode}) for ${validatedURL}`);
-        hasReloadedForPreload = false;
-        // navigateToConnectionPage() is a programmatic loadFile() call — it does
-        // NOT fire 'will-navigate', so the navigation lock below never sees (and
-        // never needs to allow) this recovery hop. It also drops trustedOrigin,
-        // which is correct: the server we were trying to reach failed to load.
-        navigateToConnectionPage({ error: '1' });
-        // Send error after index.html loads and sets up IPC listeners
-        mainWindow.webContents.once('did-finish-load', () => {
-            sendToRenderer(IPC.LOAD_URL_ERROR, { message: errorDescription || 'Connection failed' });
-            mainWindow.show();
-        });
+        navigateToConnectionPage({ error: errorDescription || 'Connection failed' });
     });
 
-    // Detect HTTP 5xx error pages (502 Bad Gateway, 503, etc.) and go back to
-    // the connection page instead of showing a raw nginx/server error.
+    // A page is in: show it, unless the server answered with a 5xx, which would be a proxy error page.
+    // The connection page shows the error it is given and doesn't auto-connect after one.
     mainWindow.webContents.on('did-navigate', (_event, url, httpResponseCode) => {
-        if (!mainWindow || mainWindow.isDestroyed()) return;
-        if (!url.startsWith('http')) return;
         if (httpResponseCode >= 500) {
             console.error(`[Lala] Server error ${httpResponseCode} for ${url}`);
-            hasReloadedForPreload = false;
-            navigateToConnectionPage({ error: '1' });
-            mainWindow.webContents.once('did-finish-load', () => {
-                sendToRenderer(IPC.LOAD_URL_ERROR, { message: `Server error: ${httpResponseCode}` });
-                mainWindow.show();
-            });
+            navigateToConnectionPage({ error: `Server error: ${httpResponseCode}` });
         } else {
-            // Success — show window
-            mainWindow.show();
+            showWindow();
         }
     });
 
@@ -284,4 +256,4 @@ function setupDownloadHandler() {
     });
 }
 
-module.exports = { createWindow, saveWindowState, navigateToConnectionPage, setupDownloadHandler };
+module.exports = { createWindow, saveWindowState, loadServer, navigateToConnectionPage, setupDownloadHandler };

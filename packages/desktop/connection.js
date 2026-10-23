@@ -47,7 +47,9 @@ function t(key) {
 }
 
 const urlParams = new URLSearchParams(window.location.search);
-const returnedFromError = urlParams.get('error') === '1';
+// The app's message when a server failed to load; auto-connect stays off after one.
+const loadError = urlParams.get('error');
+const returnedFromError = loadError !== null;
 
 const SAVED_KEY = 'lala_saved_servers';
 const LEGACY_KEY = 'lala_recent_servers';
@@ -56,6 +58,7 @@ const MAX_SAVED = 10;
 const form = document.getElementById('connectForm');
 const input = document.getElementById('urlInput');
 const errorMsg = document.getElementById('errorMsg');
+if (loadError) errorMsg.textContent = loadError;
 const connectBtn = document.getElementById('connectBtn');
 const serversSection = document.getElementById('serversSection');
 const serverList = document.getElementById('serverList');

@@ -8,7 +8,7 @@ const { IS_WAYLAND, IPC } = require('./constants');
 const { state, sendToRenderer } = require('./state');
 const { isUrlAllowed, isFileSender, isTrustedSender, isFileOrTrustedSender } = require('./trust');
 const { ICON_VARIANTS, getIconPreference, saveIconPreference, applyIcon } = require('./icons');
-const { navigateToConnectionPage } = require('./window');
+const { loadServer, navigateToConnectionPage } = require('./window');
 const { setBadgeCount } = require('./tray');
 
 function registerIpcHandlers() {
@@ -39,24 +39,11 @@ function registerIpcHandlers() {
     // connection page — never an already-loaded remote page — may call it.
     ipcMain.on(IPC.LOAD_URL, (event, url) => {
         if (!isFileSender(event)) return;
-        if (!state.mainWindow) return;
         if (!isUrlAllowed(url)) {
             sendToRenderer(IPC.LOAD_URL_ERROR, { message: 'Invalid URL protocol. Only HTTP(S) is allowed.' });
             return;
         }
-        // isUrlAllowed() above already parsed the URL successfully, so this can't throw.
-        state.trustedOrigin = new URL(url).origin;
-        state.mainWindow.hide();  // Hide to prevent 502 flash
-        state.mainWindow.loadURL(url).catch(err => {
-            console.error('[Lala] Failed to load URL:', err.message);
-            // Error recovery handled by did-fail-load event
-        });
-        // Safety: ensure window shows after 15s max
-        setTimeout(() => {
-            if (state.mainWindow && !state.mainWindow.isDestroyed() && !state.mainWindow.isVisible()) {
-                state.mainWindow.show();
-            }
-        }, 15000);
+        loadServer(url);
     });
 
     // Get app info

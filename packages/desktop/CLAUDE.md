@@ -22,13 +22,8 @@ Electron 40+ desktop client wrapping the web app with native features.
 7. DTX and RED disabled for screen share audio
 
 ## Error Recovery
-- **502 flash fix**: Window hidden before `loadURL()`, shown after successful load. 15s safety timeout.
-- **`did-fail-load`**: DNS/connection/timeout/cert errors -> `index.html?error=1`
-- **`did-navigate` 5xx**: Same recovery flow
-- **Anti-loop**: `?error=1` disables auto-connect
-
-## Preload Race Condition
-`did-finish-load` checks `!!window.electronAPI`, reloads once if missing. Flag prevents infinite loop.
+`loadServer()` in `main/window.js` hides the window and loads the server; `did-navigate` shows whatever page arrives. A load that never settles gets the window back after 15s (one timer, replaced on each connect).
+- **`did-fail-load`** (main frame only) and **`did-navigate` 5xx** go back to `index.html?error=<message>`, which shows the message and skips auto-connect
 
 ## Server Switching
 - `navigateBack()` IPC: loads `index.html`, stops power save blocker
