@@ -14,7 +14,7 @@ interface SoundsSectionProps {
 
 export function SoundsSection({ headerRef, settings, onUpdate }: SoundsSectionProps) {
   const { t } = useTranslation();
-  const allOn = SOUND_KEYS.every(k => settings[k] ?? true);
+  const allOn = SOUND_KEYS.every(k => settings[k]);
 
   const SOUND_ROWS = [
     { key: 'soundJoinLeave',        label: t('settings.joinLeave'),       desc: t('settings.joinLeaveHint'),        preview: playJoinSound },
@@ -52,7 +52,7 @@ export function SoundsSection({ headerRef, settings, onUpdate }: SoundsSectionPr
             </button>
             <label className="toggle">
               <input type="checkbox" className="toggle-input"
-                checked={settings[key] ?? true}
+                checked={settings[key]}
                 onChange={(e) => onUpdate({ [key]: e.target.checked })}
               />
               <span className="toggle-slider" />

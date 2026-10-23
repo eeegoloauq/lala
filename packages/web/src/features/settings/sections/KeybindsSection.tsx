@@ -22,7 +22,7 @@ export function KeybindsSection({ headerRef, settings, onUpdate }: KeybindsSecti
           </div>
           <label className="toggle">
             <input type="checkbox" className="toggle-input"
-              checked={settings.shortcutsEnabled ?? true}
+              checked={settings.shortcutsEnabled}
               onChange={(e) => onUpdate({ shortcutsEnabled: e.target.checked })}
             />
             <span className="toggle-slider" />

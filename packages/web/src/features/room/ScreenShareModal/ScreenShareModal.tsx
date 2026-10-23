@@ -38,7 +38,7 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
     const [fpsIdx, setFpsIdx] = useState(settings.screenShareFpsIdx);
     const [brIdx, setBrIdx] = useState(settings.screenShareBrIdx);
     const [skipDialog, setSkipDialog] = useState(settings.screenShareSkipDialog);
-    const [audio, setAudio] = useState(settings.screenShareAudio ?? true);
+    const [audio, setAudio] = useState(settings.screenShareAudio);
 
     // On Wayland (skipSourcePicker), show settings-only mode like browser — portal handles source selection.
     const showSourcePicker = isElectron && !skipSourcePicker;

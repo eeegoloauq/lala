@@ -63,7 +63,7 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
             <div className="settings-row-desc">{t('settings.simulcastHint')}</div>
           </div>
           <label className="toggle">
-            <input type="checkbox" className="toggle-input" checked={settings.simulcast ?? false} onChange={(e) => onUpdate({ simulcast: e.target.checked })} />
+            <input type="checkbox" className="toggle-input" checked={settings.simulcast} onChange={(e) => onUpdate({ simulcast: e.target.checked })} />
             <span className="toggle-slider" />
           </label>
         </div>
