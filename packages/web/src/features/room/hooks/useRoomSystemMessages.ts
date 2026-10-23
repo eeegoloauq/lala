@@ -86,7 +86,7 @@ export function useRoomSystemMessages(
             if (played) return;
             played = true;
             if (fallbackTimer) clearTimeout(fallbackTimer);
-            playJoinSound();
+            if (settingsRef.current.soundJoinLeave) playJoinSound();
             addSystem(t('system.youJoined'), 'self-join');
         };
 
