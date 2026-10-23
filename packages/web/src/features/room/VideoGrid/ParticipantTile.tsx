@@ -17,9 +17,9 @@ interface ParticipantTileProps {
     trackRef?: TrackReferenceOrPlaceholder;
     audioMuted?: boolean;  // local deafen state (only meaningful for local participant)
     avatarUrl?: string;
-    onClick?: (identity: string) => void;
+    onClick?: (participant: Participant, e: React.MouseEvent) => void;
     onFlip?: () => void;
-    onContextMenu?: (e: React.MouseEvent) => void;
+    onContextMenu?: (participant: Participant, e: React.MouseEvent) => void;
 }
 
 const QUALITY_LABEL_KEY: Record<string, string> = {
@@ -95,9 +95,8 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
     return (
         <div
             className={`p-tile${isSpeaking ? ' speaking' : ''}${onClick ? ' p-tile-clickable' : ''}`}
-            data-identity={participant.identity}
-            onClick={onClick ? () => onClick(participant.identity) : undefined}
-            onContextMenu={onContextMenu}
+            onClick={onClick && ((e) => onClick(participant, e))}
+            onContextMenu={onContextMenu && ((e) => onContextMenu(participant, e))}
         >
             {activeTrack ? (
                 <VideoTrack trackRef={activeTrack} />

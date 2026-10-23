@@ -44,10 +44,6 @@
     pointer-events: none;
 }
 
-.fl-ambient-hidden {
-    display: none;
-}
-
 /* Camera in main view: contain to preserve aspect ratio (handles vertical video) */
 .fl-main.fl-main-camera video {
     max-width: 100%;

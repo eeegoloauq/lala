@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
-import { isTrackReference } from '@livekit/components-react';
-import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { RemoteParticipant, Track } from 'livekit-client';
 import type { Participant, RemoteTrackPublication } from 'livekit-client';
 import type { ParticipantContextMenuProps } from '../VideoGrid/ParticipantContextMenu';
 import { useRoomUIContext } from '../RoomUIContext';
 import { canSpeak, hasAttribute, isServerMuted } from '../lib/permissions';
+import { setScreenShareSubscribed } from '../lib/screenShare';
 
 /**
  * Admin-action wiring shared by VideoGrid and FocusLayout: both accept identity-scoped
@@ -21,13 +20,10 @@ export interface ParticipantAdminActions {
     onServerBan?: (identity: string) => Promise<void>;
 }
 
-export interface ContextMenuState {
-    identity: string;
-    name: string;
-    isRemote: boolean;
+interface ContextMenuState {
+    participant: Participant;
     hasScreenAudio: boolean;
-    hasScreenSharePub: boolean;
-    screenShareHidden: boolean;
+    screenSharePub?: RemoteTrackPublication;
     serverMuted: boolean;
     voiced: boolean;
     canBeVoiced: boolean;
@@ -35,55 +31,23 @@ export interface ContextMenuState {
     y: number;
 }
 
-export interface UseParticipantContextMenuOptions {
-    /** Current participant list, used to resolve an identity string to a Participant. */
-    participants: Participant[];
-    /** Screen-share-audio track refs (from `useTracks([Track.Source.ScreenShareAudio])`). */
-    screenAudioTracks: TrackReferenceOrPlaceholder[];
-}
-
-export interface UseParticipantContextMenuResult {
-    contextMenu: ContextMenuState | null;
-    /** Opens the context menu for a participant (object or identity string) at the given screen coordinates. */
-    openContextMenu: (participantOrIdentity: Participant | string, x: number, y: number) => void;
-    closeContextMenu: () => void;
-    /** Fully resolved props ready to spread onto `<ParticipantContextMenu>`; null while closed. */
-    contextMenuProps: Omit<ParticipantContextMenuProps, 'onClose'> | null;
-}
-
 /**
- * Owns context-menu state plus the participant/track lookups needed to populate it
- * (screen-audio detection, screen-share-pub visibility, server-mute, admin action binding).
- * Shared between VideoGrid and FocusLayout so both layouts render `<ParticipantContextMenu>`
- * with identical placement/volume/admin/hide-screen-share behavior.
+ * Owns context-menu state and builds the props for `<ParticipantContextMenu>` (volumes,
+ * hide screen share, admin actions bound to the participant), so VideoGrid and FocusLayout
+ * behave the same. `openContextMenu` is stable, so tiles can take it without re-rendering.
  */
-export function useParticipantContextMenu({
-    participants,
-    screenAudioTracks,
-}: UseParticipantContextMenuOptions): UseParticipantContextMenuResult {
+export function useParticipantContextMenu() {
     const { volumes, onVolumeChange, screenVolumes, onScreenVolumeChange, admin, onOpenSettings } = useRoomUIContext();
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-    const openContextMenu = useCallback((participantOrIdentity: Participant | string, x: number, y: number) => {
-        const participant = typeof participantOrIdentity === 'string'
-            ? participants.find((p) => p.identity === participantOrIdentity)
-            : participantOrIdentity;
-        if (!participant) return;
-
-        const hasScreenAudio = screenAudioTracks.some(
-            (t: TrackReferenceOrPlaceholder) => isTrackReference(t) && t.participant.identity === participant.identity && t.publication.isSubscribed && !t.publication.isMuted
-        );
-        const screenPub = participant instanceof RemoteParticipant
-            ? participant.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined
-            : undefined;
-
+    const openContextMenu = useCallback((participant: Participant, x: number, y: number) => {
+        const screenAudio = participant.getTrackPublication(Track.Source.ScreenShareAudio);
         setContextMenu({
-            identity: participant.identity,
-            name: participant.name || participant.identity,
-            isRemote: participant instanceof RemoteParticipant,
-            hasScreenAudio,
-            hasScreenSharePub: !!screenPub,
-            screenShareHidden: !!screenPub && !screenPub.isSubscribed,
+            participant,
+            hasScreenAudio: !!screenAudio?.isSubscribed && !screenAudio.isMuted,
+            screenSharePub: participant instanceof RemoteParticipant
+                ? participant.getTrackPublication(Track.Source.ScreenShare)
+                : undefined,
             serverMuted: isServerMuted(participant),
             voiced: hasAttribute(participant, 'lala.voice'),
             // Someone who may not speak by right, and hasn't been muted, can be given the floor.
@@ -91,24 +55,26 @@ export function useParticipantContextMenu({
             x,
             y,
         });
-    }, [participants, screenAudioTracks]);
+    }, []);
 
     const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
     let contextMenuProps: Omit<ParticipantContextMenuProps, 'onClose'> | null = null;
     if (contextMenu) {
-        const identity = contextMenu.identity;
+        const { participant, screenSharePub } = contextMenu;
+        const identity = participant.identity;
+        const isRemote = participant instanceof RemoteParticipant;
         contextMenuProps = {
             identity,
-            name: contextMenu.name,
-            isRemote: contextMenu.isRemote,
+            name: participant.name || identity,
+            isRemote,
             x: contextMenu.x,
             y: contextMenu.y,
             volume: volumes.get(identity) ?? 50,
             onVolumeChange: (vol) => onVolumeChange(identity, vol),
             screenVolume: contextMenu.hasScreenAudio ? (screenVolumes.get(identity) ?? 100) : undefined,
             onScreenVolumeChange: contextMenu.hasScreenAudio ? (vol) => onScreenVolumeChange(identity, vol) : undefined,
-            admin: admin && contextMenu.isRemote ? {
+            admin: admin && isRemote ? {
                 roomId: admin.roomId,
                 serverMuted: contextMenu.serverMuted,
                 onKick: () => admin.onKick(identity),
@@ -118,19 +84,11 @@ export function useParticipantContextMenu({
                 voice: contextMenu.voiced ? 'take' : contextMenu.canBeVoiced ? 'give' : undefined,
                 onToggleVoice: () => admin.onToggleVoice(identity, contextMenu.voiced),
             } : undefined,
-            screenShareHidden: contextMenu.screenShareHidden,
-            onToggleScreenShare: contextMenu.hasScreenSharePub ? () => {
-                const p = participants.find((p) => p.identity === identity);
-                if (!(p instanceof RemoteParticipant)) return;
-                const pub = p.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined;
-                const audioPub = p.getTrackPublication(Track.Source.ScreenShareAudio) as RemoteTrackPublication | undefined;
-                const newSub = !pub?.isSubscribed;
-                if (pub) pub.setSubscribed(newSub);
-                if (audioPub) audioPub.setSubscribed(newSub);
-            } : undefined,
+            screenShareHidden: !!screenSharePub && !screenSharePub.isSubscribed,
+            onToggleScreenShare: screenSharePub && (() => setScreenShareSubscribed(participant, !screenSharePub.isSubscribed)),
             onOpenSettings,
         };
     }
 
-    return { contextMenu, openContextMenu, closeContextMenu, contextMenuProps };
+    return { openContextMenu, closeContextMenu, contextMenuProps };
 }
