@@ -43,7 +43,8 @@ Vite+React SPA frontend. `@livekit/components-react` v2 + `livekit-client` v2. C
 - `useAvatarSync.ts` -- syncs avatar via participant attributes; handles deletion
 - `useRoomKeyboard.ts` -- rebindable shortcuts; Esc always works
 - `useMicSounds.ts` -- mute/unmute sounds + talking-while-muted detection
-- `useJoinLeaveSound.ts` -- join/leave + screen share sounds
+- `useRoomAnnouncements.ts` -- joins, leaves, screen shares and moderation events as sounds, chat notices and speech
+- `useChatEntries.ts` -- interleaves chat messages, notices and file transfers in arrival order
 
 ## Architecture Details
 

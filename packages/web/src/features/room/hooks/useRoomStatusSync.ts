@@ -1,8 +1,23 @@
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import { RoomEvent } from 'livekit-client';
 import type { Participant, Room } from 'livekit-client';
 import { readDeafened } from '../lib/participantMeta';
 import { setSpeakingUsers, setMutedInRoom, setDeafenedInRoom, setLiveParticipants } from '../../../lib/roomStatusStore';
+
+const MUTE_EVENTS = [
+    RoomEvent.TrackMuted, RoomEvent.TrackUnmuted,
+    RoomEvent.TrackPublished, RoomEvent.TrackUnpublished,
+    RoomEvent.LocalTrackPublished, RoomEvent.LocalTrackUnpublished,
+    RoomEvent.ParticipantConnected, RoomEvent.ParticipantDisconnected,
+];
+const DEAFEN_EVENTS = [RoomEvent.ParticipantMetadataChanged, RoomEvent.ParticipantConnected, RoomEvent.ParticipantDisconnected];
+
+/** Runs `update` now and on each of `events`; returns the unsubscribe. */
+function onEvents(room: Room, events: RoomEvent[], update: () => void) {
+    update();
+    for (const e of events) room.on(e, update);
+    return () => { for (const e of events) room.off(e, update); };
+}
 
 export interface UseRoomStatusSyncOptions {
     room: Room;
@@ -42,26 +57,8 @@ export function useRoomStatusSync({
             if (!room.localParticipant.isMicrophoneEnabled) s.add(room.localParticipant.identity);
             return s;
         };
-        setMutedInRoom(buildMuted());
         const update = () => setMutedInRoom(buildMuted());
-        room.on(RoomEvent.TrackMuted, update);
-        room.on(RoomEvent.TrackUnmuted, update);
-        room.on(RoomEvent.TrackPublished, update);
-        room.on(RoomEvent.TrackUnpublished, update);
-        room.on(RoomEvent.LocalTrackPublished, update);
-        room.on(RoomEvent.LocalTrackUnpublished, update);
-        room.on(RoomEvent.ParticipantConnected, update);
-        room.on(RoomEvent.ParticipantDisconnected, update);
-        return () => {
-            room.off(RoomEvent.TrackMuted, update);
-            room.off(RoomEvent.TrackUnmuted, update);
-            room.off(RoomEvent.TrackPublished, update);
-            room.off(RoomEvent.TrackUnpublished, update);
-            room.off(RoomEvent.LocalTrackPublished, update);
-            room.off(RoomEvent.LocalTrackUnpublished, update);
-            room.off(RoomEvent.ParticipantConnected, update);
-            room.off(RoomEvent.ParticipantDisconnected, update);
-        };
+        return onEvents(room, MUTE_EVENTS, update);
     }, [room]);
 
     // Deafen state: track via participant metadata (setMetadata broadcasts to all clients)
@@ -76,27 +73,13 @@ export function useRoomStatusSync({
             });
             return s;
         };
-        setDeafenedInRoom(buildDeafened());
         const update = () => setDeafenedInRoom(buildDeafened());
-        room.on(RoomEvent.ParticipantMetadataChanged, update);
-        room.on(RoomEvent.ParticipantConnected, update);
-        room.on(RoomEvent.ParticipantDisconnected, update);
-        return () => {
-            room.off(RoomEvent.ParticipantMetadataChanged, update);
-            room.off(RoomEvent.ParticipantConnected, update);
-            room.off(RoomEvent.ParticipantDisconnected, update);
-        };
+        return onEvents(room, DEAFEN_EVENTS, update);
     }, [room, audioMuted]);
 
-    const handleSpeakers = useCallback(
-        (speakers: Participant[]) => {
-            setSpeakingUsers(speakers.map((s) => s.identity));
-        },
-        [],
-    );
-
     useEffect(() => {
-        room.on(RoomEvent.ActiveSpeakersChanged, handleSpeakers);
-        return () => { room.off(RoomEvent.ActiveSpeakersChanged, handleSpeakers); };
-    }, [room, handleSpeakers]);
+        const update = (speakers: Participant[]) => setSpeakingUsers(speakers.map((s) => s.identity));
+        room.on(RoomEvent.ActiveSpeakersChanged, update);
+        return () => { room.off(RoomEvent.ActiveSpeakersChanged, update); };
+    }, [room]);
 }

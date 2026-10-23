@@ -8,7 +8,6 @@ import { VideoGrid } from './VideoGrid/VideoGrid';
 import { FocusLayout } from './FocusLayout/FocusLayout';
 import { ControlBar } from './ControlBar/ControlBar';
 import { ChatPanel } from './ChatPanel/ChatPanel';
-import { useJoinLeaveSound, useScreenShareSound } from './hooks/useJoinLeaveSound';
 import { useMicSound, useTalkingWhileMuted } from './hooks/useMicSounds';
 import { playMuteSound, playUnmuteSound } from '../../lib/sounds';
 import { useIosAudioKeepAlive } from './hooks/useIosAudioKeepAlive';
@@ -24,7 +23,8 @@ import { useScreenShare, getScreenShareQuality } from './hooks/useScreenShare';
 import type { ScreenShareQuality } from './hooks/useScreenShare';
 import { useAvatarCache } from './hooks/useAvatarCache';
 import { useRoomStatusSync } from './hooks/useRoomStatusSync';
-import { useRoomSystemMessages } from './hooks/useRoomSystemMessages';
+import { useChatEntries } from './hooks/useChatEntries';
+import { useRoomAnnouncements } from './hooks/useRoomAnnouncements';
 import { useAdminActions } from './hooks/useAdminActions';
 import { useParticipantVolumeSync } from './hooks/useParticipantVolumeSync';
 import { useChatNotifications } from './hooks/useChatNotifications';
@@ -103,9 +103,10 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     const { messages, send, isSending } = useRoomChat();
     const { fileTransfers, sendFile, cancelSend } = useFileTransfers(room, localParticipant);
 
-    const { chatEntries, addSystem, suppressLeave } = useRoomSystemMessages(room, t, settings, messages, fileTransfers);
+    const { chatEntries, addSystem } = useChatEntries(messages, fileTransfers);
+    useRoomAnnouncements(room, settings, addSystem);
 
-    const adminProps = useAdminActions({ room, canModerate, settings, addSystem, suppressLeave });
+    const adminProps = useAdminActions(room.name, canModerate);
 
     usePushToTalk(settings.pushToTalk, settings.pushToTalkKey, audioMuted);
     useAudioProcessor({ noiseSuppressionMode: settings.noiseSuppressionMode, silenceGate: settings.silenceGate });
@@ -114,10 +115,8 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     const { mic, cam } = useLocalControls();
     const { enabled: screenEnabled, pending: screenPending, start: startScreen, stop: stopScreen } = useScreenShare();
 
-    useJoinLeaveSound(settings.soundJoinLeave ?? true);
-    useScreenShareSound(settings.soundScreenShare ?? true);
-    useMicSound(settings.soundMicFeedback ?? true);
-    useTalkingWhileMuted(settings.audioInputDeviceId || undefined, settings.soundTalkingWhileMuted ?? true);
+    useMicSound(settings.soundMicFeedback);
+    useTalkingWhileMuted(settings.audioInputDeviceId || undefined, settings.soundTalkingWhileMuted);
     useIosAudioKeepAlive(true);
 
     useParticipantVolumeSync({ participants, volumes, onVolumeChange, screenVolumes });
