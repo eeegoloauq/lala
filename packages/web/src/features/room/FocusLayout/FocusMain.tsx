@@ -80,7 +80,8 @@ export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: Foc
                             <VideoTrack trackRef={pip.track} />
                         </div>
                     )}
-                    <div className="fl-main-bar">
+                    {/* Its buttons must not also open the menu or toggle fullscreen on the view behind. */}
+                    <div className="fl-main-bar" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
                         {onExit && (
                             <button className="fl-back-btn" onClick={onExit} title={t('focus.backToGrid')}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
