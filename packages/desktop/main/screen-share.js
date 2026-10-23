@@ -158,10 +158,10 @@ function registerScreenShareIpc() {
                 thumbnailSize: THUMBNAIL_SIZE,
                 fetchWindowIcons: true,
             });
-            // Filter out the Lala window itself
-            const lalaTitle = state.mainWindow?.getTitle() || '';
+            // Sharing our own window would show the call inside itself.
+            const ownWindow = state.mainWindow?.getMediaSourceId();
             return sources
-                .filter(source => source.name !== lalaTitle)
+                .filter(source => source.id !== ownWindow)
                 .map(source => ({
                     id: source.id,
                     name: source.name,

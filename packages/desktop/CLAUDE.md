@@ -56,7 +56,8 @@ recovery flow, the tray "Change server" item, and the `NAVIGATE_BACK` IPC).
   (`getDisplayCaptureDenyReason()`) accepts only the window's main frame on
   `trustedOrigin`. `request.securityOrigin` and the permission check's
   `requestingOrigin` are serialized URLs with a trailing slash, so every
-  comparison goes through `isTrustedUrl()`, never a string compare.
+  comparison goes through `isTrustedUrl()`, never a string compare. The picker
+  leaves out our own window by `getMediaSourceId()`.
 - **Downloads** (`will-download` in `setupDownloadHandler()`): default Electron
   behavior kept (native Save As dialog — `setSavePath()` intentionally not
   called); handler only logs start/completed/cancelled/interrupted to stderr.
