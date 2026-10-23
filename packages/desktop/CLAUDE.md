@@ -75,7 +75,7 @@ recovery flow, the tray "Change server" item, and the `NAVIGATE_BACK` IPC).
 - **Wayland**: PipeWire capturer enabled. XDG portal for screen picker. Audio comes from the same loopback as X11.
 - **Single instance**: `requestSingleInstanceLock()` -- second instance focuses existing window.
 - **Power save**: `prevent-display-sleep` blocker during calls.
-- **Auto-updater**: GitHub Releases, `autoDownload: false`, `autoInstallOnAppQuit: false` — install only happens via the user-triggered `INSTALL_UPDATE` IPC (Settings "Update" button), never silently on quit.
+- **Auto-updater**: Windows, macOS and the AppImage update from GitHub Releases, `autoDownload: false`, `autoInstallOnAppQuit: false` — install only happens via the user-triggered `INSTALL_UPDATE` IPC (Settings "Update" button), never silently on quit. Linux packages never update themselves (`INSTALL_CHANNEL`): Copr through dnf, the GitHub RPM and tarball by the user from the releases page, which the update check links to.
 - **Crash logs**: `userData/crash-logs/` — written on `uncaughtException` / `render-process-gone`, pruned after 7 days.
 
 ## Build & Release

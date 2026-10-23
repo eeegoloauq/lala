@@ -139,6 +139,7 @@ function UpdateSection() {
       case 'installing': return t('settings.updateInstalling');
       case 'ready': return t('settings.updateReady', { version: updateStatus.version });
       case 'package-manager': return t('settings.updatePackageManager');
+      case 'manual': return t('settings.updateManual');
       case 'error': return updateStatus.error
         ? `${t('settings.updateError')}\n${updateStatus.error}`
         : t('settings.updateError');
@@ -174,9 +175,14 @@ function UpdateSection() {
       {statusText && (
         <div className={`settings-update-status settings-update-status--${updateStatus!.status}`} style={{ whiteSpace: 'pre-wrap' }}>
           {statusText}
+          {updateStatus!.status === 'manual' && updateStatus!.url && (
+            <button className="btn" onClick={() => window.open(updateStatus!.url)}>
+              {t('settings.updateManualLink')}
+            </button>
+          )}
           {updateStatus!.status === 'ready' && (
             <button
-              className="btn btn--small"
+              className="btn"
               onClick={() => window.electronAPI?.installUpdate()}
             >
               {t('update.restart')}

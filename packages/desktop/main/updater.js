@@ -1,46 +1,18 @@
 'use strict';
 
 const { app, ipcMain } = require('electron');
-const path = require('path');
-const { execFile, execFileSync } = require('child_process');
 const { autoUpdater } = require('electron-updater');
-const { IS_LINUX, INSTALL_CHANNEL, IPC } = require('./constants');
+const { INSTALL_CHANNEL, IPC } = require('./constants');
 const { state, sendToRenderer } = require('./state');
 const { isFileOrTrustedSender } = require('./trust');
 
-function detectCommand(commands) {
-    for (const cmd of commands) {
-        try {
-            execFileSync('which', [cmd], { stdio: 'ignore' });
-            return cmd;
-        } catch {}
-    }
-    return commands[0]; // fallback to first
-}
-
-// SECURITY (known accepted risk): --nogpgcheck / --allow-unsigned-rpm / plain
-// `rpm -Uvh` below skip RPM signature verification entirely. Proper fix is to
-// GPG-sign releases and ship/import a public key, which needs signing
-// infrastructure we don't have yet. Accepted for now because installerPath
-// always comes from electron-updater's own download of our GitHub Release
-// asset (HTTPS, and electron-updater verifies the download's checksum from
-// latest-linux.yml before this ever runs) — this isn't installing arbitrary
-// attacker-supplied RPMs, just skipping the *GPG* signature check specifically.
-function buildRpmInstallArgs(installerPath) {
-    const pm = detectCommand(['dnf', 'zypper', 'yum', 'rpm']);
-    switch (pm) {
-        case 'dnf': return ['dnf', 'install', '--nogpgcheck', '-y', installerPath];
-        case 'zypper': return ['zypper', '--non-interactive', '--no-refresh', 'install', '--allow-unsigned-rpm', '-f', installerPath];
-        case 'yum': return ['yum', 'install', '--nogpgcheck', '-y', installerPath];
-        default: return ['rpm', '-Uvh', '--replacepkgs', '--replacefiles', '--nodeps', installerPath];
-    }
-}
+const RELEASES_URL = 'https://github.com/eeegoloauq/lala/releases/latest';
 
 function setupAutoUpdater() {
-    // Files owned by the distro package manager — electron-updater must not
-    // touch them or even phone home. Updates come via dnf; the manual check
-    // in Settings gets a dedicated 'package-manager' status instead.
-    if (INSTALL_CHANNEL === 'system-package') return;
+    // A distro package updates through its package manager and a GitHub RPM or tarball
+    // by hand; electron-updater must not touch either or even phone home. The check in
+    // Settings says so instead (see CHECK_UPDATE).
+    if (INSTALL_CHANNEL === 'system-package' || INSTALL_CHANNEL === 'manual') return;
 
     autoUpdater.autoDownload = false;
     // Installing must always be an explicit user action (INSTALL_UPDATE IPC,
@@ -117,50 +89,15 @@ function registerUpdaterIpc() {
             sendToRenderer(IPC.UPDATE_STATUS, { status: 'package-manager' });
             return null;
         }
+        if (INSTALL_CHANNEL === 'manual') {
+            sendToRenderer(IPC.UPDATE_STATUS, { status: 'manual', url: RELEASES_URL });
+            return null;
+        }
         return autoUpdater.checkForUpdates().catch(() => null);
     });
 
     ipcMain.on(IPC.INSTALL_UPDATE, (event) => {
         if (!isFileOrTrustedSender(event)) return;
-        const installerPath = autoUpdater.installerPath;
-
-        // On Linux RPM: run pkexec async (non-blocking) while the app stays alive.
-        // electron-updater's built-in quitAndInstall() uses spawnSync which freezes the
-        // event loop while pkexec shows its password dialog. Using async execFile keeps
-        // the app responsive. Linux allows replacing files in use (Unix inode semantics),
-        // so dnf can install while the app is running — then we relaunch.
-        if (IS_LINUX && installerPath && installerPath.endsWith('.rpm')) {
-            sendToRenderer(IPC.UPDATE_STATUS, { status: 'installing' });
-            const sudo = detectCommand(['pkexec', 'kdesudo', 'gksudo', 'sudo']);
-            const args = buildRpmInstallArgs(installerPath);
-
-            execFile(sudo, args, (error) => {
-                if (error) {
-                    // RPM %postun scriptlet failures (e.g. update-alternatives) can cause
-                    // dnf to report a failed transaction even though the new package was
-                    // installed successfully. Check the installed version before giving up.
-                    try {
-                        const installed = execFileSync('rpm', ['-q', '--qf', '%{VERSION}', 'lala-desktop'], { encoding: 'utf8' }).trim();
-                        const expected = path.basename(installerPath).match(/(\d+\.\d+\.\d+)/)?.[1];
-                        if (expected && installed === expected) {
-                            app.relaunch();
-                            app.exit(0);
-                            return;
-                        }
-                    } catch {}
-
-                    sendToRenderer(IPC.UPDATE_STATUS, {
-                        status: 'error',
-                        error: `${error.message}\n\nLala ${app.getVersion()} / ${process.platform} ${process.arch}`,
-                    });
-                    return;
-                }
-                app.relaunch();
-                app.exit(0);
-            });
-            return;
-        }
-
         state.isQuitting = true;
         autoUpdater.quitAndInstall(true, true);
     });

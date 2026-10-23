@@ -317,6 +317,8 @@
     "updateReady": "Version {{version}} ready to install",
     "updateError": "Could not check for updates",
     "updatePackageManager": "Installed from the system package manager — update via dnf",
+    "updateManual": "This build doesn't update itself: install the new version from the releases page",
+    "updateManualLink": "Open releases",
     "check": "Check",
     "about": "About",
     "sourceCode": "Source code",

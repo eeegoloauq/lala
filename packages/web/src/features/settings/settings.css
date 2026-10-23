@@ -257,6 +257,11 @@
   margin-top: -4px;
 }
 
+.settings-update-status .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .settings-update-status--not-available {
   color: var(--color-success, #43b581);
 }

@@ -16,13 +16,13 @@ const HAS_SYSTEM_TRAY = !IS_LINUX || (!IS_GNOME && !process.env.SWAYSOCK && !pro
 // 'system-package' — Linux package owned by the distro package manager (execPath under
 //                    /usr/, e.g. Copr RPM in /usr/lib/lala); dnf owns the files, we must
 //                    neither write launcher overrides nor run electron-updater.
-// 'github-rpm'     — electron-builder RPM/tar.gz from GitHub Releases (/opt/Lala);
-//                    updates via electron-updater + pkexec dnf install.
+// 'manual'         — RPM or tar.gz from GitHub Releases (/opt/Lala); the user installs
+//                    new versions, we never install packages as root.
 const INSTALL_CHANNEL = (() => {
     if (process.env.APPIMAGE) return 'appimage';
     if (process.platform === 'win32') return 'windows';
     if (IS_MAC) return 'macos';
-    if (IS_LINUX) return process.execPath.startsWith('/usr/') ? 'system-package' : 'github-rpm';
+    if (IS_LINUX) return process.execPath.startsWith('/usr/') ? 'system-package' : 'manual';
     return 'unknown';
 })();
 
