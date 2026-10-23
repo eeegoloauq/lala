@@ -132,6 +132,26 @@ test('a viewer receives a screen share', async ({ browser }) => {
     // Bob decodes the screen track: frames have a size and keep advancing.
     await expect.poll(async () => (await media(bob.page)).videos.some(v => v.width > 0 && v.time > 1), { timeout: 20_000 }).toBe(true);
 
+    // The share takes Bob's view; Alice's camera joins it as a picture-in-picture he can swap with it.
+    const main = bob.page.locator('.fl-main');
+    await expect(main.locator('.fl-main-label')).toHaveText('Alice');
+    await alice.page.getByRole('button', { name: 'Turn on camera' }).click();
+    await bob.page.getByRole('button', { name: 'Show camera large' }).click();
+    await expect(main).toHaveClass(/fl-main-camera/);
+    await bob.page.getByRole('button', { name: 'Show screen large' }).click();
+    await expect(main).not.toHaveClass(/fl-main-camera/);
+
+    // Hiding the share stops receiving it; focusing Alice brings it back.
+    await bob.page.locator('.fl-strip .p-tile', { hasText: 'Alice' }).click({ button: 'right' });
+    await bob.page.getByRole('button', { name: 'Hide screen share' }).click();
+    await expect(main).toBeHidden();
+    await expect.poll(async () => (await media(bob.page)).videos.length, { timeout: 10_000 }).toBe(1);
+    await bob.page.locator('.p-tile', { hasText: 'Alice' }).click();
+    await expect(main).toBeVisible();
+    await expect(main).not.toHaveClass(/fl-main-camera/);
+    await expect.poll(async () => (await media(bob.page)).videos.length, { timeout: 10_000 }).toBe(2);
+
+    await alice.page.getByRole('button', { name: 'Turn off camera' }).click();
     await alice.page.getByRole('button', { name: 'Stop screen share' }).click();
     await expect.poll(async () => (await media(bob.page)).videos.length, { timeout: 20_000 }).toBe(0);
 
