@@ -1,9 +1,10 @@
-/**
- * Strip characters that could be used for spoofing/injection in user-supplied
- * display strings: null bytes, control characters, and RTL/LTR bidi override
- * characters (which can be used to visually disguise text, e.g. fake file
- * extensions or reversed slurs). Shared by room displayName and participant name.
- */
+// Control characters (newlines and tabs included), line and paragraph separators, and bidi
+// controls, which can disguise text (reversed words, fake file extensions). Zero-width
+// joiners stay: emoji sequences need them.
+const UNSAFE = /[\p{Cc}\p{Zl}\p{Zp}؜‎‏‪-‮⁦-⁩]/gu;
+
+/** Cleans a user-supplied display string (room name, participant name) to at most `maxLen` characters. */
 export function sanitizeDisplayText(input: string, maxLen: number): string {
-    return input.trim().replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '').slice(0, maxLen);
+    // Cut by code points so an emoji is never split into a lone surrogate.
+    return Array.from(input.replace(UNSAFE, '').trim()).slice(0, maxLen).join('').trimEnd();
 }
