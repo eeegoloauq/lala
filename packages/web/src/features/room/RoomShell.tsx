@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import type { TransitionEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTracks, RoomAudioRenderer, useLocalParticipant, useRoomContext, useParticipants, useConnectionState } from '@livekit/components-react';
+import { useTracks, RoomAudioRenderer, useLocalParticipant, useLocalParticipantPermissions, useRoomContext, useParticipants, useConnectionState } from '@livekit/components-react';
 import { isTrackReference } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { VideoGrid } from './VideoGrid/VideoGrid';
 import { FocusLayout } from './FocusLayout/FocusLayout';
 import { ControlBar } from './ControlBar/ControlBar';
-import { ChatPanel } from './ChatPanel/ChatPanel';
+import { ChatPanel, DESKTOP_CHAT_QUERY } from './ChatPanel/ChatPanel';
 import { useMicSound, useTalkingWhileMuted } from './hooks/useMicSounds';
 import { playMuteSound, playUnmuteSound } from '../../lib/sounds';
 import { useIosAudioKeepAlive } from './hooks/useIosAudioKeepAlive';
@@ -49,9 +49,6 @@ interface RoomShellProps {
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-/** Below this width the chat stays the existing floating/fullscreen overlay; at or above it, chat docks as a proper reflowing column. */
-const DESKTOP_CHAT_QUERY = '(min-width: 900px)';
-
 export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
@@ -78,6 +75,8 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
         usePersistedVolumes('lala_screen_volumes');
 
     const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+    // The room may not let us chat (the server config sets who may).
+    const mayChat = useLocalParticipantPermissions()?.canPublishData ?? true;
     const participants = useParticipants();
     const room = useRoomContext();
     const connectionState = useConnectionState();
@@ -235,6 +234,8 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
             entries={chatEntries}
             send={send}
             isSending={isSending}
+            localIdentity={localParticipant.identity}
+            mayChat={mayChat}
             onClose={() => setChatOpen(false)}
             onSendFile={sendFile}
             onCancelFile={cancelSend}

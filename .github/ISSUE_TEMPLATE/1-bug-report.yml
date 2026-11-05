@@ -7,7 +7,7 @@ body:
     attributes:
       label: Where did it happen?
       options:
-        - Demo (lala.egor-solovev.dev)
+        - Demo (eeegoloauq.github.io/lala)
         - Self-hosted instance
         - Desktop app (Windows)
         - Desktop app (Linux)

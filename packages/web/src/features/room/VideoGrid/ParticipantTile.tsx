@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VideoTrack, useIsSpeaking, useConnectionQualityIndicator } from '@livekit/components-react';
 import type { TrackReference, TrackReferenceOrPlaceholder } from '@livekit/components-react';
@@ -68,7 +69,6 @@ function useIsScreenSharing(participant: Participant): boolean {
 }
 
 export const ParticipantTile = memo(function ParticipantTile({ participant, trackRef, audioMuted, avatarUrl, onClick, onFlip, onContextMenu }: ParticipantTileProps) {
-    const { t } = useTranslation();
     const isSpeaking = useIsSpeaking(participant);
     const { quality } = useConnectionQualityIndicator({ participant });
     const micMuted = useMicMuted(participant);
@@ -93,36 +93,76 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
                 quality === ConnectionQuality.Poor ? 'poor' : null;
 
     return (
-        <div
-            className={`p-tile${isSpeaking ? ' speaking' : ''}${onClick ? ' p-tile-clickable' : ''}`}
+        <ParticipantTileView
+            name={participant.name || participant.identity}
+            identity={participant.identity}
+            avatarUrl={avatarUrl}
+            video={activeTrack ? <VideoTrack trackRef={activeTrack} /> : undefined}
+            speaking={isSpeaking}
+            screenSharing={isScreenSharing}
+            micMuted={micMuted}
+            serverMuted={isServerMuted}
+            deafened={isDeafened}
+            handRaised={handRaised}
+            quality={qualityStr}
             onClick={onClick && ((e) => onClick(participant, e))}
             onContextMenu={onContextMenu && ((e) => onContextMenu(participant, e))}
+            onFlip={onFlip}
+        />
+    );
+});
+
+interface ParticipantTileViewProps {
+    name: string;
+    identity: string;
+    avatarUrl?: string;
+    /** The video to show instead of the avatar. */
+    video?: ReactNode;
+    speaking: boolean;
+    screenSharing: boolean;
+    micMuted: boolean;
+    serverMuted: boolean;
+    deafened: boolean;
+    handRaised: boolean;
+    quality: 'excellent' | 'good' | 'poor' | null;
+    onClick?: (e: React.MouseEvent) => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
+    /** Shown over a video only. */
+    onFlip?: () => void;
+}
+
+/** How a participant looks on the stage, from plain state; ParticipantTile reads it from LiveKit. */
+export function ParticipantTileView({ name, identity, avatarUrl, video, speaking, screenSharing, micMuted, serverMuted, deafened, handRaised, quality, onClick, onContextMenu, onFlip }: ParticipantTileViewProps) {
+    const { t } = useTranslation();
+    return (
+        <div
+            className={`p-tile${speaking ? ' speaking' : ''}${onClick ? ' p-tile-clickable' : ''}`}
+            onClick={onClick}
+            onContextMenu={onContextMenu}
         >
-            {activeTrack ? (
-                <VideoTrack trackRef={activeTrack} />
-            ) : (
+            {video ?? (
                 <div className="p-tile-avatar">
-                    <Avatar name={participant.name || participant.identity} identity={participant.identity} size={80} avatarUrl={avatarUrl} />
+                    <Avatar name={name} identity={identity} size={80} avatarUrl={avatarUrl} />
                 </div>
             )}
 
-            {isScreenSharing && (
+            {screenSharing && (
                 <div className="p-tile-screen-badge" title={t('tile.screenSharing')}>
                     <ScreenShareStatusIcon size={12} />
                 </div>
             )}
 
             <div className="p-tile-meta">
-                <span className="p-tile-name">{participant.name || participant.identity}</span>
+                <span className="p-tile-name">{name}</span>
                 <div className="p-tile-status">
                     {handRaised && <span className="p-tile-status-icon p-tile-hand" title={t('tile.handRaised')}>✋</span>}
-                    {micMuted && <span className={`p-tile-status-icon${isServerMuted ? ' server-muted' : ''}`} title={isServerMuted ? t('tile.serverMuted') : t('tile.micOff')}><MicOffIcon /></span>}
-                    {isDeafened && <span className="p-tile-status-icon" title={t('tile.soundOff')}><SpeakerOffIcon /></span>}
-                    {qualityStr && (
+                    {micMuted && <span className={`p-tile-status-icon${serverMuted ? ' server-muted' : ''}`} title={serverMuted ? t('tile.serverMuted') : t('tile.micOff')}><MicOffIcon /></span>}
+                    {deafened && <span className="p-tile-status-icon" title={t('tile.soundOff')}><SpeakerOffIcon /></span>}
+                    {quality && (
                         <div
                             className="cq-bars"
-                            data-quality={qualityStr}
-                            title={t(QUALITY_LABEL_KEY[qualityStr])}
+                            data-quality={quality}
+                            title={t(QUALITY_LABEL_KEY[quality])}
                         >
                             <div className="cq-bar" />
                             <div className="cq-bar" />
@@ -132,7 +172,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
                 </div>
             </div>
 
-            {onFlip && activeTrack && (
+            {onFlip && video && (
                 <button
                     className="p-tile-flip"
                     onClick={(e) => { e.stopPropagation(); onFlip(); }}
@@ -143,4 +183,4 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
             )}
         </div>
     );
-});
+}

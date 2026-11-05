@@ -411,9 +411,11 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
 
     if (DemoCall) {
         return (
-            <Suspense fallback={null}>
-                <DemoCall roomId={roomName} onLeave={onLeave} />
-            </Suspense>
+            <div className="main-content">
+                <Suspense fallback={null}>
+                    <DemoCall roomId={roomName} name={name} settings={settings} onLeave={onLeave} />
+                </Suspense>
+            </div>
         );
     }
 

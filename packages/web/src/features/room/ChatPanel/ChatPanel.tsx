@@ -7,10 +7,17 @@ import { ChatComposer } from './ChatComposer';
 import { useFloatingPanel, RESIZE_DIRS } from './useFloatingPanel';
 import './chat-panel.css';
 
+/** Below this width the chat stays the existing floating/fullscreen overlay; at or above it, chat docks as a proper reflowing column. */
+export const DESKTOP_CHAT_QUERY = '(min-width: 900px)';
+
 interface ChatPanelProps {
     entries: ChatEntry[];
     send: (msg: string) => Promise<unknown>;
     isSending: boolean;
+    /** Whose messages are our own. */
+    localIdentity: string;
+    /** Whether the room lets us chat. */
+    mayChat: boolean;
     onClose?: () => void;
     overlay?: boolean;
     /** Sends a File as a byte-stream chat attachment; resolves with an error tag on failure (e.g. too large). */
@@ -19,7 +26,7 @@ interface ChatPanelProps {
     onCancelFile?: (id: string) => void;
 }
 
-export function ChatPanel({ entries, send, isSending, onClose, overlay = false, onSendFile, onCancelFile }: ChatPanelProps) {
+export function ChatPanel({ entries, send, isSending, localIdentity, mayChat, onClose, overlay = false, onSendFile, onCancelFile }: ChatPanelProps) {
     const { t } = useTranslation();
     const panelRef = useRef<HTMLDivElement>(null);
     const { startDrag, startResize } = useFloatingPanel(panelRef, overlay);
@@ -85,11 +92,11 @@ export function ChatPanel({ entries, send, isSending, onClose, overlay = false, 
                 )}
             </div>
 
-            <MessageList entries={entries} onCancelFile={onCancelFile} />
+            <MessageList entries={entries} localIdentity={localIdentity} onCancelFile={onCancelFile} />
 
             {fileError && <div className="cp-rate-limit">{fileError}</div>}
 
-            <ChatComposer send={send} isSending={isSending} onFiles={sendFiles} />
+            <ChatComposer send={send} isSending={isSending} mayChat={mayChat} onFiles={sendFiles} />
         </div>
     );
 }

@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useLocalParticipantPermissions } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 import { useDismiss } from '../../../hooks/useDismiss';
 import { useTimedValue } from '../../../hooks/useTimedValue';
@@ -14,18 +13,18 @@ const RATE_LIMIT_COOLDOWN_MS = 2000;
 interface ChatComposerProps {
     send: (msg: string) => Promise<unknown>;
     isSending: boolean;
+    /** Whether the room lets us chat (the server config sets who may). */
+    mayChat: boolean;
     /** Takes attached or pasted files; without it the composer offers no attachments. */
     onFiles?: (files: Iterable<File>) => void;
 }
 
-export function ChatComposer({ send, isSending, onFiles }: ChatComposerProps) {
+export function ChatComposer({ send, isSending, mayChat, onFiles }: ChatComposerProps) {
     const { t } = useTranslation();
     const [text, setText] = useState('');
     const [showEmoji, setShowEmoji] = useState(false);
     const [rateLimited, showRateLimited] = useTimedValue<true>(RATE_LIMIT_COOLDOWN_MS);
     const [sendFailed, setSendFailed] = useState(false);
-    // The room may not let us chat (the server config sets who may).
-    const mayChat = useLocalParticipantPermissions()?.canPublishData ?? true;
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const emojiWrapRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);

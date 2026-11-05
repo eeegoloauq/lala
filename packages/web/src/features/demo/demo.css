@@ -1,29 +1,27 @@
+/* Laid out like RoomShell: stage and chat dock in a column, the control bar over the bottom edge. */
 .demo-call {
-    overflow-y: auto;
-}
-
-.demo-call-shot {
-    width: min(100%, 560px);
-    border-radius: var(--tile-radius);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-}
-
-.demo-call-sub {
-    max-width: 420px;
-}
-
-.demo-call-actions {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 8px;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
 }
 
-.demo-call-actions .btn {
-    display: inline-flex;
-    align-items: center;
-    width: auto;
-    text-decoration: none;
+.demo-call-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+/* Says once, quietly, that this call is a simulation. */
+.demo-call-note {
+    align-self: center;
+    margin: 8px 16px 0;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
 }

@@ -30,7 +30,6 @@ interface ControlBarProps {
 }
 
 export function ControlBar({ mic, cam, screen, audioMuted, onToggleAudio, chatOpen, onToggleChat, unreadCount = 0, onScreenShareClick }: ControlBarProps) {
-    const { t } = useTranslation();
     const { buttonProps: leaveProps } = useDisconnectButton({});
     // What the server lets us publish here; a button for something we may not do stays off.
     const permissions = useLocalParticipantPermissions();
@@ -50,6 +49,32 @@ export function ControlBar({ mic, cam, screen, audioMuted, onToggleAudio, chatOp
     }, [mayTalk, handRaised, setHand]);
 
     return (
+        <ControlBarView
+            mic={mic} cam={cam} screen={screen}
+            audioMuted={audioMuted} onToggleAudio={onToggleAudio}
+            chatOpen={chatOpen} onToggleChat={onToggleChat} unreadCount={unreadCount}
+            onScreenShareClick={onScreenShareClick}
+            onLeave={leaveProps.onClick}
+            mayTalk={mayTalk} mayScreenShare={mayPublish(SCREEN_SHARE)} mayCamera={mayPublish(CAMERA)}
+            handRaised={handRaised} onToggleHand={() => setHand(!handRaised)}
+        />
+    );
+}
+
+interface ControlBarViewProps extends ControlBarProps {
+    onLeave?: () => void;
+    mayTalk: boolean;
+    mayScreenShare: boolean;
+    mayCamera: boolean;
+    handRaised: boolean;
+    onToggleHand: () => void;
+}
+
+/** The call's buttons, from plain state; ControlBar wires them to LiveKit. */
+export function ControlBarView({ mic, cam, screen, audioMuted, onToggleAudio, chatOpen, onToggleChat, unreadCount = 0, onScreenShareClick, onLeave, mayTalk, mayScreenShare, mayCamera, handRaised, onToggleHand }: ControlBarViewProps) {
+    const { t } = useTranslation();
+
+    return (
         <div className="cb-wrap">
             <div className="cb-pill">
                 {mayTalk ? (
@@ -64,7 +89,7 @@ export function ControlBar({ mic, cam, screen, audioMuted, onToggleAudio, chatOp
                 ) : (
                     <button
                         className={`cb-btn cb-anim-pulse${handRaised ? ' cb-active' : ''}`}
-                        onClick={() => setHand(!handRaised)}
+                        onClick={onToggleHand}
                         title={handRaised ? t('ctx.lowerHand') : t('ctx.raiseHand')}
                     >
                         <span aria-hidden="true">✋</span>
@@ -85,8 +110,8 @@ export function ControlBar({ mic, cam, screen, audioMuted, onToggleAudio, chatOp
                     <button
                         className={`cb-btn cb-anim-rise${screen.enabled ? ' cb-active' : ''}`}
                         onClick={onScreenShareClick}
-                        disabled={screen.pending || !mayPublish(SCREEN_SHARE)}
-                        title={!mayPublish(SCREEN_SHARE) ? t('controls.notAllowed') : screen.enabled ? t('controls.screenShareStop') : t('controls.screenShareStart')}
+                        disabled={screen.pending || !mayScreenShare}
+                        title={!mayScreenShare ? t('controls.notAllowed') : screen.enabled ? t('controls.screenShareStop') : t('controls.screenShareStart')}
                     >
                         {screen.enabled ? <ScreenShareOffIcon /> : <ScreenShareIcon />}
                     </button>
@@ -95,8 +120,8 @@ export function ControlBar({ mic, cam, screen, audioMuted, onToggleAudio, chatOp
                 <button
                     className={`cb-btn cb-anim-pulse${cam.enabled ? '' : ' cb-off-soft'}`}
                     onClick={() => cam.toggle()}
-                    disabled={cam.pending || !mayPublish(CAMERA)}
-                    title={!mayPublish(CAMERA) ? t('controls.notAllowed') : cam.enabled ? t('controls.cameraOff') : t('controls.cameraOn')}
+                    disabled={cam.pending || !mayCamera}
+                    title={!mayCamera ? t('controls.notAllowed') : cam.enabled ? t('controls.cameraOff') : t('controls.cameraOn')}
                 >
                     {cam.enabled ? <VideoIcon /> : <VideoOffIcon />}
                 </button>
@@ -119,7 +144,7 @@ export function ControlBar({ mic, cam, screen, audioMuted, onToggleAudio, chatOp
 
                 <button
                     className="cb-btn cb-leave cb-anim-shake"
-                    onClick={leaveProps.onClick}
+                    onClick={onLeave}
                     title={t('controls.leave')}
                 >
                     <PhoneOffIcon />

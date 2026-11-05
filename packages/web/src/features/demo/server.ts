@@ -86,8 +86,45 @@ export function peopleIn(roomId: string): Map<string, string> {
     return new Map(r?.people.map(p => [p.identity, p.name]));
 }
 
+/** The visitor's identity, for telling their own tile and messages apart. */
+export const MY_IDENTITY = ME;
+
+/** What a call in the room would show: who is there and what each is doing. Null once the room is gone. */
+export interface CallState {
+    people: readonly Person[];
+    muted: ReadonlySet<string>;
+    deafened: ReadonlySet<string>;
+    serverMuted: ReadonlySet<string>;
+    sharing: ReadonlySet<string>;
+}
+
+export function callState(roomId: string): CallState | null {
+    const r = rooms.find(x => x.id === roomId);
+    return r ? { people: [...r.people], muted: new Set(r.muted), deafened: new Set(r.deafened), serverMuted: new Set(r.serverMuted), sharing: new Set(r.sharing) } : null;
+}
+
+/** The visitor is in the room's call; a no-op when they already are (the token request adds them). */
+export function enterRoom(roomId: string, name: string): void {
+    const r = rooms.find(x => x.id === roomId);
+    if (!r || r.people.some(p => p.identity === ME)) return;
+    r.people.push({ identity: ME, name });
+    changed();
+}
+
+/** The visitor's own mic, sound and screen in the call, as the sidebar and others would see them. */
+export function setMyState(roomId: string, state: { muted: boolean; deafened: boolean; sharing: boolean }): void {
+    const r = rooms.find(x => x.id === roomId);
+    if (!r) return;
+    for (const [set, on] of [[r.muted, state.muted], [r.deafened, state.deafened], [r.sharing, state.sharing]] as const) {
+        if (on) set.add(ME); else set.delete(ME);
+    }
+    callRoom = roomId;
+    changed();
+}
+
 /** The visitor's demo call ended: they leave the room's participant list. */
 export function leaveRoom(roomId: string): void {
+    if (callRoom === roomId) callRoom = null;
     const r = rooms.find(x => x.id === roomId);
     if (!r) return;
     removePerson(r, ME);
@@ -120,20 +157,24 @@ function describe(r: DemoRoom): RoomInfo {
 }
 
 // People drift between rooms, mute and share screens, so the sidebar looks like a live server.
+// While the visitor is in a call, much of it happens in or around their room.
 const MAX_CROWD = 5;
+let callRoom: string | null = null;
 let activity: ReturnType<typeof setInterval> | undefined;
+const pick = <T,>(list: T[]): T | undefined => list[Math.floor(Math.random() * list.length)];
 function startActivity() {
     if (activity) return;
     activity = setInterval(() => {
         const busy = rooms.filter(r => r.people.some(p => p.identity !== ME));
-        const from = busy[Math.floor(Math.random() * busy.length)];
+        const mine = rooms.find(r => r.id === callRoom);
+        const from = (mine && busy.includes(mine) && Math.random() < 0.4 ? mine : undefined) ?? pick(busy);
         if (!from) return;
         const others = from.people.filter(p => p.identity !== ME);
         const who = others[Math.floor(Math.random() * others.length)];
         const roll = Math.random();
         if (roll < 0.35) {
             const to = rooms.filter(r => r !== from && !r.salt && r.people.length < (r.maxParticipants || MAX_CROWD));
-            const target = to[Math.floor(Math.random() * to.length)];
+            const target = (mine && to.includes(mine) && Math.random() < 0.5 ? mine : undefined) ?? pick(to);
             if (!target || from.bans.some(b => b.identity === who.identity)) return;
             removePerson(from, who.identity);
             target.people.push(who);

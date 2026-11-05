@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { useLocalParticipant } from '@livekit/components-react';
 import { useTranslation } from 'react-i18next';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 import { avatarColorForIdentity } from '../../../lib/avatarUtils';
@@ -57,12 +56,13 @@ function buildGroups(entries: ChatEntry[], localIdentity: string): Array<Message
 
 interface MessageListProps {
     entries: ChatEntry[];
+    /** Whose messages are our own. */
+    localIdentity: string;
     onCancelFile?: (id: string) => void;
 }
 
-export function MessageList({ entries, onCancelFile }: MessageListProps) {
+export function MessageList({ entries, localIdentity, onCancelFile }: MessageListProps) {
     const { t } = useTranslation();
-    const { localParticipant } = useLocalParticipant();
     const [jumpToLatest, setJumpToLatest] = useState(false);
     const [lightboxItem, setLightboxItem] = useState<FileTransferItem | null>(null);
     const messagesRef = useRef<HTMLDivElement>(null);
@@ -116,7 +116,7 @@ export function MessageList({ entries, onCancelFile }: MessageListProps) {
             <div className="cp-messages" ref={messagesRef}>
                 {entries.length === 0 && <span className="cp-empty">{t('chat.noMessages')}</span>}
 
-                {buildGroups(entries, localParticipant.identity).map((item) => item.kind === 'system' ? (
+                {buildGroups(entries, localIdentity).map((item) => item.kind === 'system' ? (
                     <div key={item.id} className="cp-system">
                         <span>{item.text}</span>
                         <span className="cp-time">{formatTime(item.timestamp)}</span>

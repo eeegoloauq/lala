@@ -399,11 +399,18 @@
     "server_unavailable": "Can't reach the server"
   },
   "demo": {
-    "lobbyNote": "Demo: everything runs in your browser and resets when you reload. Calls need a Lala server.",
-    "callTitle": "Calls need a Lala server",
-    "callDesc": "This demo runs entirely in your browser, so it does not place calls. A call looks like this: voice, video, screen sharing and chat in one room.",
-    "screenshotAlt": "A Lala call with participant tiles, the control bar and chat",
-    "tryLive": "Try a real call",
-    "selfHost": "Host your own"
+    "lobbyNote": "Demo: everything runs in your browser and resets when you reload.",
+    "callNote": "Demo call: the people here are simulated, and your microphone, camera and screen stay on this page.",
+    "greeting": "hey {{name}} 👋",
+    "replies": [
+      "haha",
+      "nice",
+      "same here",
+      "👍",
+      "can you share your screen?",
+      "brb",
+      "lol",
+      "good point"
+    ]
   }
 }
