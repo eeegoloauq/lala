@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { RoomInfo, CreateRoomRequest } from '../lib/types';
 import { getRooms, createRoom } from '../lib/api';
+import { IS_DEMO } from '../lib/env';
 
 export function useRooms() {
     const [rooms, setRooms] = useState<RoomInfo[]>([]);
@@ -43,6 +44,16 @@ export function useRooms() {
     useEffect(() => {
         // Initial load
         fetchRooms();
+
+        // The demo answers the API in the page and announces room changes the same way.
+        if (IS_DEMO) {
+            let unsubscribe: (() => void) | undefined;
+            let active = true;
+            import('../features/demo/server').then(demo => {
+                if (active) unsubscribe = demo.onRoomsChanged(() => fetchRooms());
+            });
+            return () => { active = false; unsubscribe?.(); };
+        }
 
         // Real-time updates via SSE — no polling
         let es: EventSource;

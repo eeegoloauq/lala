@@ -46,6 +46,14 @@
   text-align: center;
 }
 
+.waveform-welcome-demo {
+  margin-top: 8px;
+  max-width: 360px;
+  padding: 0 16px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
 @keyframes waveformBounce {
   0%, 100% { transform: scaleY(0.2); }
   30%      { transform: scaleY(1); }

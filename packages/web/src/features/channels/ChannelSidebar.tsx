@@ -138,7 +138,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
             if (pw) params.set('pw', pw);
             if (accessRequired) params.set('invite', await createAccessInvite());
             const hash = params.toString();
-            return `${window.location.origin}/room/${roomId}${hash ? `#${hash}` : ''}`;
+            return `${window.location.origin}${import.meta.env.BASE_URL}room/${roomId}${hash ? `#${hash}` : ''}`;
         };
         // Handing the clipboard a promise keeps the click's permission to write while the invite loads.
         const text = buildUrl().then(url => new Blob([url], { type: 'text/plain' }));

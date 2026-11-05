@@ -1,7 +1,7 @@
 const CACHE = 'lala-v1';
 
-// Static shell to cache on install
-const PRECACHE = ['/', '/manifest.webmanifest', '/icons/icon.svg'];
+// Static shell to cache on install; relative to this script, so the app may live under a subpath.
+const PRECACHE = ['./', './manifest.webmanifest', './icons/icon.svg'];
 
 self.addEventListener('install', (e) => {
     e.waitUntil(
@@ -30,7 +30,7 @@ self.addEventListener('fetch', (e) => {
     // Network-first for navigation (always get fresh HTML)
     if (e.request.mode === 'navigate') {
         e.respondWith(
-            fetch(e.request).catch(() => caches.match('/'))
+            fetch(e.request).catch(() => caches.match('./'))
         );
         return;
     }

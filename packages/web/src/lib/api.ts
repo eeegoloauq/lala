@@ -1,6 +1,7 @@
 import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
+import { IS_DEMO } from './env';
 
 const API_BASE = '/api';
 
@@ -16,10 +17,12 @@ export const ACCESS_REQUIRED_EVENT = 'lala:access-required';
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let res: Response;
     try {
-        res = await fetch(`${API_BASE}${path}`, {
-            ...init,
-            headers: { ...init.headers, 'X-Lala-Device': getDeviceId() },
-        });
+        res = IS_DEMO
+            ? await (await import('../features/demo/server')).handle(path, init)
+            : await fetch(`${API_BASE}${path}`, {
+                ...init,
+                headers: { ...init.headers, 'X-Lala-Device': getDeviceId() },
+            });
     } catch {
         throw new ApiError('server_unavailable', 0);
     }

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { IS_DEMO } from '../../lib/env';
 import './waveform-welcome.css';
 
 const BARS = Array.from({ length: 32 });
@@ -17,6 +18,7 @@ export function WaveformWelcome() {
         ))}
       </div>
       <p className="waveform-welcome-hint">{t('welcome.lobbyHint')}</p>
+      {IS_DEMO && <p className="waveform-welcome-hint waveform-welcome-demo">{t('demo.lobbyNote')}</p>}
     </div>
   );
 }

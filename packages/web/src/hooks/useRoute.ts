@@ -9,6 +9,11 @@ interface Route {
     navigate: (to: string) => void;
 }
 
+/** The app's own path prefix, '' unless the build sets a base (the demo on GitHub Pages does). */
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+/** The location's path within the app, so routes read the same under any base. */
+const appPath = () => window.location.pathname.slice(BASE.length) || '/';
+
 function parseRoomId(pathname: string): string | null {
     const m = pathname.match(/^\/room\/([a-zA-Z0-9_-]+)$/);
     return m ? m[1] : null;
@@ -22,10 +27,10 @@ function parseHashPassword(hash: string): string | null {
 
 
 export function useRoute(): Route {
-    const [path, setPath] = useState(window.location.pathname);
+    const [path, setPath] = useState(appPath);
     // The password from an invite link, good for the room in that same link only.
     const [invite] = useState(() => ({
-        roomId: parseRoomId(window.location.pathname),
+        roomId: parseRoomId(appPath()),
         password: parseHashPassword(window.location.hash),
     }));
 
@@ -37,13 +42,13 @@ export function useRoute(): Route {
     }, [invite]);
 
     useEffect(() => {
-        const handler = () => setPath(window.location.pathname);
+        const handler = () => setPath(appPath());
         window.addEventListener('popstate', handler);
         return () => window.removeEventListener('popstate', handler);
     }, []);
 
     const navigate = useCallback((to: string) => {
-        window.history.pushState(null, '', to);
+        window.history.pushState(null, '', BASE + to);
         setPath(to);
     }, []);
 

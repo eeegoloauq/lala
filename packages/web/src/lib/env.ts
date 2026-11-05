@@ -12,3 +12,10 @@ export const IS_TOUCH = typeof window !== 'undefined' && navigator.maxTouchPoint
 
 /** Desktop Linux (not Android) — system audio capture there includes the call's own playout. */
 export const IS_LINUX = typeof navigator !== 'undefined' && /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);
+
+/**
+ * The static demo build (`vite build --mode demo`): the API is answered in the page by
+ * features/demo/server.ts and calls are not placed. A build-time constant, so the
+ * regular build drops every demo branch and never bundles the demo code.
+ */
+export const IS_DEMO = import.meta.env.MODE === 'demo';

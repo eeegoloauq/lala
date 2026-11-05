@@ -2,7 +2,7 @@ import { LiveKitRoom } from '@livekit/components-react';
 import { ExternalE2EEKeyProvider, isE2EESupported, Room, createLocalAudioTrack, Track } from 'livekit-client';
 import type { AudioCaptureOptions, LocalAudioTrack } from 'livekit-client';
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRoom, getToken } from '../../lib/api';
 import { ApiError } from '../../lib/types';
@@ -15,7 +15,11 @@ import { MICROPHONE, canPublishSource } from './lib/permissions';
 import { audioCaptureFrom, mediaOptionsFrom } from './lib/roomOptions';
 import { useLiveSettings } from './hooks/useLiveSettings';
 import { LockIcon } from './icons/Icons';
+import { IS_DEMO } from '../../lib/env';
 import './RoomView.css';
+
+// The demo build stands in for the call; null in the regular build, which drops the import.
+const DemoCall = IS_DEMO ? lazy(() => import('../demo/DemoCall')) : null;
 
 interface RoomViewProps {
     roomName: string;  // opaque room ID
@@ -106,7 +110,9 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
 
     /** `attempt` is aborted when this join is abandoned (room switch, retry, leave). */
     const applyToken = async (attempt: AbortSignal, { token, url, canModerate }: TokenResponse, e2eeKey?: ArrayBuffer, pw?: string) => {
-        if (e2eeKey && isE2EESupported()) {
+        if (IS_DEMO) {
+            // No call to connect to: the demo shows one instead.
+        } else if (e2eeKey && isE2EESupported()) {
             // Setting up E2EE makes a new Room, so warming up this one would be wasted.
             const keyProvider = new ExternalE2EEKeyProvider();
             await keyProvider.setKey(e2eeKey);
@@ -148,7 +154,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         // this connect, the track may end up with stale constraints, which is
         // acceptable; the existing settings-change path (the `room` useMemo
         // recreating on `roomOptions` change) fixes that up after connect.
-        createLocalAudioTrack(audioOptions).then(track => {
+        if (!IS_DEMO) createLocalAudioTrack(audioOptions).then(track => {
             // Too late when the Room already connected and published a microphone itself.
             if (!mounted() || handledRoomRef.current) { track.stop(); return; }
             micTrackRef.current = track;
@@ -401,6 +407,14 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
 
     if (!connection) {
         return <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>{t('room.connecting')}</p></div>;
+    }
+
+    if (DemoCall) {
+        return (
+            <Suspense fallback={null}>
+                <DemoCall roomId={roomName} onLeave={onLeave} />
+            </Suspense>
+        );
     }
 
     return (

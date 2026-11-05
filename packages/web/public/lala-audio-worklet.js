@@ -1,4 +1,4 @@
-import createRNNWasmModuleSync from '/rnnoise-sync.js';
+import createRNNWasmModuleSync from './rnnoise-sync.js';
 
 const FRAME_SIZE = 480; // RNNoise: exactly 480 samples (10ms @ 48kHz)
 const RING_SIZE = 2048; // ring buffer size, must be > 2 * FRAME_SIZE

@@ -1,7 +1,7 @@
 import type { AudioProcessorOptions, TrackProcessor } from 'livekit-client';
 import { Track } from 'livekit-client';
 
-const WORKLET_URL = '/lala-audio-worklet.js';
+const WORKLET_URL = `${import.meta.env.BASE_URL}lala-audio-worklet.js`;
 
 export interface AudioProcessorConfig {
     rnnoise: boolean;

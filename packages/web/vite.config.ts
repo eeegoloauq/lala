@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -59,8 +59,45 @@ function mediapipeAssets(): Plugin {
     };
 }
 
-export default defineConfig({
-    plugins: [react(), mediapipeAssets()],
+const DEMO_DIR = fileURLToPath(new URL('./src/features/demo/', import.meta.url));
+const DEMO_STUB = '\0lala-demo-stub';
+
+/**
+ * The demo code is reached only through dynamic imports behind IS_DEMO. Those calls fold
+ * away in the regular build, but the bundler would still write their chunks (and the
+ * screenshot they use), so outside demo mode the directory resolves to an empty module.
+ */
+function demoOnly(mode: string): Plugin {
+    return {
+        name: 'lala-demo-only',
+        enforce: 'pre',
+        resolveId(source, importer) {
+            if (mode === 'demo' || !importer || !source.startsWith('.')) return null;
+            return resolve(dirname(importer), source).startsWith(DEMO_DIR) ? DEMO_STUB : null;
+        },
+        load(id) {
+            return id === DEMO_STUB ? 'export {};' : null;
+        },
+    };
+}
+
+/**
+ * Static hosts such as GitHub Pages have no SPA fallback; they serve 404.html for any
+ * unknown path, so a copy of the app there makes room links like /room/<id> open.
+ */
+function spaFallback(): Plugin {
+    return {
+        name: 'lala-spa-fallback',
+        // After the HTML plugin has written index.html with the hashed asset links.
+        async writeBundle({ dir }) {
+            if (dir) await writeFile(`${dir}/404.html`, await readFile(`${dir}/index.html`));
+        },
+    };
+}
+
+export default defineConfig(({ mode }) => ({
+    // `--mode demo` builds the static demo: the API is answered in the page (src/lib/env.ts).
+    plugins: [react(), mediapipeAssets(), demoOnly(mode), ...(mode === 'demo' ? [spaFallback()] : [])],
     server: {
         port: 3000,
         host: '0.0.0.0',
@@ -72,7 +109,7 @@ export default defineConfig({
         },
     },
     build: {
-        outDir: 'dist',
+        outDir: mode === 'demo' ? 'dist-demo' : 'dist',
         sourcemap: false,
     },
-});
+}));

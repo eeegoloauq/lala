@@ -17,7 +17,7 @@ import type { CameraEffect } from '../../settings/types';
 // MediaPipe is large, so it loads only once someone turns blur on. Its files are
 // served by the app (see vite.config.ts), not a CDN.
 const loadBackgroundProcessor = () => import('@livekit/track-processors').then(m => m.BackgroundProcessor);
-const ASSET_PATHS = { tasksVisionFileSet: '/mediapipe', modelAssetPath: '/mediapipe/selfie_segmenter.tflite' };
+const ASSET_PATHS = { tasksVisionFileSet: `${import.meta.env.BASE_URL}mediapipe`, modelAssetPath: `${import.meta.env.BASE_URL}mediapipe/selfie_segmenter.tflite` };
 
 export function useCameraProcessor(effect: CameraEffect) {
     const { localParticipant } = useLocalParticipant();

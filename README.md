@@ -9,7 +9,9 @@ state lives in LiveKit and Redis.
 [![Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/package/lala-desktop/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Demo: [lala.egor-solovev.dev](https://lala.egor-solovev.dev)
+Demo: [lala.egor-solovev.dev](https://lala.egor-solovev.dev) for real calls, or
+[eeegoloauq.github.io/lala](https://eeegoloauq.github.io/lala/) to look around the app in your
+browser (no server, no calls).
 
 ![Screen sharing in Lala](screenshots/stream.png)
 
