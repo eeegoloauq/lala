@@ -15,6 +15,7 @@ import { MICROPHONE, canPublishSource } from './lib/permissions';
 import { audioCaptureFrom, mediaOptionsFrom } from './lib/roomOptions';
 import { useLiveSettings } from './hooks/useLiveSettings';
 import { LockIcon } from './icons/Icons';
+import { playLeaveSound } from '../../lib/sounds';
 import { IS_DEMO } from '../../lib/env';
 import './RoomView.css';
 
@@ -294,6 +295,12 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         });
     }, [room, audioOptions]);
 
+    // Every way out of a call ends here: the leave button, a kick or ban, the room's end.
+    const handleDisconnected = () => {
+        if (settingsRef.current.soundJoinLeave) playLeaveSound();
+        onLeave();
+    };
+
     const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!password || passwordLoading) return;
@@ -433,7 +440,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
                 // never auto-publish the microphone, hence `false` here.
                 audio={false}
                 onConnected={handleConnected}
-                onDisconnected={onLeave}
+                onDisconnected={handleDisconnected}
                 style={{ height: '100%' }}
             >
                 <RoomShell canModerate={connection.canModerate} name={name} myAvatarUrl={myAvatarUrl} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
