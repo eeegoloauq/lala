@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VideoTrack, useLocalParticipant } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
@@ -21,9 +22,40 @@ interface FocusMainProps {
 
 /** The large view of the focus layout: a screen share or camera, with the other one as a PiP. */
 export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: FocusMainProps) {
-    const { t } = useTranslation();
     const { localParticipant } = useLocalParticipant();
     const handleFlip = useCameraFlip(localParticipant);
+    const participant = focused?.track.participant;
+    return (
+        <FocusMainView
+            focused={focused && participant ? {
+                type: focused.type,
+                name: participant.name || participant.identity,
+                video: (ref) => <VideoTrack ref={ref} trackRef={focused.track} />,
+            } : null}
+            pip={pip && { type: pip.type, video: <VideoTrack trackRef={pip.track} /> }}
+            ambient={ambient}
+            onSwap={onSwap}
+            onExit={onExit}
+            onMenu={participant && ((e) => onMenu(participant, e))}
+            onFlip={isTouchDevice && focused?.type === 'camera' && participant?.identity === localParticipant.identity ? handleFlip : undefined}
+        />
+    );
+}
+
+interface FocusMainViewProps {
+    /** `video` renders the main video into the given ref, which the ambient glow reads. */
+    focused: { type: FocusView['type']; name: string; video: (ref: Ref<HTMLVideoElement>) => ReactNode } | null;
+    pip: { type: FocusView['type']; video: ReactNode } | null;
+    ambient: boolean;
+    onSwap: () => void;
+    onExit?: () => void;
+    onMenu?: (e: React.MouseEvent) => void;
+    onFlip?: () => void;
+}
+
+/** The large view from plain content; FocusMain fills it from LiveKit tracks. */
+export function FocusMainView({ focused, pip, ambient, onSwap, onExit, onMenu, onFlip }: FocusMainViewProps) {
+    const { t } = useTranslation();
     const mainRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -42,10 +74,6 @@ export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: Foc
         }
     };
 
-    const participant = focused?.track.participant;
-    const openMenu = (e: React.MouseEvent) => {
-        if (participant) onMenu(participant, e);
-    };
     const pipLabel = pip?.type === 'camera' ? t('focus.showCameraLarge') : t('focus.showScreenLarge');
 
     return (
@@ -54,13 +82,13 @@ export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: Foc
             ref={mainRef}
             onDoubleClick={fullscreenSupported ? toggleFullscreen : undefined}
             // A tap has no right button, so on touch screens it opens the menu.
-            onClick={isTouchDevice ? openMenu : undefined}
-            onContextMenu={openMenu}
+            onClick={isTouchDevice ? onMenu : undefined}
+            onContextMenu={onMenu}
         >
-            {focused && participant && (
+            {focused && (
                 <>
                     {ambient && <AmbientCanvas videoRef={videoRef} />}
-                    <VideoTrack ref={videoRef} trackRef={focused.track} />
+                    {focused.video(videoRef)}
                     {pip && (
                         <div
                             className="fl-pip"
@@ -77,7 +105,7 @@ export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: Foc
                                 onSwap();
                             }}
                         >
-                            <VideoTrack trackRef={pip.track} />
+                            {pip.video}
                         </div>
                     )}
                     {/* Its buttons must not also open the menu or toggle fullscreen on the view behind. */}
@@ -93,10 +121,10 @@ export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: Foc
                             {focused.type === 'screen'
                                 ? <ScreenShareStatusIcon size={12} strokeWidth={2} style={{ flexShrink: 0 }} />
                                 : <VideoIcon size={12} strokeWidth={2} style={{ flexShrink: 0 }} />}
-                            {participant.name || participant.identity}
+                            {focused.name}
                         </span>
-                        {isTouchDevice && focused.type === 'camera' && participant.identity === localParticipant.identity && (
-                            <button className="fl-fullscreen-btn" onClick={handleFlip} title={t('focus.flipCamera')}>
+                        {onFlip && (
+                            <button className="fl-fullscreen-btn" onClick={onFlip} title={t('focus.flipCamera')}>
                                 <FlipCameraIcon size={16} strokeWidth={2} />
                             </button>
                         )}

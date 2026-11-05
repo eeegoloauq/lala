@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocalParticipant } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
@@ -37,40 +38,68 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
     }, [focused]);
 
     return (
+        <FocusLayoutView
+            main={<FocusMain focused={focused} pip={pip} ambient={settings.ambientMode} onSwap={swap} onExit={onExit} onMenu={openMenu} />}
+            overlay={contextMenuProps && <ParticipantContextMenu {...contextMenuProps} onClose={closeContextMenu} />}
+        >
+            {participants.map((p) => {
+                const hasContent = hasScreenShare(p.identity) || hasCamera(p.identity);
+                return (
+                    <FocusStripTile
+                        key={p.identity}
+                        active={p.identity === selectedIdentity}
+                        title={hasContent ? t('focus.focusOn', { name: p.name || p.identity }) : undefined}
+                        onClick={(e) => {
+                            if (hasContent) pin(p.identity);
+                            // A tap has no right button, so on touch screens it also opens the menu.
+                            if (isTouchDevice) openMenu(p, e);
+                        }}
+                        onContextMenu={(e) => openMenu(p, e)}
+                    >
+                        <ParticipantTile
+                            participant={p}
+                            // With both a screen and a camera on, the main view already shows their camera, large or as the PiP.
+                            trackRef={pip?.track.participant.identity === p.identity ? undefined : cameraMap.get(p.identity)}
+                            audioMuted={p.identity === localParticipant.identity ? audioMuted : undefined}
+                            avatarUrl={avatarCache?.get(p.identity)}
+                        />
+                    </FocusStripTile>
+                );
+            })}
+        </FocusLayoutView>
+    );
+}
+
+/** The focus layout's frame: the large view, a side strip of everyone (`children`) and an overlay such as a menu. */
+export function FocusLayoutView({ main, overlay, children }: { main: ReactNode; overlay?: ReactNode; children: ReactNode }) {
+    return (
         <div className="fl-area">
-            <FocusMain focused={focused} pip={pip} ambient={settings.ambientMode} onSwap={swap} onExit={onExit} onMenu={openMenu} />
+            {main}
+            <div className="fl-strip">{children}</div>
+            {overlay}
+        </div>
+    );
+}
 
-            {/* Side strip — all participants, all clickable */}
-            <div className="fl-strip">
-                {participants.map((p) => {
-                    const hasContent = hasScreenShare(p.identity) || hasCamera(p.identity);
-                    return (
-                        <div
-                            key={p.identity}
-                            className={`fl-strip-tile${p.identity === selectedIdentity ? ' fl-strip-active' : ''}${hasContent ? ' fl-strip-clickable' : ''}`}
-                            onClick={(e) => {
-                                if (hasContent) pin(p.identity);
-                                // A tap has no right button, so on touch screens it also opens the menu.
-                                if (isTouchDevice) openMenu(p, e);
-                            }}
-                            onContextMenu={(e) => openMenu(p, e)}
-                            title={hasContent ? t('focus.focusOn', { name: p.name || p.identity }) : undefined}
-                        >
-                            <ParticipantTile
-                                participant={p}
-                                // With both a screen and a camera on, the main view already shows their camera, large or as the PiP.
-                                trackRef={pip?.track.participant.identity === p.identity ? undefined : cameraMap.get(p.identity)}
-                                audioMuted={p.identity === localParticipant.identity ? audioMuted : undefined}
-                                avatarUrl={avatarCache?.get(p.identity)}
-                            />
-                        </div>
-                    );
-                })}
-            </div>
+interface FocusStripTileProps {
+    active: boolean;
+    /** Set when clicking focuses this person, who has a screen or camera to show. */
+    title?: string;
+    onClick?: (e: React.MouseEvent) => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
+    children: ReactNode;
+}
 
-            {contextMenuProps && (
-                <ParticipantContextMenu {...contextMenuProps} onClose={closeContextMenu} />
-            )}
+/** One person in the side strip. */
+export function FocusStripTile({ active, title, onClick, onContextMenu, children }: FocusStripTileProps) {
+    return (
+        <div
+            className={`fl-strip-tile${active ? ' fl-strip-active' : ''}${title ? ' fl-strip-clickable' : ''}`}
+            onClick={onClick}
+            onContextMenu={onContextMenu}
+            title={title}
+        >
+            {children}
         </div>
     );
 }
