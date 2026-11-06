@@ -1,5 +1,6 @@
 # Roadmap
 
-Larger work that shouldn't be done in passing. Remove an item when it ships.
+Plans, not promises. Open an issue to ask for something.
 
-- **Connection translations.** Consolidate duplicated locale text in `packages/desktop/connection.js` and `packages/web/src/locales/`.
+No new features are planned right now. Maintenance work is in the
+[design notes](docs/design.md#maintenance).
