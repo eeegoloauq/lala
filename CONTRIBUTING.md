@@ -73,3 +73,12 @@ This project has a single maintainer working on it in spare time. Issues and
 PRs get read, but a response can take a few days — that's normal, not a brush-off.
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Dependency overrides
+
+The web and desktop packages override only `minimatch` versions affected by
+[GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249) to patched v11.
+The v3/v5 dependencies keep their existing API. Remove this override when the parent
+packages require patched versions themselves. Check web lint/build, desktop packaging
+and call tests when updating it; a clean audit alone does not establish compatibility.
+The desktop `undici` overrides retain separate v6 and v7 lines for their consumers.
