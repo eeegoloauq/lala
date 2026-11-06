@@ -1,164 +1,50 @@
 # Lala
 
-Self-hosted voice and video chat inspired by Mumble and Discord, built on
-[LiveKit](https://livekit.io/). No database: rooms are ephemeral, chat goes over data channels, and
-state lives in LiveKit and Redis.
+Self-hosted voice and video chat for small groups, in the browser and as a desktop app for Windows
+and Linux.
 
 [![Release](https://img.shields.io/github/v/release/eeegoloauq/lala?label=release)](https://github.com/eeegoloauq/lala/releases/latest)
 [![Images](https://github.com/eeegoloauq/lala/actions/workflows/images.yml/badge.svg?branch=main)](https://github.com/eeegoloauq/lala/actions/workflows/images.yml)
 [![Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/package/lala-desktop/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Demo: [eeegoloauq.github.io/lala](https://eeegoloauq.github.io/lala/) runs the app in your browser
-with simulated people; calls need your own server.
-
 ![Screen sharing in Lala](screenshots/stream.png)
 
-## What it does
+- End-to-end encryption for password-protected rooms
+- Screen sharing with system audio in the desktop app
+- RNNoise noise suppression
+- No database, no accounts
+- Five themes, including AMOLED and Windows XP
 
-- Voice and video with configurable audio quality (speech / music / high-quality stereo)
-- End-to-end encryption for password-protected rooms in browsers that support it (AES-GCM)
-- Screen sharing with quality/FPS controls; the desktop app also shares system audio
-- Chat over data channels with emoji picker and TTS
-- Room admin: kick, ban, mute; passwords hashed with scrypt
-- 5 themes: dark, light, AMOLED, Discord, Windows XP
-- RNNoise noise suppression (AudioWorklet)
-- Desktop app with auto-updates, tray, native screen share picker
+[Try the demo](https://eeegoloauq.github.io/lala/) in your browser with simulated people · [All features](docs/features.md)
 
-<p>
-  <img src="screenshots/home.png" width="49%" alt="Home screen" />
-  <img src="screenshots/call.png" width="49%" alt="Voice call" />
-</p>
+## Download
 
-## Desktop app
+Get the desktop app from the [latest release](https://github.com/eeegoloauq/lala/releases/latest).
+On Fedora, install it from [Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/):
 
-Lala works in the browser. There is also a desktop client:
-
-- **Windows**: installer from [Releases](https://github.com/eeegoloauq/lala/releases), auto-updates itself.
-- **Fedora**: [Copr](https://copr.fedorainfracloud.org/coprs/eeegoloauq/lala/), updated with `dnf upgrade`:
-
-  ```bash
-  sudo dnf copr enable eeegoloauq/lala
-  sudo dnf install lala-desktop
-  ```
-
-- **Other Linux**: AppImage / rpm / tar.gz from [Releases](https://github.com/eeegoloauq/lala/releases).
+```bash
+sudo dnf copr enable eeegoloauq/lala
+sudo dnf install lala-desktop
+```
 
 ## Self-hosting
 
-You need: Docker, a server with a public IP, a domain.
-
-The four containers use about 75 MB of RAM when idle; LiveKit grows during calls.
-
-Images for amd64 and arm64 are published to GHCR: `:latest` and a version tag (`:0.0.27`) for each
-release, `:edge` for the latest commit on `main`.
+Runs on [LiveKit](https://livekit.io/) and Redis with Docker Compose. You need a server with a
+public IP and a domain.
 
 ```bash
-git clone https://github.com/eeegoloauq/lala.git
-cd lala
-cp .env.example .env
-# edit .env: your IP, domain, LiveKit keys, Redis password and the image tag
-
-docker network create edge   # compose attaches web and LiveKit to it for your reverse proxy
+git clone https://github.com/eeegoloauq/lala.git && cd lala
+cp .env.example .env    # set your IP, domain, keys and passwords
+docker network create edge
 docker compose up -d
 ```
 
-The web UI (`:80` in the `web` container) and LiveKit signaling (`:7880`) are reachable on the
-`edge` network and on the host's loopback (`127.0.0.1:3000`, `127.0.0.1:7880`). Put a reverse proxy
-with TLS on that network in front of both, with LiveKit at its own domain
-(`wss://rtc.example.com` → `lala-livekit:7880`).
+[Full guide](docs/self-hosting.md): reverse proxy, environment, admins, private server, ports.
 
-To build the images yourself, use the repo root as the build context so `packages/shared` is
-included, and set `LALA_REGISTRY=local` and `LALA_TAG=dev`:
+## Development
 
-```bash
-docker build -f packages/api/Dockerfile -t local/lala-api:dev .
-docker build -f packages/web/Dockerfile -t local/lala-web:dev .
-```
-
-### Environment
-
-| Variable | What |
-|----------|------|
-| `LIVEKIT_URL` | WebSocket URL clients connect to (`wss://rtc.example.com`) |
-| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | LiveKit credentials |
-| `NODE_IP` | Server public IP (WebRTC ICE) |
-| `LIVEKIT_DOMAIN` | Domain for TURN (must resolve to the server) |
-| `REDIS_PASSWORD` | Redis password (`openssl rand -hex 24`) |
-| `LALA_REGISTRY` / `LALA_TAG` | Where compose pulls the api/web images from (`ghcr.io/eeegoloauq`, `latest`) |
-| `ALLOWED_ORIGINS` | Allowed frontend origins (CORS) |
-| `LALA_ACCESS_PASSWORD` | Optional password for the whole server, at least 12 characters (`openssl rand -base64 18`) |
-| `CSP_CONNECT_SRC` | CSP connect-src (default `wss: ws:`, tighten for prod) |
-
-### Members, admins and permanent rooms
-
-Without a config, everyone who reaches the server may create rooms, and each room's creator
-moderates it. To name admins and members, set who may speak, share a screen or create rooms,
-and keep rooms that always exist, copy [`config/lala.example.yaml`](config/lala.example.yaml)
-to `config/lala.yaml` and restart the `api` container. People are listed by the ID shown in
-Settings → Profile; calls keep going through the restart.
-
-### Private server
-
-Set `LALA_ACCESS_PASSWORD` to keep the server to people you give the password to. Without it nobody
-can list or create rooms or join a call, in the browser or the desktop app. An invite link copied
-from the room list lets one person in without the password for 7 days. A device stays signed
-in for 30 days of inactivity. Changing the password signs everyone out and voids all invite links. Wrong attempts are limited
-to 10 per IP per 15 minutes.
-
-### Ports
-
-Open these to the internet; the web UI and signaling go through the reverse proxy.
-
-| Port | Proto | What |
-|------|-------|------|
-| 7881 | TCP | ICE/TCP fallback |
-| 50000 | UDP | Media |
-| 3478 | UDP | TURN |
-
-## Architecture
-
-```
-Browser → Nginx (:3000)
-            ├── /       → React SPA
-            └── /api/*  → Express API (:3001)
-          → LiveKit (:7880 WS, :50000/udp, :3478/udp TURN)
-```
-
-Four packages:
-
-- `packages/api`: Express. Token generation, room CRUD, admin actions, SSE. Uses `livekit-server-sdk` v2.
-- `packages/web`: Vite and React. `livekit-client` v2, custom UI.
-- `packages/desktop`: Electron. Native screen share, tray, auto-updates.
-- `packages/shared`: shared types for the api and web wire format.
-
-Identity is an HMAC of a stable device UUID, so the same device is always the same participant.
-
-## Security
-
-- End-to-end encryption with LiveKit's E2EE (AES-GCM); the media key and the key the server checks are derived separately from the room password on the client, so the server never sees either the password or the media key
-- HMAC identity that cannot be forged without the API secret
-- Room creators moderate by identity; rights are LiveKit grants, so the media server enforces them, and a ban revokes the tokens the banned client holds
-- Optional server password with an HttpOnly session cookie and a limit on failed attempts
-- Rate limiting in nginx and Express; null bytes, RTL overrides and control chars stripped from input
-- CSP without inline scripts; containers with `no-new-privileges` and memory limits, the API as a non-root user
-
-Found a vulnerability? See [SECURITY.md](SECURITY.md).
-
-## Local dev
-
-```bash
-e2e/redis.sh &                                              # Redis on :6380, the API needs it
-cd packages/api && npm ci && REDIS_URL=redis://127.0.0.1:6380 npm run dev   # :3001
-cd packages/web && npm ci && npm run dev   # :3000
-```
-
-Call tests: `cd e2e && npm ci && npm run setup && npm test` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
-
-## Contributing
-
-Issues and PRs are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the dev setup and testing
-with a real call. For anything bigger than a fix, open an issue first.
+[Contributing and local setup](CONTRIBUTING.md) · [Architecture and security](docs/architecture.md) · [Roadmap](ROADMAP.md) · [Security policy](SECURITY.md)
 
 ## License
 
