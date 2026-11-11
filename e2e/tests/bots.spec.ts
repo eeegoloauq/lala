@@ -115,7 +115,7 @@ test('people see which bots are in a call and which can hear it', async ({ brows
     const minutes = await startBot(browser, 'minutes');
     const rooms = (await radio.call('GET', '/rooms')).body.rooms as Array<{ id: string; displayName: string }>;
     const roomId = rooms.find((r) => r.displayName === 'Bots')!.id;
-    await radio.call('POST', '/bot/profile', { status: 'Teardrop', commands: [] });
+    await radio.call('POST', '/bot/profile', { status: 'Teardrop', commands: [{ name: '!play', description: 'song name or link' }] });
     await joinCall(radio, roomId, true);
     await joinCall(minutes, roomId, false);
 
@@ -154,6 +154,22 @@ test('people see which bots are in a call and which can hear it', async ({ brows
     await radio.call('POST', '/bot/profile', { status: 'Angel' });
     await expect.poll(() => attributeOf(minutes, 'bot-radio', 'lala.bot-status'), { timeout: 10_000 }).toBe('Angel');
     expect(await minutes.page.evaluate(() => window.room.remoteParticipants.get('bot-radio')?.name)).toBe('Radio');
+
+    // What people see of it: the header names who can hear, the tile shows the status, the
+    // profile lists commands and rights, and `!` in chat suggests the commands.
+    await expect(page.locator('.room-header')).toContainText('Minutes can hear');
+    await expect(tile('Radio').locator('.p-tile-bot-status')).toHaveText('Angel');
+    await tile('Radio').click({ button: 'right' });
+    await page.locator('.ctx-menu').getByText('Profile').click();
+    const profile = page.getByRole('dialog', { name: 'Profile of Radio' });
+    await expect(profile).toContainText("Can't hear the call");
+    await profile.getByRole('button', { name: '!play' }).click();
+    await expect(page.getByPlaceholder('Send a message...')).toHaveValue('!play ');
+    await page.getByPlaceholder('Send a message...').fill('!p');
+    await expect(page.getByRole('option', { name: /!play/ })).toBeVisible();
+    await page.getByPlaceholder('Send a message...').press('Enter');
+    await expect(page.getByPlaceholder('Send a message...')).toHaveValue('!play ');
+    await page.getByPlaceholder('Send a message...').fill('');
 
     // The same menu as for people, without giving a bot the floor; a server mute takes its microphone.
     await tile('Minutes').click({ button: 'right' });

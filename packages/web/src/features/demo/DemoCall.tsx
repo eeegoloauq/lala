@@ -14,7 +14,8 @@ import type { AppSettings } from '../settings/types';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getMyAvatar } from '../../lib/avatarUtils';
 import { playChatSound, playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playScreenShareStartSound, playScreenShareStopSound } from '../../lib/sounds';
-import { setDeafenedInRoom, setLiveParticipants, setMutedInRoom, setSpeakingUsers } from '../../lib/roomStatusStore';
+import { setBotsInRoom, setDeafenedInRoom, setLiveParticipants, setMutedInRoom, setSpeakingUsers } from '../../lib/roomStatusStore';
+import type { BotDetails } from '../../lib/bots';
 import { MY_IDENTITY, callState, enterRoom, leaveRoom, onRoomsChanged, setMyState } from './server';
 import type { CallState } from './server';
 import { fakeScreen } from './fakeScreen';
@@ -114,11 +115,12 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
             setLiveParticipants(after);
             setMutedInRoom(new Set(next.muted));
             setDeafenedInRoom(new Set(next.deafened));
+            setBotsInRoom(new Map(next.people.flatMap(p => p.bot ? [[p.identity, p.bot] as [string, BotDetails]] : [])));
         };
         sync();
         const unsubscribe = onRoomsChanged(sync);
         const greeting = setTimeout(() => {
-            const someone = pick((callState(roomId)?.people ?? []).filter(p => p.identity !== MY_IDENTITY));
+            const someone = pick((callState(roomId)?.people ?? []).filter(p => p.identity !== MY_IDENTITY && !p.bot));
             if (someone) receive(someone, latest.current.t('demo.greeting', { name }));
         }, 2500);
         return () => { unsubscribe(); clearTimeout(greeting); leaveRoom(roomId); };
@@ -132,7 +134,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
         const id = setInterval(() => {
             const now = Date.now();
             const c = callRef.current;
-            const unmuted = (c?.people ?? []).filter(p => p.identity !== MY_IDENTITY && !c?.muted.has(p.identity) && !c?.serverMuted.has(p.identity));
+            const unmuted = (c?.people ?? []).filter(p => p.identity !== MY_IDENTITY && !p.bot && !c?.muted.has(p.identity) && !c?.serverMuted.has(p.identity));
             for (const [who, end] of until) if (end < now || !unmuted.some(p => p.identity === who)) until.delete(who);
             const quiet = unmuted.filter(p => !until.has(p.identity));
             const next = until.size < 2 && Math.random() < (until.size ? 0.15 : 0.5) ? pick(quiet) : undefined;
@@ -144,6 +146,8 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     const micOn = !!mic.stream && !deafened;
     const speakingNow = new Set(speaking);
     if (micOn && micLevelSpeaking) speakingNow.add(MY_IDENTITY);
+    // A bot that speaks plays music the whole time.
+    for (const p of call?.people ?? []) if (p.bot?.speaks && !call?.serverMuted.has(p.identity)) speakingNow.add(p.identity);
     const speakingKey = [...speakingNow].sort().join(',');
     useEffect(() => { setSpeakingUsers(speakingKey ? speakingKey.split(',') : []); }, [speakingKey]);
 
@@ -167,7 +171,14 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     };
     const send = async (message: string) => {
         receive({ identity: MY_IDENTITY, name }, message);
-        const someone = pick((call?.people ?? []).filter(p => p.identity !== MY_IDENTITY));
+        // A bot answers its own commands.
+        const command = message.split(/\s/)[0];
+        const answering = call?.people.find(p => p.bot?.commands.some(c => c.name === command));
+        if (answering) {
+            setTimeout(() => receive(answering, t('demo.botReply', { command })), 600);
+            return;
+        }
+        const someone = pick((call?.people ?? []).filter(p => p.identity !== MY_IDENTITY && !p.bot));
         const replies = t('demo.replies', { returnObjects: true }) as string[];
         if (someone && Math.random() < 0.6) setTimeout(() => receive(someone, pick(replies) ?? '👍'), 1200 + Math.random() * 1800);
     };
@@ -181,7 +192,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     const focus = useDemoFocus(screens, cameras);
     const nameOf = (identity: string) => people.find(p => p.identity === identity)?.name ?? name;
 
-    const tileFor = (p: { identity: string; name: string }, video?: MediaStream, onClick?: () => void) => {
+    const tileFor = (p: { identity: string; name: string; bot?: BotDetails }, video?: MediaStream, onClick?: () => void) => {
         const mine = p.identity === MY_IDENTITY;
         return (
             <ParticipantTileView
@@ -195,6 +206,8 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
                 serverMuted={!!call?.serverMuted.has(p.identity)}
                 deafened={mine ? deafened : !!call?.deafened.has(p.identity)}
                 handRaised={false}
+                listens={p.bot?.listens}
+                botStatus={p.bot?.status}
                 quality={mine ? null : 'excellent'}
                 onClick={onClick}
             />

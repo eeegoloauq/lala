@@ -403,6 +403,18 @@
   background: #316ac5;
   color: #ffffff;
 }
+/* Text on the blue title bars of the room list and the call. */
+[data-theme="winxp"] .sidebar-header .logo {
+  color: #ffffff;
+}
+[data-theme="winxp"] .sidebar-online,
+[data-theme="winxp"] .room-header-meta {
+  color: rgba(255, 255, 255, 0.85);
+}
+[data-theme="winxp"] .room-header-listens {
+  color: #ffe08a;
+}
+
 [data-theme="winxp"] .settings-header {
   font-size: 14px;
   font-family: Tahoma, Arial, sans-serif;

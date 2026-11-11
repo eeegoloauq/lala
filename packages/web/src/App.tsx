@@ -5,6 +5,7 @@ import { ChannelSidebar } from './features/channels';
 import { RoomView } from './features/room';
 import { WaveformWelcome } from './features/welcome/WaveformWelcome';
 import { RoomHeader } from './features/room/RoomHeader';
+import { ProfileCardHost } from './features/profile/ProfileCard';
 import { useSettings } from './features/settings';
 import { useRooms } from './hooks/useRooms';
 import { useMe } from './hooks/useMe';
@@ -218,6 +219,8 @@ export default function App() {
                         <WaveformWelcome rooms={rooms} onJoinRoom={handleJoinRoom} />
                     )}
                 </main>
+
+                <ProfileCardHost />
 
                 {settingsOpen && (
                     <Suspense fallback={null}>

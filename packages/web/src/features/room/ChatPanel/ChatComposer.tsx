@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useDismiss } from '../../../hooks/useDismiss';
 import { useTimedValue } from '../../../hooks/useTimedValue';
+import { requestChatDraft, useBotsInRoom, useChatDraft } from '../../../lib/roomStatusStore';
+import { CommandSuggestions } from './CommandSuggestions';
+import { matchCommands, SUGGESTIONS_ID, suggestionId, type Suggestion } from './commandSuggestions';
 
 const EmojiPicker = lazy(() => import('./EmojiPicker').then(m => ({ default: m.EmojiPicker })));
 
@@ -31,6 +34,30 @@ export function ChatComposer({ send, isSending, mayChat, onFiles }: ChatComposer
     const sendTimestamps = useRef<number[]>([]);
 
     useEffect(() => { inputRef.current?.focus(); }, []);
+
+    // A command picked on a bot's profile lands here, unsent.
+    const draft = useChatDraft();
+    useEffect(() => {
+        if (draft === null) return;
+        setText(draft);
+        requestChatDraft(null);
+        requestAnimationFrame(() => {
+            const ta = inputRef.current;
+            ta?.focus();
+            ta?.setSelectionRange(draft.length, draft.length);
+        });
+    }, [draft]);
+
+    const bots = useBotsInRoom();
+    const [activeSuggestion, setActiveSuggestion] = useState(0);
+    const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+    const suggestions = suggestionsDismissed ? [] : matchCommands(text, bots.values());
+    const active = Math.min(activeSuggestion, Math.max(suggestions.length - 1, 0));
+
+    const pickSuggestion = (s: Suggestion) => {
+        setText(`${s.name} `);
+        setActiveSuggestion(0);
+    };
 
     const closeEmoji = useCallback(() => setShowEmoji(false), []);
     useDismiss(emojiWrapRef, closeEmoji, showEmoji);
@@ -72,6 +99,20 @@ export function ChatComposer({ send, isSending, mayChat, onFiles }: ChatComposer
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (suggestions.length > 0) {
+            const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+            if (step) {
+                e.preventDefault();
+                setActiveSuggestion((active + step + suggestions.length) % suggestions.length);
+                return;
+            }
+            if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+                e.preventDefault();
+                pickSuggestion(suggestions[active]);
+                return;
+            }
+            if (e.key === 'Escape') { setSuggestionsDismissed(true); return; }
+        }
         if (e.key === 'Escape') { e.currentTarget.blur(); return; }
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
     };
@@ -92,6 +133,8 @@ export function ChatComposer({ send, isSending, mayChat, onFiles }: ChatComposer
             {rateLimited && <div className="cp-rate-limit">{t('chat.tooFast')}</div>}
             {sendFailed && <div className="cp-rate-limit">{t('chat.sendFailed')}</div>}
 
+            {suggestions.length > 0 && <CommandSuggestions items={suggestions} active={active} onPick={pickSuggestion} />}
+
             <div className="cp-input-area">
                 <textarea
                     ref={inputRef}
@@ -101,7 +144,12 @@ export function ChatComposer({ send, isSending, mayChat, onFiles }: ChatComposer
                     placeholder={!mayChat ? t('chat.notAllowed') : rateLimited ? t('chat.tooFast') : t('chat.placeholder')}
                     disabled={!mayChat}
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={(e) => { setText(e.target.value); setSuggestionsDismissed(false); }}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={suggestions.length > 0}
+                    aria-controls={SUGGESTIONS_ID}
+                    aria-activedescendant={suggestions.length > 0 ? suggestionId(active) : undefined}
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
                     rows={1}

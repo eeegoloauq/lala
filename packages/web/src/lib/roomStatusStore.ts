@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from 'react';
+import type { BotDetails } from './bots';
+import { createStore } from './store';
 
 /**
  * External store for volatile, high-frequency room status: speaking, muted and deafened
@@ -11,30 +13,16 @@ import { useSyncExternalStore } from 'react';
  * references that stay the same until written, so Object.is comparison is enough.
  */
 
-type Listener = () => void;
-
-function createStore<T>(initial: T) {
-    let state = initial;
-    const listeners = new Set<Listener>();
-    return {
-        get: () => state,
-        set(next: T): void {
-            state = next;
-            listeners.forEach((l) => l());
-        },
-        subscribe(listener: Listener): () => void {
-            listeners.add(listener);
-            return () => listeners.delete(listener);
-        },
-    };
-}
-
 const speakingStore = createStore<Set<string>>(new Set());
 const mutedStore = createStore<Set<string>>(new Set());
 const deafenedStore = createStore<Set<string>>(new Set());
 const liveParticipantsStore = createStore<Map<string, string>>(new Map());
 // In memory only; useAvatarSync and useAvatarCache persist avatars to localStorage.
 const avatarCacheStore = createStore<Map<string, string>>(new Map());
+// Bots in the active room, by identity.
+const botsStore = createStore<Map<string, BotDetails>>(new Map());
+// Text a profile card asks the chat composer to take (a bot command); the composer clears it.
+const chatDraftStore = createStore<string | null>(null);
 
 // ---- Writers — called from room-lifetime hooks (RoomShell subtree) ----
 
@@ -52,6 +40,15 @@ export function setDeafenedInRoom(ids: Set<string>): void {
 
 export function setLiveParticipants(participants: Map<string, string>): void {
     liveParticipantsStore.set(participants);
+}
+
+export function setBotsInRoom(bots: Map<string, BotDetails>): void {
+    botsStore.set(bots);
+}
+
+/** Puts text in the chat box without sending it. */
+export function requestChatDraft(text: string | null): void {
+    chatDraftStore.set(text);
 }
 
 /** Records a received/local avatar (or removes it, when `dataUrl` is null) in the
@@ -89,6 +86,8 @@ export function resetRoomSession(): void {
     deafenedStore.set(new Set());
     liveParticipantsStore.set(new Map());
     avatarCacheStore.set(new Map());
+    botsStore.set(new Map());
+    chatDraftStore.set(null);
 }
 
 // ---- Reader hooks ----
@@ -115,4 +114,16 @@ export function useAvatarCacheMap(): Map<string, string> {
 
 export function useAvatarForIdentity(identity: string): string | undefined {
     return useSyncExternalStore(avatarCacheStore.subscribe, () => avatarCacheStore.get().get(identity));
+}
+
+export function useBotsInRoom(): Map<string, BotDetails> {
+    return useSyncExternalStore(botsStore.subscribe, botsStore.get);
+}
+
+export function useBotDetails(identity: string): BotDetails | undefined {
+    return useSyncExternalStore(botsStore.subscribe, () => botsStore.get().get(identity));
+}
+
+export function useChatDraft(): string | null {
+    return useSyncExternalStore(chatDraftStore.subscribe, chatDraftStore.get);
 }

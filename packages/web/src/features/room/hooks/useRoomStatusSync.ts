@@ -2,12 +2,17 @@ import { useEffect } from 'react';
 import { RoomEvent } from 'livekit-client';
 import type { Participant, Room } from 'livekit-client';
 import { readDeafened } from '../lib/participantMeta';
-import { setSpeakingUsers, setMutedInRoom, setDeafenedInRoom, setLiveParticipants } from '../../../lib/roomStatusStore';
+import { setSpeakingUsers, setMutedInRoom, setDeafenedInRoom, setLiveParticipants, setBotsInRoom } from '../../../lib/roomStatusStore';
+import { botDetailsOf, type BotDetails } from '../../../lib/bots';
 
 const MUTE_EVENTS = [
     RoomEvent.TrackMuted, RoomEvent.TrackUnmuted,
     RoomEvent.TrackPublished, RoomEvent.TrackUnpublished,
     RoomEvent.LocalTrackPublished, RoomEvent.LocalTrackUnpublished,
+    RoomEvent.ParticipantConnected, RoomEvent.ParticipantDisconnected,
+];
+const BOT_EVENTS = [
+    RoomEvent.ParticipantAttributesChanged, RoomEvent.ParticipantPermissionsChanged,
     RoomEvent.ParticipantConnected, RoomEvent.ParticipantDisconnected,
 ];
 const DEAFEN_EVENTS = [RoomEvent.ParticipantMetadataChanged, RoomEvent.ParticipantConnected, RoomEvent.ParticipantDisconnected];
@@ -76,6 +81,19 @@ export function useRoomStatusSync({
         const update = () => setDeafenedInRoom(buildDeafened());
         return onEvents(room, DEAFEN_EVENTS, update);
     }, [room, audioMuted]);
+
+    // Bots' status, commands and rights, for tiles, profiles and command suggestions.
+    useEffect(() => {
+        const update = () => {
+            const bots = new Map<string, BotDetails>();
+            room.remoteParticipants.forEach(p => {
+                const details = botDetailsOf(p);
+                if (details) bots.set(p.identity, details);
+            });
+            setBotsInRoom(bots);
+        };
+        return onEvents(room, BOT_EVENTS, update);
+    }, [room]);
 
     useEffect(() => {
         const update = (speakers: Participant[]) => setSpeakingUsers(speakers.map((s) => s.identity));

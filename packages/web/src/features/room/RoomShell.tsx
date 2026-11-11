@@ -30,6 +30,7 @@ import { useParticipantVolumeSync } from './hooks/useParticipantVolumeSync';
 import { useChatNotifications } from './hooks/useChatNotifications';
 import { useReconnectingBanner } from './hooks/useReconnectingBanner';
 import { useListeningBotsNotice } from './hooks/useListeningBots';
+import { useChatDraft } from '../../lib/roomStatusStore';
 import { EarIcon } from './icons/Icons';
 import { RoomUIProvider } from './RoomUIContext';
 import type { AppSettings } from '../settings/types';
@@ -231,6 +232,14 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
 
     const showReconnecting = useReconnectingBanner(connectionState);
     const listeningNotice = useListeningBotsNotice();
+
+    // A command picked on a bot's profile opens the chat, where the composer takes it.
+    const chatDraft = useChatDraft();
+    useEffect(() => {
+        if (chatDraft === null) return;
+        setChatOpen(true);
+        resetUnread();
+    }, [chatDraft, resetUnread]);
 
     const chatPanel = (overlay: boolean) => (
         <ChatPanel

@@ -201,3 +201,28 @@ export function LinkIcon(props: IconProps) {
         </Svg>
     );
 }
+
+export function CheckIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <polyline points="20 6 9 17 4 12" />
+        </Svg>
+    );
+}
+
+export function CrossIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M18 6 6 18M6 6l12 12" />
+        </Svg>
+    );
+}
+
+export function ProfileIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21a8 8 0 0 1 16 0" />
+        </Svg>
+    );
+}

@@ -5,6 +5,7 @@ import { getCachedAvatar, avatarColorForIdentity } from '../../lib/avatarUtils';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../room/icons/Icons';
 import { isBotIdentity } from '../../lib/bots';
 import { BotBadge, ListensMark } from '../../ui/BotBadge';
+import { LevelMeter } from '../../ui/LevelMeter';
 import { useIsSpeaking, useIsMutedInRoom, useIsDeafenedInRoom, useAvatarForIdentity } from '../../lib/roomStatusStore';
 
 export interface ChannelUserRowProps {
@@ -27,6 +28,8 @@ export interface ChannelUserRowProps {
     /** A bot that receives the room's audio and video, from the server's room list. */
     listens: boolean;
     onContextMenu: (e: React.MouseEvent) => void;
+    /** Opens the profile card; not on touch screens, where a tap opens the menu. */
+    onOpenProfile?: (e: React.MouseEvent) => void;
 }
 
 /**
@@ -48,6 +51,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
     isScreenSharing,
     listens,
     onContextMenu,
+    onOpenProfile,
 }: ChannelUserRowProps) {
     const { t } = useTranslation();
     const speaking = useIsSpeaking(identity);
@@ -58,6 +62,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
     const isMuted = isActiveRoom ? liveMuted : staticMuted;
     const isDeafened = isActiveRoom ? liveDeafened : staticDeafened;
     const avatarUrl = liveAvatar || getCachedAvatar(identity) || undefined;
+    const isBot = isBotIdentity(identity);
 
     return (
         <div
@@ -66,6 +71,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
             data-participant-name={name}
             data-participant-room={roomId}
             onContextMenu={onContextMenu}
+            onClick={onOpenProfile}
         >
             <AvatarBadge
                 topCrown={isRoomAdmin ? (
@@ -75,7 +81,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
                 ) : undefined}
             >
                 <div
-                    className={`channel-user-avatar${speaking ? ' speaking' : ''}`}
+                    className={`channel-user-avatar${speaking && !isBot ? ' speaking' : ''}`}
                     style={{ background: avatarUrl ? 'transparent' : avatarColorForIdentity(identity) }}
                 >
                     {avatarUrl ? (
@@ -86,12 +92,13 @@ export const ChannelUserRow = memo(function ChannelUserRow({
                 </div>
             </AvatarBadge>
             <span className="channel-user-name">{name}</span>
-            {isBotIdentity(identity) && <BotBadge />}
+            {isBot && <BotBadge />}
             {isSelf && (
                 <span className="channel-user-you">{t('sidebar.you')}</span>
             )}
             <span className="channel-user-indicators">
                 {listens && <ListensMark size={11} />}
+                {isBot && speaking && <LevelMeter />}
                 {(isMuted || serverMuted) ? (
                     <span className={`channel-user-indicator${serverMuted ? ' server-muted' : ''}`} title={serverMuted ? t('tile.serverMuted') : t('sidebar.micOff')}><MicOffIcon /></span>
                 ) : null}

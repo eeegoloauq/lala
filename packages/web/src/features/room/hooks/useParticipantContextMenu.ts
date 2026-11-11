@@ -6,6 +6,7 @@ import { useRoomUIContext } from '../RoomUIContext';
 import { canSpeak, hasAttribute, isServerMuted } from '../lib/permissions';
 import { setScreenShareSubscribed } from '../lib/screenShare';
 import { isBotIdentity } from '../../../lib/bots';
+import { openProfile } from '../../../lib/profileCard';
 
 /**
  * Admin-action wiring shared by VideoGrid and FocusLayout: both accept identity-scoped
@@ -89,6 +90,7 @@ export function useParticipantContextMenu() {
             screenShareHidden: !!screenSharePub && !screenSharePub.isSubscribed,
             onToggleScreenShare: screenSharePub && (() => setScreenShareSubscribed(participant, !screenSharePub.isSubscribed)),
             onOpenSettings,
+            onOpenProfile: () => openProfile({ identity, name: participant.name || identity, x: contextMenu.x, y: contextMenu.y }),
         };
     }
 

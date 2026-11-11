@@ -1,0 +1,27 @@
+.level-meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  flex: none;
+}
+
+.level-meter i {
+  width: 3px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--color-info);
+  animation: level-meter 900ms ease-in-out infinite;
+}
+
+.level-meter i:nth-child(2) { animation-delay: -300ms; }
+.level-meter i:nth-child(3) { animation-delay: -600ms; }
+
+@keyframes level-meter {
+  0%, 100% { height: 4px; }
+  50% { height: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .level-meter i { animation: none; height: 8px; }
+}

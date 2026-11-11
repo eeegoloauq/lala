@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SettingsIcon, RenameIcon } from '../icons/Icons';
+import { SettingsIcon, RenameIcon, ProfileIcon } from '../icons/Icons';
 import { errorMessage } from '../../../lib/errorMessage';
 import { useDismiss } from '../../../hooks/useDismiss';
 import './participant-context-menu.css';
@@ -32,10 +32,11 @@ export interface ParticipantContextMenuProps {
     admin?: AdminActions;
     onOpenSettings?: () => void;
     onRenameRequest?: () => void;
+    onOpenProfile?: () => void;
     onClose: () => void;
 }
 
-export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVolumeChange, screenVolume, onScreenVolumeChange, screenShareHidden, onToggleScreenShare, admin, onOpenSettings, onRenameRequest, onClose }: ParticipantContextMenuProps) {
+export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVolumeChange, screenVolume, onScreenVolumeChange, screenShareHidden, onToggleScreenShare, admin, onOpenSettings, onRenameRequest, onOpenProfile, onClose }: ParticipantContextMenuProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const [adminError, setAdminError] = useState<string | null>(null);
@@ -61,6 +62,13 @@ export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVo
     return (
         <div className="ctx-menu" style={style} ref={ref}>
             <div className="ctx-menu-name">{name}</div>
+
+            {onOpenProfile && (
+                <button className="ctx-menu-item" onClick={() => { onClose(); onOpenProfile(); }}>
+                    <ProfileIcon size={14} />
+                    {t('profile.open')}
+                </button>
+            )}
 
             {isRemote ? (
                 <>

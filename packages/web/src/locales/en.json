@@ -149,7 +149,8 @@
     "jumpToLatest": "Jump to latest",
     "openImage": "Open full size",
     "sendFailed": "The message wasn't sent, try again",
-    "notAllowed": "Chat is off in this room"
+    "notAllowed": "Chat is off in this room",
+    "botCommands": "Bot commands"
   },
   "controls": {
     "mute": "Mute microphone",
@@ -356,7 +357,8 @@
     "ipBannedUntil": "Address banned until {{time}}",
     "microphoneN": "Microphone {{n}}",
     "speakerN": "Speaker {{n}}",
-    "cameraN": "Camera {{n}}"
+    "cameraN": "Camera {{n}}",
+    "advanced": "Advanced"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",
@@ -420,7 +422,8 @@
       "lol",
       "good point"
     ],
-    "screenOf": "{{name}}'s screen"
+    "screenOf": "{{name}}'s screen",
+    "botReply": "Got it: {{command}}. (In the demo, bots only answer.)"
   },
   "bot": {
     "badge": "BOT",
@@ -439,5 +442,19 @@
     "canHear_other": "{{names}} can hear",
     "copyInvite": "Copy invite link",
     "copied": "Link copied"
+  },
+  "profile": {
+    "title": "Profile of {{name}}",
+    "thisIsYou": "This is you.",
+    "commands": "Commands",
+    "canDo": "What it can do",
+    "speaks": "Plays audio in the call",
+    "noSpeak": "Can't speak in the call",
+    "chats": "Sends chat messages",
+    "noChat": "Can't send chat messages",
+    "listens": "Hears everyone in the call",
+    "noListen": "Can't hear the call",
+    "noModerate": "Can't moderate or create rooms",
+    "open": "Profile"
   }
 }

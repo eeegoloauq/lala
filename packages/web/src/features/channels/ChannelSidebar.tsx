@@ -5,6 +5,7 @@ import { APP_NAME, MAX_NAME_LENGTH } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { useCopyInvite } from './useCopyInvite';
+import { openProfile } from '../../lib/profileCard';
 import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { CreateRoomModal } from './CreateRoomModal';
@@ -138,6 +139,11 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         e.stopPropagation();
         copyInvite(roomId, hasPassword);
     }, [copyInvite]);
+
+    const openProfileBeside = (e: React.MouseEvent, participantIdentity: string, participantName: string) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        openProfile({ identity: participantIdentity, name: participantName, x: rect.right + 8, y: rect.top });
+    };
 
     const handleUserContextMenu = useCallback((e: React.MouseEvent, participantIdentity: string, participantName: string, roomId: string) => {
         e.preventDefault();
@@ -306,6 +312,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                         isScreenSharing={room.screenSharingParticipants?.includes(p.identity) ?? false}
                                         listens={room.listeningParticipants?.includes(p.identity) ?? false}
                                         onContextMenu={(e) => handleUserContextMenu(e, p.identity, p.name, room.id)}
+                                        onOpenProfile={isTouchDevice ? undefined : (e) => openProfileBeside(e, p.identity, p.name)}
                                     />
                                 ))}
                             </div>
@@ -405,6 +412,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                     admin={contextMenu.identity !== identity ? getAdminProps(contextMenu.roomId, contextMenu.identity) : undefined}
                     onOpenSettings={onOpenSettings}
                     onRenameRequest={startRename}
+                    onOpenProfile={() => openProfile({ identity: contextMenu.identity, name: contextMenu.name, x: contextMenu.x, y: contextMenu.y })}
                     onClose={() => setContextMenu(null)}
                 />
             )}

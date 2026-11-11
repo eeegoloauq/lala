@@ -1,0 +1,120 @@
+.profile-card {
+    position: fixed;
+    z-index: 300;
+    width: 288px;
+    max-width: calc(100vw - 24px);
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    color: var(--text-primary);
+}
+
+/* The avatar's own color, fading into the card. */
+.profile-cover {
+    height: 60px;
+    background: linear-gradient(120deg, var(--profile-color), color-mix(in srgb, var(--profile-color) 35%, var(--bg-sidebar)));
+}
+
+.profile-body {
+    padding: 0 16px 16px;
+    display: grid;
+    gap: 12px;
+}
+
+.profile-avatar {
+    margin-top: -32px;
+    justify-self: start;
+}
+
+.profile-avatar .p-avatar-circle {
+    box-shadow: 0 0 0 4px var(--bg-sidebar);
+}
+
+.profile-name {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.profile-name > span:first-child {
+    overflow-wrap: anywhere;
+}
+
+.profile-identity {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.profile-about,
+.profile-status {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.profile-label {
+    margin: 0 0 6px;
+    font-size: 10.5px;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.profile-commands {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.profile-command {
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--bg-control);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.profile-command:hover,
+.profile-command:focus-visible {
+    border-color: var(--color-info);
+    color: var(--color-info);
+}
+
+.profile-rights {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+}
+
+.profile-rights .profile-label {
+    margin-bottom: 2px;
+}
+
+.profile-right {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+}
+
+.profile-right-yes svg { color: var(--color-success); }
+.profile-right-warn svg { color: var(--color-warning); }
+.profile-right-no { color: var(--text-muted); }

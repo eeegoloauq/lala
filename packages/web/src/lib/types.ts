@@ -17,6 +17,7 @@ export type {
     ModerationEvent,
     ModerationTopic,
     ParticipantAttribute,
+    BotCommand,
 } from '@lala/shared';
 
 /** What the create-room form and room templates produce; the keys are derived before sending. */

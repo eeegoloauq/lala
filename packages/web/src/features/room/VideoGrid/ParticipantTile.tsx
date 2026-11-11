@@ -14,6 +14,8 @@ import { hasAttribute, isServerMuted } from '../lib/permissions';
 import { readDeafened } from '../lib/participantMeta';
 import { botListens, isBotIdentity } from '../../../lib/bots';
 import { BotBadge, ListensMark } from '../../../ui/BotBadge';
+import { LevelMeter } from '../../../ui/LevelMeter';
+import { useBotDetails } from '../../../lib/roomStatusStore';
 
 interface ParticipantTileProps {
     participant: Participant;
@@ -83,6 +85,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
     const isServerMuted = useIsServerMuted(participant);
     const handRaised = useHandRaised(participant);
     const listens = useListens(participant);
+    const botStatus = useBotDetails(participant.identity)?.status;
     // For local participant use the prop (immediate, no SSE delay); for remote read metadata
     const isDeafened = audioMuted !== undefined ? audioMuted : deafenedFromMeta;
 
@@ -112,6 +115,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
             deafened={isDeafened}
             handRaised={handRaised}
             listens={listens}
+            botStatus={botStatus}
             quality={qualityStr}
             onClick={onClick && ((e) => onClick(participant, e))}
             onContextMenu={onContextMenu && ((e) => onContextMenu(participant, e))}
@@ -134,6 +138,8 @@ interface ParticipantTileViewProps {
     handRaised: boolean;
     /** A bot that receives the call's audio and video. */
     listens?: boolean;
+    /** A bot's status line, set by the server from what the bot sent. */
+    botStatus?: string;
     quality: 'excellent' | 'good' | 'poor' | null;
     onClick?: (e: React.MouseEvent) => void;
     onContextMenu?: (e: React.MouseEvent) => void;
@@ -142,17 +148,27 @@ interface ParticipantTileViewProps {
 }
 
 /** How a participant looks on the stage, from plain state; ParticipantTile reads it from LiveKit. */
-export function ParticipantTileView({ name, identity, avatarUrl, video, speaking, screenSharing, micMuted, serverMuted, deafened, handRaised, listens, quality, onClick, onContextMenu, onFlip }: ParticipantTileViewProps) {
+export function ParticipantTileView({ name, identity, avatarUrl, video, speaking, screenSharing, micMuted, serverMuted, deafened, handRaised, listens, botStatus, quality, onClick, onContextMenu, onFlip }: ParticipantTileViewProps) {
     const { t } = useTranslation();
+    // A bot playing audio gets a level meter; the speaking ring stays for people.
+    const isBot = isBotIdentity(identity);
+    const playing = isBot && speaking;
     return (
         <div
-            className={`p-tile${speaking ? ' speaking' : ''}${onClick ? ' p-tile-clickable' : ''}`}
+            className={`p-tile${speaking && !isBot ? ' speaking' : ''}${onClick ? ' p-tile-clickable' : ''}`}
             onClick={onClick}
             onContextMenu={onContextMenu}
         >
             {video ?? (
                 <div className="p-tile-avatar">
                     <Avatar name={name} identity={identity} size={80} avatarUrl={avatarUrl} />
+                </div>
+            )}
+
+            {isBot && (botStatus || playing) && (
+                <div className="p-tile-bot-status">
+                    {botStatus && <span>{botStatus}</span>}
+                    {playing && <LevelMeter />}
                 </div>
             )}
 
@@ -165,7 +181,7 @@ export function ParticipantTileView({ name, identity, avatarUrl, video, speaking
             <div className="p-tile-meta">
                 <span className="p-tile-name">
                     <span className="p-tile-name-text">{name}</span>
-                    {isBotIdentity(identity) && <BotBadge />}
+                    {isBot && <BotBadge />}
                 </span>
                 <div className="p-tile-status">
                     {listens && <span className="p-tile-status-icon"><ListensMark /></span>}

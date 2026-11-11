@@ -59,6 +59,26 @@
     box-shadow: 0 0 0 3px var(--speaking-ring, var(--color-success, #22c55e)), 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
+/* A bot's status line across the top of its tile. */
+.p-tile-bot-status {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.p-tile-bot-status span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Server-muted by admin: red mic icon */
 .p-tile-status-icon.server-muted {
     color: var(--color-danger, #ef4444);

@@ -12,7 +12,7 @@ Every request carries `X-Lala-Device: <device ID>`, a random string of up to 100
 that the client generates once and keeps. The device ID is a credential: anyone holding it acts
 as that device. The server turns it into a public identity (an HMAC under the LiveKit secret),
 which is what other participants see and what the [server config](self-hosting.md) lists.
-`GET /api/me` returns the caller's identity and role.
+`GET /api/me` returns the caller's identity and role, and the server's name.
 
 Without the header, `/api/token` issues a one-off identity, and creating rooms fails with
 `identity_required`.

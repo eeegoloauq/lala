@@ -677,3 +677,49 @@
 .cp-group-header .bot-badge {
   align-self: center;
 }
+
+/* ─── Bot command suggestions, above the input ─── */
+.cp-suggest {
+  margin: 0 12px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-control);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cp-suggest-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cp-suggest-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 7px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cp-suggest-item code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.cp-suggest-item span {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-suggest-item.active,
+.cp-suggest-item:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}

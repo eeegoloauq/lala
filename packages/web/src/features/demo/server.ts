@@ -6,8 +6,10 @@
  */
 import type { AccessStatus, Me, RoomBan, RoomInfo, ServerBan, TokenResponse } from '../../lib/types';
 import { deriveRoomKeys } from '../../lib/roomKeys';
+import type { BotDetails } from '../../lib/bots';
 
-interface Person { identity: string; name: string }
+/** Someone in a room; a bot has its details, which in a real call come from its attributes and permission. */
+interface Person { identity: string; name: string; bot?: BotDetails }
 
 interface DemoRoom {
     id: string;
@@ -34,6 +36,18 @@ export const DEMO_PASSWORD = 'lala';
 const randomId = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2, '0')).join('');
 const person = (name: string): Person => ({ identity: `demo-${name.toLowerCase()}-${randomId()}`, name });
 
+const bot = (key: string, details: Omit<BotDetails, 'name'>): Person => ({ identity: `bot-${key}`, name: key[0].toUpperCase() + key.slice(1), bot: { name: key[0].toUpperCase() + key.slice(1), ...details } });
+const RADIO = bot('radio', {
+    status: 'Teardrop · Massive Attack',
+    commands: [{ name: '!play', description: 'song name or link' }, { name: '!skip', description: 'next song' }, { name: '!queue', description: "what's next" }],
+    speaks: true, chats: true, listens: false,
+});
+const MINUTES = bot('minutes', {
+    status: 'Taking notes',
+    commands: [{ name: '!stop', description: 'pause notes' }, { name: '!summary', description: 'summary so far' }],
+    speaks: false, chats: true, listens: true,
+});
+
 const CROWD = ['Mira', 'Theo', 'Sasha', 'Ines', 'Kofi', 'Lena', 'Ravi', 'Yuki', 'Omar', 'Elsa', 'Nika', 'Jonas'].map(person);
 
 function room(name: string, people: Person[], extra: Partial<DemoRoom> = {}): DemoRoom {
@@ -56,8 +70,8 @@ function room(name: string, people: Person[], extra: Partial<DemoRoom> = {}): De
 
 // Seeded rooms keep fixed IDs, so a demo link like /room/lounge survives the reset on reload.
 const rooms: DemoRoom[] = [
-    room('Lounge', CROWD.slice(0, 4), { id: 'lounge', permanent: true, muted: new Set([CROWD[2].identity]), sharing: new Set([CROWD[1].identity]) }),
-    room('Gaming', CROWD.slice(4, 7), { id: 'gaming', deafened: new Set([CROWD[6].identity]) }),
+    room('Lounge', [...CROWD.slice(0, 4), RADIO], { id: 'lounge', permanent: true, muted: new Set([CROWD[2].identity]), sharing: new Set([CROWD[1].identity]) }),
+    room('Gaming', [...CROWD.slice(4, 7), MINUTES], { id: 'gaming', deafened: new Set([CROWD[6].identity]) }),
     room('Study', CROWD.slice(7, 9), { id: 'study', maxParticipants: 2 }),
     room(`Locked · ${DEMO_PASSWORD}`, CROWD.slice(9, 10), { id: 'locked' }),
     room('Late night', [], { id: 'late-night' }),
@@ -153,7 +167,7 @@ function describe(r: DemoRoom): RoomInfo {
         mutedParticipants: [...r.muted],
         deafenedParticipants: [...r.deafened],
         serverMutedParticipants: [...r.serverMuted],
-        listeningParticipants: [],
+        listeningParticipants: r.people.filter(p => p.bot?.listens).map(p => p.identity),
     };
 }
 
@@ -166,11 +180,12 @@ const pick = <T,>(list: T[]): T | undefined => list[Math.floor(Math.random() * l
 function startActivity() {
     if (activity) return;
     activity = setInterval(() => {
-        const busy = rooms.filter(r => r.people.some(p => p.identity !== ME));
+        // Bots stay where they are.
+        const busy = rooms.filter(r => r.people.some(p => p.identity !== ME && !p.bot));
         const mine = rooms.find(r => r.id === callRoom);
         const from = (mine && busy.includes(mine) && Math.random() < 0.4 ? mine : undefined) ?? pick(busy);
         if (!from) return;
-        const others = from.people.filter(p => p.identity !== ME);
+        const others = from.people.filter(p => p.identity !== ME && !p.bot);
         const who = others[Math.floor(Math.random() * others.length)];
         const roll = Math.random();
         if (roll < 0.35) {

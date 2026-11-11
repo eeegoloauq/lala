@@ -87,16 +87,20 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
           </div>
         </div>
         {identity && (
-          <div className="settings-row">
-            <div>
-              <div className="settings-row-label">{t('settings.yourId')}</div>
-              <div className="settings-row-desc">{t('settings.yourIdHint')}</div>
-              <code className="settings-identity">{identity}</code>
+          // Only an admin setting up the server config needs it.
+          <details className="settings-advanced">
+            <summary>{t('settings.advanced')}</summary>
+            <div className="settings-row">
+              <div>
+                <div className="settings-row-label">{t('settings.yourId')}</div>
+                <div className="settings-row-desc">{t('settings.yourIdHint')}</div>
+                <code className="settings-identity">{identity}</code>
+              </div>
+              <button className="accent-reset-btn" onClick={copyIdentity}>
+                {copied ? t('settings.copied') : t('settings.copy')}
+              </button>
             </div>
-            <button className="accent-reset-btn" onClick={copyIdentity}>
-              {copied ? t('settings.copied') : t('settings.copy')}
-            </button>
-          </div>
+          </details>
         )}
       </div>
     </>
