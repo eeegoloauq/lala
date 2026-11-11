@@ -86,6 +86,7 @@ export function ChatSection({ headerRef, settings, onUpdate }: ChatSectionProps)
             <div className="settings-row">
               <div className="settings-row-label">{t('settings.ttsVoice')}</div>
               <Select
+                label={t('settings.ttsVoice')}
                 value={settings.ttsVoice}
                 onChange={(v) => onUpdate({ ttsVoice: v })}
                 options={[

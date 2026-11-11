@@ -253,6 +253,11 @@
         overflow: hidden;
     }
 
+    /* 100px wide: the name matters more than the connection bars. */
+    .fl-strip-tile .cq-bars {
+        display: none;
+    }
+
     .fl-strip-tile .p-avatar-circle {
         max-width: 48px;
         max-height: 48px;

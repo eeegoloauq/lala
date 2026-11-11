@@ -54,7 +54,7 @@ export function DevicesSection({ headerRef, settings, onUpdate, micMonitor, setM
       <div className="settings-section">
         <div className="settings-row-col">
           <div className="settings-row-label">{t('settings.microphone')}</div>
-          <Select value={settings.audioInputDeviceId || ''} onChange={(v) => onUpdate({ audioInputDeviceId: v })} options={audioInputOptions} />
+          <Select label={t('settings.microphone')} value={settings.audioInputDeviceId || ''} onChange={(v) => onUpdate({ audioInputDeviceId: v })} options={audioInputOptions} />
           <MicTester
             deviceId={settings.audioInputDeviceId || undefined}
             monitoring={micMonitor}
@@ -65,11 +65,11 @@ export function DevicesSection({ headerRef, settings, onUpdate, micMonitor, setM
         </div>
         <div className="settings-row-col">
           <div className="settings-row-label">{t('settings.speaker')}</div>
-          <Select value={settings.audioOutputDeviceId || ''} onChange={(v) => onUpdate({ audioOutputDeviceId: v })} options={audioOutputOptions} />
+          <Select label={t('settings.speaker')} value={settings.audioOutputDeviceId || ''} onChange={(v) => onUpdate({ audioOutputDeviceId: v })} options={audioOutputOptions} />
         </div>
         <div className="settings-row-col">
           <div className="settings-row-label">{t('settings.camera')}</div>
-          <Select value={settings.videoInputDeviceId || ''} onChange={(v) => onUpdate({ videoInputDeviceId: v })} options={videoInputOptions} />
+          <Select label={t('settings.camera')} value={settings.videoInputDeviceId || ''} onChange={(v) => onUpdate({ videoInputDeviceId: v })} options={videoInputOptions} />
         </div>
       </div>
     </>

@@ -84,7 +84,8 @@
     text-overflow: ellipsis;
 }
 
-.lala-select-option:hover {
+/* The highlighted option, by mouse or arrow keys (aria-activedescendant). */
+.lala-select-option.active {
     background: var(--bg-hover);
 }
 

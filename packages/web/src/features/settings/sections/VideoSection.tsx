@@ -45,7 +45,7 @@ export function VideoSection({ headerRef, settings, onUpdate }: VideoSectionProp
             <div className="settings-row-label">{t('settings.resolution')}</div>
             <div className="settings-row-desc">{t('settings.maxResolution')}</div>
           </div>
-          <Select value={settings.videoResolution || 'h720'} onChange={(v) => onUpdate({ videoResolution: v })} options={RESOLUTION_OPTIONS} className="lala-select-wide" />
+          <Select label={t('settings.resolution')} value={settings.videoResolution || 'h720'} onChange={(v) => onUpdate({ videoResolution: v })} options={RESOLUTION_OPTIONS} className="lala-select-wide" />
         </div>
         <div className="settings-row">
           <div>
@@ -55,6 +55,7 @@ export function VideoSection({ headerRef, settings, onUpdate }: VideoSectionProp
             </div>
           </div>
           <Select
+            label={t('settings.cameraEffect')}
             value={cameraEffectSupported ? (settings.cameraEffect || 'none') : 'none'}
             onChange={(v) => onUpdate({ cameraEffect: v as CameraEffect })}
             options={CAMERA_EFFECT_OPTIONS}

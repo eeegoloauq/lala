@@ -14,12 +14,15 @@ const look = (page: Page) => page.evaluate(() => {
     };
 });
 
-async function pickTheme(page: Page, label: string) {
+async function openAppearance(page: Page) {
     await page.getByTitle('Settings').click();
     await page.locator('.settings-nav-item', { hasText: 'Appearance' }).click();
-    const row = page.locator('.settings-row', { hasText: 'Theme' }).first();
-    await row.locator('.lala-select-trigger').click();
-    await row.locator('.lala-select-option', { hasText: label }).click();
+}
+
+async function pickTheme(page: Page, label: string) {
+    await openAppearance(page);
+    await page.getByRole('combobox', { name: 'Theme' }).click();
+    await page.getByRole('option', { name: label }).click();
 }
 
 test('the server theme is the default until someone picks their own', async ({ browser }) => {
@@ -33,6 +36,17 @@ test('the server theme is the default until someone picks their own', async ({ b
     // The choice stays; the server's colors don't come back over it.
     await page.reload();
     await expect.poll(() => look(page)).toEqual({ theme: 'dark', accent: '', radius: '' });
+
+    // The list works from the keyboard too: End goes to the last theme, Enter picks it.
+    await openAppearance(page);
+    const select = page.getByRole('combobox', { name: 'Theme' });
+    await select.focus();
+    await select.press('ArrowDown');
+    await expect(select).toHaveAttribute('aria-expanded', 'true');
+    await select.press('End');
+    await select.press('Enter');
+    await expect.poll(() => look(page)).toMatchObject({ theme: 'winxp' });
+    await expect(select).toHaveAttribute('aria-expanded', 'false');
     expect(errors).toEqual([]);
 });
 

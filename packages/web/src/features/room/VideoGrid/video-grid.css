@@ -214,8 +214,10 @@
         gap: 4px;
     }
 
+    /* The name takes what the status icons leave, rather than a fixed share. */
     .p-tile-name {
-        max-width: calc(100% - 60px);
+        max-width: none;
+        flex: 0 1 auto;
     }
 }
 

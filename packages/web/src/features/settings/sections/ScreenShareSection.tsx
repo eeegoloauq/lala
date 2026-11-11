@@ -21,6 +21,7 @@ export function ScreenShareSection({ headerRef, settings, onUpdate }: ScreenShar
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.quality')}</div></div>
           <Select
+            label={t('settings.quality')}
             value={String(settings.screenShareBrIdx)}
             onChange={(v) => onUpdate({ screenShareBrIdx: Number(v) })}
             options={SCREEN_SHARE_BITRATE_STEPS.map((v, i) => ({ value: String(i), label: screenShareBitrateLabel(v) }))}
@@ -30,6 +31,7 @@ export function ScreenShareSection({ headerRef, settings, onUpdate }: ScreenShar
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.frameRate')}</div></div>
           <Select
+            label={t('settings.frameRate')}
             value={String(settings.screenShareFpsIdx)}
             onChange={(v) => onUpdate({ screenShareFpsIdx: Number(v) })}
             options={SCREEN_SHARE_FPS_STEPS.map((v, i) => ({ value: String(i), label: `${v} FPS` }))}

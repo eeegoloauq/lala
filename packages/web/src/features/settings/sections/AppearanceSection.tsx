@@ -38,11 +38,11 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
         <div className="settings-section-title">{t('settings.theme')}</div>
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.theme')}</div></div>
-          <Select value={selected} onChange={(v) => setChoice(v as ThemeChoice)} options={themeOptions} className="lala-select-wide" />
+          <Select label={t('settings.theme')} value={selected} onChange={(v) => setChoice(v as ThemeChoice)} options={themeOptions} className="lala-select-wide" />
         </div>
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.language')}</div></div>
-          <Select value={i18next.language?.startsWith('ru') ? 'ru' : 'en'} onChange={(v) => i18next.changeLanguage(v)} options={LANGUAGE_OPTIONS} className="lala-select-wide" />
+          <Select label={t('settings.language')} value={i18next.language?.startsWith('ru') ? 'ru' : 'en'} onChange={(v) => i18next.changeLanguage(v)} options={LANGUAGE_OPTIONS} className="lala-select-wide" />
         </div>
       </div>
 

@@ -39,7 +39,7 @@ export function AudioSection({ headerRef, settings, onUpdate }: AudioSectionProp
             <div className="settings-row-label">{t('settings.micPreset')}</div>
             <div className="settings-row-desc">{t('settings.micPresetHint')}</div>
           </div>
-          <Select value={settings.audioQuality} onChange={(v) => onUpdate({ audioQuality: v as AudioQualityPreset })} options={QUALITY_OPTIONS} className="lala-select-wide" />
+          <Select label={t('settings.micPreset')} value={settings.audioQuality} onChange={(v) => onUpdate({ audioQuality: v as AudioQualityPreset })} options={QUALITY_OPTIONS} className="lala-select-wide" />
         </div>
       </div>
 
@@ -61,6 +61,7 @@ export function AudioSection({ headerRef, settings, onUpdate }: AudioSectionProp
             <div className="settings-row-desc">{t('settings.noiseSuppressionHint')}</div>
           </div>
           <Select
+            label={t('settings.noiseSuppression')}
             value={settings.noiseSuppressionMode}
             onChange={(v) => onUpdate({ noiseSuppressionMode: v as NoiseSuppressionMode })}
             options={NS_OPTIONS}

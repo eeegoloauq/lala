@@ -176,12 +176,14 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
                         <div className="ss-bottom-bar">
                             <div className="ss-controls">
                                 <Select
+                                    label={t('screenShare.quality')}
                                     value={String(brIdx)}
                                     onChange={(v) => setBrIdx(Number(v))}
                                     options={QUALITY_OPTIONS}
                                     className="ss-select-compact"
                                 />
                                 <Select
+                                    label={t('screenShare.frameRate')}
                                     value={String(fpsIdx)}
                                     onChange={(v) => setFpsIdx(Number(v))}
                                     options={FPS_OPTIONS}
@@ -211,6 +213,7 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
                             <div className="ss-browser-row">
                                 <label className="ss-browser-label">{t('screenShare.quality')}</label>
                                 <Select
+                                    label={t('screenShare.quality')}
                                     value={String(brIdx)}
                                     onChange={(v) => setBrIdx(Number(v))}
                                     options={QUALITY_OPTIONS}
@@ -219,6 +222,7 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
                             <div className="ss-browser-row">
                                 <label className="ss-browser-label">{t('screenShare.frameRate')}</label>
                                 <Select
+                                    label={t('screenShare.frameRate')}
                                     value={String(fpsIdx)}
                                     onChange={(v) => setFpsIdx(Number(v))}
                                     options={FPS_OPTIONS}
