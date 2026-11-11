@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
 import { basename, dirname, join } from 'path';
 import { parse } from 'yaml';
+import type { ServerTheme, ThemeColor, ThemeId, ThemeSize } from '@lala/shared';
 import { parseSecretHash, type SecretHash } from './secrets';
 
 /**
@@ -43,6 +44,8 @@ export interface BotConfig {
 export interface Config {
     /** Shown at the top of the room list. */
     name: string;
+    /** The clients' default theme. */
+    theme?: ServerTheme;
     /** Keyed by public identity, the ID each person copies from their settings. */
     users: Map<string, { name: string; role: Role }>;
     guests: boolean;
@@ -58,6 +61,13 @@ const LEVELS: Level[] = ['everyone', 'members', 'admins'];
 const ROLES: Role[] = ['admin', 'member'];
 const IDENTITY = /^[0-9a-f]{36}$/;
 const BOT_RIGHTS: BotRight[] = ['speak', 'chat', 'listen'];
+const THEME_IDS: ThemeId[] = ['dark', 'light', 'amoled', 'discord', 'winxp'];
+const THEME_COLORS: ThemeColor[] = ['accent', 'background', 'surface', 'sidebar', 'text', 'textSecondary', 'textMuted', 'border'];
+const THEME_SIZES: ThemeSize[] = ['radius', 'radiusLarge', 'avatarRadius'];
+const COLOR = /^#[0-9a-fA-F]{6}$/;
+// Whole or half pixels up to 32; an avatar may also be rounded in percent (50% is a circle).
+const SIZE = /^(?:[12]?[0-9]|3[0-2])(?:\.5)?px$/;
+const PERCENT = /^(?:[0-4]?[0-9]|50)%$/;
 const BOT_KEY = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
 /** Same cap as the clients put on avatars. */
 const MAX_AVATAR_LENGTH = 32 * 1024;
@@ -104,9 +114,32 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         Object.fromEntries(RIGHTS.map((r) => [r, value[r] === undefined ? base[r] : oneOf(value[r], `${path}.${r}`, LEVELS)])) as Rights;
 
     const top = object(raw ?? {}, 'config');
-    known(top, 'config', ['name', 'users', 'guests', 'defaults', 'rooms', 'bots']);
+    known(top, 'config', ['name', 'theme', 'users', 'guests', 'defaults', 'rooms', 'bots']);
     const serverName = top.name === undefined ? OPEN.name : typeof top.name === 'string' ? top.name.trim() : '';
     if (!serverName || serverName.length > 50) fail('name', 'expected a name of 1 to 50 characters');
+
+    let theme: ServerTheme | undefined;
+    if (top.theme !== undefined) {
+        const raw = object(top.theme, 'theme');
+        known(raw, 'theme', ['base', 'colors', 'sizes']);
+        const base = raw.base === undefined ? 'dark' : oneOf(raw.base, 'theme.base', THEME_IDS);
+        const colorsRaw = object(raw.colors ?? {}, 'theme.colors');
+        known(colorsRaw, 'theme.colors', THEME_COLORS);
+        const colors: ServerTheme['colors'] = {};
+        for (const [key, value] of Object.entries(colorsRaw)) {
+            if (typeof value !== 'string' || !COLOR.test(value)) fail(`theme.colors.${key}`, 'expected a color like "#e05a6f" (in quotes)');
+            colors[key as ThemeColor] = (value as string).toLowerCase();
+        }
+        const sizesRaw = object(raw.sizes ?? {}, 'theme.sizes');
+        known(sizesRaw, 'theme.sizes', THEME_SIZES);
+        const sizes: ServerTheme['sizes'] = {};
+        for (const [key, value] of Object.entries(sizesRaw)) {
+            const valid = typeof value === 'string' && (SIZE.test(value) || (key === 'avatarRadius' && PERCENT.test(value)));
+            if (!valid) fail(`theme.sizes.${key}`, key === 'avatarRadius' ? 'expected 0px to 32px, or 0% to 50%' : 'expected 0px to 32px');
+            sizes[key as ThemeSize] = value as string;
+        }
+        theme = { base, colors, sizes };
+    }
 
     const users = new Map<string, { name: string; role: Role }>();
     for (const [name, value] of Object.entries(object(top.users ?? {}, 'users'))) {
@@ -194,7 +227,7 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         bots.set(identity, { key, identity, name, avatar, secret, rooms: roomIds, rights });
     }
 
-    return { name: serverName, users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots };
+    return { name: serverName, theme, users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots };
 }
 
 let loaded: Config = OPEN;

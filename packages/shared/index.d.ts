@@ -58,6 +58,22 @@ export interface ServerBan { identity: string; name: string; ipBannedUntil?: num
 /** Response from GET /api/admin/bans */
 export interface ServerBansResponse { bans: ServerBan[]; }
 
+/** The built-in themes of the web client. */
+export type ThemeId = 'dark' | 'light' | 'amoled' | 'discord' | 'winxp';
+export type ThemeColor = 'accent' | 'background' | 'surface' | 'sidebar' | 'text' | 'textSecondary' | 'textMuted' | 'border';
+export type ThemeSize = 'radius' | 'radiusLarge' | 'avatarRadius';
+
+/**
+ * The server's default theme, from `theme:` in the config: a built-in theme with some
+ * colors (#rrggbb) and sizes (px, avatarRadius also %) changed. No CSS: rules sent to
+ * every client could hide what must stay visible, such as the BOT badge.
+ */
+export interface ServerTheme {
+    base: ThemeId;
+    colors: Partial<Record<ThemeColor, string>>;
+    sizes: Partial<Record<ThemeSize, string>>;
+}
+
 /** Response from GET /api/me */
 export interface Me {
     identity: string;   // public; what goes into the server config to make someone a member or admin
@@ -65,6 +81,7 @@ export interface Me {
     allowed: boolean;   // false when the config turns guests away
     canCreateRooms: boolean;
     serverName: string; // `name` in the server config, "Lala" without one
+    theme?: ServerTheme; // the server's default theme, when the config sets one
 }
 
 /** Payload for POST /api/token; the identity comes from the X-Lala-Device header. */

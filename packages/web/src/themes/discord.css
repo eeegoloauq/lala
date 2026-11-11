@@ -1,0 +1,27 @@
+/* Discord-like: colors and sizes over the dark defaults. */
+/* ─── Discord Theme ─── */
+[data-theme="discord"] {
+  --bg-primary: #313338;
+  --bg-secondary: #2b2d31;
+  --bg-sidebar: #1e1f22;
+  --bg-hover: #35373c;
+  --bg-active: #404249;
+  --bg-control: #2b2d31;
+
+  --text-primary: #dbdee1;
+  --text-secondary: #b5bac1;
+  --text-muted: #80848e;
+  --text-accent: #5865f2;
+
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --accent-glow: rgba(88, 101, 242, 0.3);
+  --accent-gradient: linear-gradient(135deg, #5865f2, #7983f5);
+
+  --color-success: #43b581;
+  --color-danger: #f04747;
+  --color-warning: #faa61a;
+  --color-info: #5865f2;
+
+  --border-color: #1e1f22;
+}

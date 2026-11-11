@@ -94,6 +94,26 @@ describe('server name', () => {
     });
 });
 
+describe('server theme', () => {
+    test('takes a base, colors and sizes', () => {
+        assert.deepEqual(parseConfig({ theme: { base: 'light', colors: { accent: '#E05A6F' }, sizes: { radius: '6px', avatarRadius: '30%' } } }).theme,
+            { base: 'light', colors: { accent: '#e05a6f' }, sizes: { radius: '6px', avatarRadius: '30%' } });
+        assert.equal(parseConfig({}).theme, undefined);
+    });
+
+    const broken: Array<[string, unknown, RegExp]> = [
+        ['CSS', { css: '.bot-badge { display: none }' }, /unknown key "css"/],
+        ['a token outside the list', { colors: { warning: '#000000' } }, /unknown key "warning"/],
+        ['a color that is not hex', { colors: { accent: 'red; display: none' } }, /expected a color/],
+        ['a size out of range', { sizes: { radius: '200px' } }, /0px to 32px/],
+        ['a percent radius on boxes', { sizes: { radius: '50%' } }, /0px to 32px/],
+        ['an unknown base', { base: 'retro' }, /expected one of dark/],
+    ];
+    for (const [what, theme, message] of broken) {
+        test(`refuses ${what}`, () => assert.throws(() => parseConfig({ theme }), message));
+    }
+});
+
 describe('bot secrets', () => {
     test('verify only the matching secret', async () => {
         const stored = parseSecretHash(await hashSecret('right'))!;

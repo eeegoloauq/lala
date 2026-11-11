@@ -6,6 +6,7 @@ import { takeInviteFromHash } from './features/access/inviteLink';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './features/settings/ThemeProvider';
 import { initSecureStore } from './lib/secureStore';
+import './themes';
 import './globals.css';
 import '@livekit/components-styles';
 

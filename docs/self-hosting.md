@@ -52,6 +52,14 @@ and keep rooms that always exist, copy [`config/lala.example.yaml`](../config/la
 to `config/lala.yaml` and restart the `api` container. People are listed by the ID shown in
 Settings → Profile; calls keep going through the restart.
 
+## Look
+
+`name:` in `config/lala.yaml` names the server at the top of the room list. `theme:` sets the
+default look for people who haven't picked a theme: a built-in theme with some colors and
+sizes changed (see the example file). It takes no CSS, so nothing the server sends can hide
+the marks that tell people a bot is in the call or can hear it. Each person can still pick a
+theme and add their own CSS in Settings → Appearance; that CSS stays on their device.
+
 ## Bots
 
 A bot is a program you run that joins calls through the [client API](api.md). Pick a key for

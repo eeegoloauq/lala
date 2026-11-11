@@ -25,5 +25,9 @@ export const STORAGE_KEYS = {
   identity: 'lala-device-id',
   // Underscore, unlike its neighbours: the key users' saved themes are under.
   theme: 'lala_theme',
+  // The last theme the server sent, so a reload doesn't flash the built-in default first.
+  serverTheme: 'lala_server_theme',
+  // CSS the user added; it stays on this device.
+  userCss: 'lala_user_css',
   settings: 'lala-settings',
 } as const;

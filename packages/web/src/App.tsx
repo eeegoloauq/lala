@@ -7,6 +7,7 @@ import { WaveformWelcome } from './features/welcome/WaveformWelcome';
 import { RoomHeader } from './features/room/RoomHeader';
 import { ProfileCardHost } from './features/profile/ProfileCard';
 import { useSettings } from './features/settings';
+import { useTheme } from './features/settings/ThemeProvider';
 import { useRooms } from './hooks/useRooms';
 import { useMe } from './hooks/useMe';
 import { MeContext } from './lib/meContext';
@@ -43,25 +44,15 @@ export default function App() {
     }, []);
 
 
+    // The server's default theme and the user's accent reach the theme from here.
+    const { setInputs: setThemeInputs } = useTheme();
+    // Until /api/me answers, the theme the server sent last time stays.
     useEffect(() => {
-        const color = settings.accentColor;
-        const root = document.documentElement;
-        // Guard against a corrupted/hand-edited value reaching slice/parseInt below.
-        if (!color || !/^#[0-9a-f]{6}$/i.test(color)) {
-            ['--accent', '--accent-hover', '--accent-glow', '--accent-gradient', '--text-accent']
-                .forEach(v => root.style.removeProperty(v));
-            return;
-        }
-        const [r, g, b] = [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16));
-        const darker = (n: number) => Math.round(n * 0.82).toString(16).padStart(2, '0');
-        const lighter = (n: number) => Math.min(255, Math.round(n + (255 - n) * 0.35)).toString(16).padStart(2, '0');
-        const light = `#${lighter(r)}${lighter(g)}${lighter(b)}`;
-        root.style.setProperty('--accent', color);
-        root.style.setProperty('--accent-hover', `#${darker(r)}${darker(g)}${darker(b)}`);
-        root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.3)`);
-        root.style.setProperty('--accent-gradient', `linear-gradient(135deg,${color},${light})`);
-        root.style.setProperty('--text-accent', light);
-    }, [settings.accentColor]);
+        if (me) setThemeInputs({ serverTheme: me.theme });
+    }, [setThemeInputs, me]);
+    useEffect(() => {
+        setThemeInputs({ accent: settings.accentColor });
+    }, [setThemeInputs, settings.accentColor]);
 
     const activeRoom = route.roomId;
 

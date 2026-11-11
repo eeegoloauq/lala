@@ -21,6 +21,7 @@ export function createMeRouter(): Router {
             allowed,
             canCreateRooms: allowed && canCreateRooms(identity),
             serverName: config().name,
+            theme: config().theme,
         };
         res.json(me);
     });

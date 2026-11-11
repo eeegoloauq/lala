@@ -13,7 +13,7 @@ import { RoomContextMenu } from './RoomContextMenu';
 import { BannedUsersModal } from './BannedUsersModal';
 import { ChannelUserRow } from './ChannelUserRow';
 import { useTheme } from '../settings/ThemeProvider';
-import { THEMES } from '../settings/themes';
+import { THEMES } from '../../themes';
 import { useLiveParticipants } from '../../lib/roomStatusStore';
 import { buildAdminActions } from '../room/hooks/useAdminActions';
 import { useMeContext } from '../../lib/meContext';
@@ -77,10 +77,10 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     // muted/deafened/avatar per participant are read individually by ChannelUserRow
     // so a voice-activity change only re-renders that one row, not this component.
     const liveParticipants = useLiveParticipants();
-    const { theme, setTheme } = useTheme();
+    const { theme, setChoice } = useTheme();
     const cycleTheme = () => {
         const idx = THEMES.indexOf(theme);
-        setTheme(THEMES[(idx + 1) % THEMES.length]);
+        setChoice(THEMES[(idx + 1) % THEMES.length]);
     };
 
     const [showCreateModal, setShowCreateModal] = useState(false);

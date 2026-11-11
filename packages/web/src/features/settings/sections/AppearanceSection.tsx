@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 import type { AppSettings } from '../types';
 import { useTheme } from '../ThemeProvider';
-import type { Theme } from '../themes';
+import { THEME_LABELS, THEMES } from '../../../themes';
+import type { ThemeChoice } from '../ThemeProvider';
 import { Select } from '../../../ui/Select';
 import type { SelectOption } from '../../../ui/Select';
 
@@ -20,15 +21,15 @@ interface AppearanceSectionProps {
 
 export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceSectionProps) {
   const { t } = useTranslation();
-  const { theme, setTheme } = useTheme();
+  const { theme, choice, setChoice, serverTheme, userCss, setUserCss } = useTheme();
 
-  const THEME_OPTIONS: SelectOption[] = useMemo(() => [
-    { value: 'dark', label: t('settings.themeDark') },
-    { value: 'light', label: t('settings.themeLight') },
-    { value: 'amoled', label: t('settings.themeAmoled') },
-    { value: 'discord', label: t('settings.themeDiscord') },
-    { value: 'winxp', label: t('settings.themeWinXP') },
-  ], [t]);
+  // The server's theme comes first when it has one, and is what follows when nothing is picked.
+  const themeOptions: SelectOption[] = useMemo(() => [
+    ...(serverTheme ? [{ value: 'server', label: t('settings.themeServer', { name: t(THEME_LABELS[serverTheme.base]) }) }] : []),
+    ...THEMES.map(id => ({ value: id, label: t(THEME_LABELS[id]) })),
+  ], [t, serverTheme]);
+  const followsServer = choice === null || choice === 'server';
+  const selected = followsServer ? (serverTheme ? 'server' : theme) : choice;
 
   return (
     <>
@@ -37,7 +38,7 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
         <div className="settings-section-title">{t('settings.theme')}</div>
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.theme')}</div></div>
-          <Select value={theme} onChange={(v) => setTheme(v as Theme)} options={THEME_OPTIONS} className="lala-select-wide" />
+          <Select value={selected} onChange={(v) => setChoice(v as ThemeChoice)} options={themeOptions} className="lala-select-wide" />
         </div>
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.language')}</div></div>
@@ -83,6 +84,25 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
             </label>
             {settings.accentColor && <button className="accent-reset-btn" onClick={() => onUpdate({ accentColor: undefined })}>{t('settings.reset')}</button>}
           </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">{t('settings.userCss')}</div>
+        <div className="settings-row settings-row-stacked">
+          <div>
+            <label className="settings-row-label" htmlFor="user-css">{t('settings.userCssLabel')}</label>
+            <div className="settings-row-desc">{t('settings.userCssHint')}</div>
+          </div>
+          <textarea
+            id="user-css"
+            className="input settings-css-input"
+            value={userCss}
+            onChange={(e) => setUserCss(e.target.value)}
+            spellCheck={false}
+            placeholder=".p-tile { border-radius: 4px; }"
+            rows={6}
+          />
         </div>
       </div>
     </>

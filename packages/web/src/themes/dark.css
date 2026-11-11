@@ -1,0 +1,156 @@
+/* Dark, the default: every token the app uses is defined here, on :root as well, so
+   another theme only overrides what it changes. Colors and sizes only. */
+/* Theme variables */
+:root,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-primary: #0b0b10;
+  --bg-secondary: #13131a;
+  --bg-sidebar: #111118;
+  --bg-hover: #1c1c27;
+  --bg-active: #23233a;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --bg-control: #1a1a26;
+
+  /* Text */
+  --text-primary: #e4e4ec;
+  --text-secondary: #8b8b9e;
+  --text-muted: #55556a;
+  --text-accent: #f2879a;
+
+  /* Accent */
+  --accent: #e05a6f;
+  --accent-hover: #c44d60;
+  --accent-glow: rgba(224, 90, 111, 0.35);
+  --accent-gradient: linear-gradient(135deg, #e05a6f, #f2879a);
+
+  /* Status */
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Borders */
+  --border-color: #1e1e2e;
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-round: 50%;
+
+  /* Spacing & Sizes */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --sidebar-width: 240px;
+  --control-bar-height: 64px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px var(--accent-glow);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* The system's own UI font: native on every OS, nothing to download. */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+
+  /* ─────────────────────────────────────────────────────────
+     STRUCTURAL VARIABLES — override in themes for zero-cost
+     per-component styling. New components using these vars
+     are automatically themed correctly.
+     ───────────────────────────────────────────────────────── */
+
+  /* Control bar pill (floating container) */
+  --cb-pill-bg:       rgba(15, 15, 22, 0.75);
+  --cb-pill-border:   rgba(255, 255, 255, 0.07);
+  --cb-pill-radius:   48px;
+  --cb-pill-backdrop: blur(20px);
+  --cb-pill-shadow:   0 8px 32px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+
+  /* Control bar buttons */
+  --cb-btn-radius:          50%;
+  --cb-btn-bg:              var(--bg-hover);
+  --cb-btn-color:           var(--text-secondary);
+  --cb-btn-shadow:          none;
+  --cb-btn-bg-hover:        var(--bg-active);
+  --cb-btn-hover-transform: scale(1.08);
+  --cb-btn-off-bg:          rgba(239, 68, 68, 0.15);
+  --cb-btn-off-color:       #ef4444;
+  --cb-btn-active-bg:       color-mix(in srgb, var(--accent) 20%, transparent);
+  --cb-btn-active-color:    var(--text-accent);
+  --cb-btn-active-shadow:   none;
+  --cb-btn-leave-bg:        rgba(239, 68, 68, 0.12);
+  --cb-btn-leave-color:     #ef4444;
+
+  /* Avatars / circles */
+  --avatar-radius: 50%;
+
+  /* Video tile */
+  --tile-radius: var(--border-radius-lg);
+
+  /* Overlays (name badge, muted icon, flip btn overlaid on tiles) */
+  --overlay-bg:       rgba(0, 0, 0, 0.55);
+  --overlay-backdrop: blur(6px);
+  --overlay-radius:   6px;
+
+  /* FocusLayout main panel */
+  --fl-main-radius: 10px;
+  --fl-main-border: none;
+  --fl-main-shadow: none;
+
+  /* FocusLayout overlay buttons (back, fullscreen) */
+  --fl-btn-bg:       rgba(0, 0, 0, 0.65);
+  --fl-btn-backdrop: blur(8px);
+  --fl-btn-radius:   6px;
+  --fl-btn-border:   none;
+  --fl-btn-color:    white;
+  --fl-btn-shadow:   none;
+
+  /* FocusLayout label */
+  --fl-label-bg:       rgba(0, 0, 0, 0.65);
+  --fl-label-backdrop: blur(8px);
+  --fl-label-radius:   6px;
+
+  /* FocusLayout strip tiles */
+  --fl-strip-tile-radius: 8px;
+
+  /* Chat bubbles */
+  --bubble-radius: 8px;
+
+  /* Panel headers (sidebar header, chat panel header) */
+  --panel-header-bg:          transparent;
+  --panel-header-color:       inherit;
+  --panel-header-text-shadow: none;
+
+  /* Settings modal */
+  --settings-modal-radius: 8px;
+  --settings-modal-border: none;
+  --settings-modal-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+
+  /* Settings nav items */
+  --settings-nav-radius: var(--border-radius);
+
+  /* Close / icon buttons */
+  --settings-close-radius: 50%;
+
+  /* Toggle switch */
+  --toggle-track-radius: 11px;
+  --toggle-thumb-radius: 50%;
+
+  /* Screen share modal */
+  --ss-modal-radius: 14px;
+
+  /* Context menu */
+  --ctx-menu-radius: var(--border-radius);
+
+  /* Scrollbar */
+  --scrollbar-width:        6px;
+  --scrollbar-thumb-radius: 3px;
+}

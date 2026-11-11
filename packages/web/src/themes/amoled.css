@@ -1,0 +1,13 @@
+/* AMOLED: true black backgrounds over the dark defaults. */
+/* ─── Amoled Theme ─── */
+[data-theme="amoled"] {
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-sidebar: #000000;
+  --bg-hover: #111111;
+  --bg-active: #222222;
+  --bg-control: #000000;
+  --border-color: #1a1a1a;
+  /* --color-success/danger/warning/info intentionally omitted — identical to
+     the root theme's values, so no override is needed here. */
+}

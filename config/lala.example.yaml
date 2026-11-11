@@ -6,6 +6,16 @@
 # Shown at the top of the room list.
 name: Lala
 
+# The default look for people who haven't picked a theme: a built-in theme (dark, light,
+# amoled, discord, winxp) with some colors and sizes changed. Colors as "#rrggbb", sizes
+# in px (avatarRadius also in %). People can still pick their own theme and add CSS.
+# theme:
+#   base: dark
+#   colors:
+#     accent: "#e05a6f"      # also: background, surface, sidebar, text, textSecondary, textMuted, border
+#   sizes:
+#     radius: 8px            # also: radiusLarge; avatarRadius (50% is a circle)
+
 # People are named by their ID: Settings → Profile → "Your ID" in the app. An ID belongs
 # to one browser or desktop app, so list each device someone uses.
 users:
