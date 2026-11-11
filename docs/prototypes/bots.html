@@ -81,6 +81,7 @@ svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; s
 /* Sidebar */
 .side { background: var(--rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .server { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); }
+.server .wordmark { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; line-height: 1.15; }
 .server .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 .server div { flex: 1; min-width: 0; display: grid; }
 .server strong { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -292,8 +293,7 @@ code { font-family: var(--mono); font-size: 12.5px; background: var(--raise); pa
   <div class="app" id="app">
     <aside class="side">
       <div class="server">
-        <span class="mark">L</span>
-        <div><strong>Lala</strong><small>4 online · name and icon set in config</small></div>
+        <div><strong class="wordmark">Lala</strong><small>4 online</small></div>
       </div>
       <div class="side-scroll">
         <div class="label">Rooms <button class="icon-btn" aria-label="New room" style="width:22px;height:22px"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
