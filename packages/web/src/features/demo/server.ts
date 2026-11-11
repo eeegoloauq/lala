@@ -205,7 +205,7 @@ export async function handle(path: string, init: RequestInit = {}): Promise<Resp
     await new Promise(resolve => setTimeout(resolve, 120));
 
     if (path === '/access' && method === 'GET') return json(200, { required: false, granted: true } satisfies AccessStatus);
-    if (path === '/me') return json(200, { identity: ME, role: 'admin', allowed: true, canCreateRooms: true } satisfies Me);
+    if (path === '/me') return json(200, { identity: ME, role: 'admin', allowed: true, canCreateRooms: true, serverName: 'Lala' } satisfies Me);
     if (path === '/rooms' && method === 'GET') return json(200, { rooms: rooms.map(describe) });
     if (path === '/rooms' && method === 'POST') return createRoom(body);
     if (path === '/token' && method === 'POST') return token(body);

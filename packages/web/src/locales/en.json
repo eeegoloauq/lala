@@ -51,7 +51,10 @@
     "close": "Close",
     "you": "you",
     "anonymous": "Anonymous",
-    "membersOnly": "Members only"
+    "membersOnly": "Members only",
+    "online_one": "{{count}} online",
+    "online_other": "{{count}} online",
+    "saved": "Saved"
   },
   "room": {
     "wrongPassword": "Wrong password",
@@ -119,7 +122,12 @@
     "enterName": "Enter your name to start talking",
     "namePlaceholder": "Your name...",
     "continue": "Continue",
-    "lobbyHint": "Select a channel to join, or create one"
+    "lobbyHint": "Select a channel to join, or create one",
+    "join": "Join {{name}}",
+    "talking_one": "{{names}} is talking",
+    "talking_other": "{{names}} are talking",
+    "talkingMore_one": "{{names}} and {{count}} more are talking",
+    "talkingMore_other": "{{names}} and {{count}} more are talking"
   },
   "chat": {
     "title": "Chat",
@@ -422,5 +430,14 @@
     "toast_one": "{{names}} can hear this call.",
     "toast_other": "{{names}} can hear this call.",
     "dismiss": "Dismiss"
+  },
+  "roomHeader": {
+    "inCall_one": "{{count}} in call",
+    "inCall_other": "{{count}} in call",
+    "encrypted": "encrypted",
+    "canHear_one": "{{names}} can hear",
+    "canHear_other": "{{names}} can hear",
+    "copyInvite": "Copy invite link",
+    "copied": "Link copied"
   }
 }

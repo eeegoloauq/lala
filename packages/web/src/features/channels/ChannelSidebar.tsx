@@ -4,9 +4,7 @@ import type { RoomInfo, NewRoom } from '../../lib/types';
 import { APP_NAME, MAX_NAME_LENGTH } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
-import { getRoomPassword } from '../../lib/passwords';
-import { createAccessInvite } from '../../lib/api';
-import { useAccessRequired } from '../access/accessContext';
+import { useCopyInvite } from './useCopyInvite';
 import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { CreateRoomModal } from './CreateRoomModal';
@@ -88,7 +86,6 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenuState | null>(null);
     const [bansRoomId, setBansRoomId] = useState<string | null>(null);
-    const [copiedRoom, showCopiedRoom] = useTimedValue<string>(1500);
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +110,14 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         return map;
     }, [rooms, activeRoom, liveParticipants, identity]);
 
+    // Everyone in any room, counted once (the server lists the caller too).
+    const onlineCount = useMemo(() => {
+        const ids = new Set<string>();
+        for (const room of rooms) for (const p of room.participants) ids.add(p.identity);
+        for (const id of liveParticipants.keys()) ids.add(id);
+        return ids.size;
+    }, [rooms, liveParticipants]);
+
     useEffect(() => {
         if (renaming) renameInputRef.current?.focus();
     }, [renaming]);
@@ -128,24 +133,11 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         setRenaming(false);
     };
 
-    const accessRequired = useAccessRequired();
+    const { copy: copyInvite, copied: copiedRoom } = useCopyInvite();
     const handleCopyInvite = useCallback((e: React.MouseEvent, roomId: string, hasPassword: boolean) => {
         e.stopPropagation();
-        // The room password and the server invite go in the fragment, which browsers never send to a server.
-        const buildUrl = async () => {
-            const params = new URLSearchParams();
-            const pw = hasPassword ? getRoomPassword(roomId) : null;
-            if (pw) params.set('pw', pw);
-            if (accessRequired) params.set('invite', await createAccessInvite());
-            const hash = params.toString();
-            return `${window.location.origin}${import.meta.env.BASE_URL}room/${roomId}${hash ? `#${hash}` : ''}`;
-        };
-        // Handing the clipboard a promise keeps the click's permission to write while the invite loads.
-        const text = buildUrl().then(url => new Blob([url], { type: 'text/plain' }));
-        navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]).then(() => {
-            showCopiedRoom(roomId);
-        }).catch(err => console.warn('[ChannelSidebar] Copying the invite failed:', err));
-    }, [accessRequired, showCopiedRoom]);
+        copyInvite(roomId, hasPassword);
+    }, [copyInvite]);
 
     const handleUserContextMenu = useCallback((e: React.MouseEvent, participantIdentity: string, participantName: string, roomId: string) => {
         e.preventDefault();
@@ -202,7 +194,10 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         <div className="sidebar">
             {/* Header */}
             <div className="sidebar-header">
-                <span className="logo">{APP_NAME}</span>
+                <div className="sidebar-server">
+                    <span className="logo">{me?.serverName ?? APP_NAME}</span>
+                    <span className="sidebar-online">{t('sidebar.online', { count: onlineCount })}</span>
+                </div>
                 {onClose && (
                     <button className="sidebar-close-btn" onClick={onClose} title={t('sidebar.close')}>✕</button>
                 )}
@@ -321,6 +316,9 @@ export const ChannelSidebar = memo(function ChannelSidebar({
 
                 {visibleTemplates.length > 0 && (
                     <div className="channel-templates">
+                        <div className="sidebar-section-header">
+                            <span className="sidebar-section-title">{t('sidebar.saved')}</span>
+                        </div>
                         {visibleTemplates.map(template => (
                             <div
                                 key={template.name}

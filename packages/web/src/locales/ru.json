@@ -51,7 +51,12 @@
     "close": "Закрыть",
     "you": "вы",
     "anonymous": "Аноним",
-    "membersOnly": "Только для участников"
+    "membersOnly": "Только для участников",
+    "online_one": "{{count}} в сети",
+    "online_few": "{{count}} в сети",
+    "online_many": "{{count}} в сети",
+    "online_other": "{{count}} в сети",
+    "saved": "Сохранённые"
   },
   "room": {
     "wrongPassword": "Неверный пароль",
@@ -119,7 +124,16 @@
     "enterName": "Введи имя, чтобы начать",
     "namePlaceholder": "Твоё имя...",
     "continue": "Продолжить",
-    "lobbyHint": "Выбери канал, чтобы присоединиться, или создай новый"
+    "lobbyHint": "Выбери канал, чтобы присоединиться, или создай новый",
+    "join": "Войти в {{name}}",
+    "talking_one": "{{names}} разговаривает",
+    "talking_few": "{{names}} разговаривают",
+    "talking_many": "{{names}} разговаривают",
+    "talking_other": "{{names}} разговаривают",
+    "talkingMore_one": "{{names}} и ещё {{count}} разговаривают",
+    "talkingMore_few": "{{names}} и ещё {{count}} разговаривают",
+    "talkingMore_many": "{{names}} и ещё {{count}} разговаривают",
+    "talkingMore_other": "{{names}} и ещё {{count}} разговаривают"
   },
   "chat": {
     "title": "Чат",
@@ -424,5 +438,18 @@
     "toast_many": "{{names}} слышат этот звонок.",
     "toast_other": "{{names}} слышат этот звонок.",
     "dismiss": "Закрыть"
+  },
+  "roomHeader": {
+    "inCall_one": "{{count}} в звонке",
+    "inCall_few": "{{count}} в звонке",
+    "inCall_many": "{{count}} в звонке",
+    "inCall_other": "{{count}} в звонке",
+    "encrypted": "зашифровано",
+    "canHear_one": "{{names}} слышит",
+    "canHear_few": "{{names}} слышат",
+    "canHear_many": "{{names}} слышат",
+    "canHear_other": "{{names}} слышат",
+    "copyInvite": "Скопировать ссылку",
+    "copied": "Ссылка скопирована"
   }
 }

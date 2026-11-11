@@ -64,6 +64,7 @@ export interface Me {
     role: 'admin' | 'member' | 'guest';
     allowed: boolean;   // false when the config turns guests away
     canCreateRooms: boolean;
+    serverName: string; // `name` in the server config, "Lala" without one
 }
 
 /** Payload for POST /api/token; the identity comes from the X-Lala-Device header. */

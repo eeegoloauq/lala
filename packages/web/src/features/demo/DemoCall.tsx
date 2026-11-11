@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
 import { ParticipantTileView } from '../room/VideoGrid/ParticipantTile';
+import { TileGrid } from '../room/VideoGrid/TileGrid';
 import { ControlBarView } from '../room/ControlBar/ControlBar';
 import { FocusLayoutView, FocusStripTile } from '../room/FocusLayout/FocusLayout';
 import { FocusMainView } from '../room/FocusLayout/FocusMain';
@@ -233,14 +234,12 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
             })}
         </FocusLayoutView>
     ) : (
-        <div className="vg-area">
-            <div className="vg-grid" data-count={String(Math.min(people.length, 9) || 1)}>
-                {people.map(p => {
-                    const camera = cameras.get(p.identity);
-                    return <Fragment key={p.identity}>{tileFor(p, camera, camera ? () => focus.focusFromGrid(p.identity) : undefined)}</Fragment>;
-                })}
-            </div>
-        </div>
+        <TileGrid count={people.length}>
+            {people.map(p => {
+                const camera = cameras.get(p.identity);
+                return <Fragment key={p.identity}>{tileFor(p, camera, camera ? () => focus.focusFromGrid(p.identity) : undefined)}</Fragment>;
+            })}
+        </TileGrid>
     );
     const chat = (overlay: boolean) => (
         <ChatPanel

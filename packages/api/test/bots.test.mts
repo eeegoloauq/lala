@@ -86,6 +86,14 @@ describe('bot config', () => {
     });
 });
 
+describe('server name', () => {
+    test('defaults to Lala and takes the config name', async () => {
+        assert.equal(parseConfig({}).name, 'Lala');
+        assert.equal(parseConfig({ name: '  Our place ' }).name, 'Our place');
+        assert.throws(() => parseConfig({ name: '' }), /name: expected a name/);
+    });
+});
+
 describe('bot secrets', () => {
     test('verify only the matching secret', async () => {
         const stored = parseSecretHash(await hashSecret('right'))!;

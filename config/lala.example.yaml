@@ -3,6 +3,9 @@
 # A mistake here (an unknown key, a misspelled level) stops the API with a message
 # naming the line it means.
 
+# Shown at the top of the room list.
+name: Lala
+
 # People are named by their ID: Settings → Profile → "Your ID" in the app. An ID belongs
 # to one browser or desktop app, so list each device someone uses.
 users:

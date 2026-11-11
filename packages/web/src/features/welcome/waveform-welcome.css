@@ -72,3 +72,48 @@
   .waveform-bar:nth-child(6n + 4) { transform: scaleY(0.45); }
   .waveform-bar:nth-child(6n + 5) { transform: scaleY(0.7); }
 }
+
+.welcome-room {
+  margin-top: 28px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  padding-inline: 16px;
+}
+
+.welcome-faces {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+.welcome-faces > * + * {
+  margin-left: -6px;
+}
+
+.welcome-faces .p-avatar-circle {
+  box-shadow: 0 0 0 2px var(--bg-primary);
+}
+
+.welcome-join {
+  width: auto;
+  min-width: 220px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.welcome-talking {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.welcome-listens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-warning);
+}

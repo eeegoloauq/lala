@@ -41,6 +41,8 @@ export interface BotConfig {
 }
 
 export interface Config {
+    /** Shown at the top of the room list. */
+    name: string;
     /** Keyed by public identity, the ID each person copies from their settings. */
     users: Map<string, { name: string; role: Role }>;
     guests: boolean;
@@ -62,6 +64,7 @@ const MAX_AVATAR_LENGTH = 32 * 1024;
 export const BOT_PREFIX = 'bot-';
 
 const OPEN: Config = {
+    name: 'Lala',
     users: new Map(),
     guests: true,
     createRooms: 'everyone',
@@ -101,7 +104,9 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         Object.fromEntries(RIGHTS.map((r) => [r, value[r] === undefined ? base[r] : oneOf(value[r], `${path}.${r}`, LEVELS)])) as Rights;
 
     const top = object(raw ?? {}, 'config');
-    known(top, 'config', ['users', 'guests', 'defaults', 'rooms', 'bots']);
+    known(top, 'config', ['name', 'users', 'guests', 'defaults', 'rooms', 'bots']);
+    const serverName = top.name === undefined ? OPEN.name : typeof top.name === 'string' ? top.name.trim() : '';
+    if (!serverName || serverName.length > 50) fail('name', 'expected a name of 1 to 50 characters');
 
     const users = new Map<string, { name: string; role: Role }>();
     for (const [name, value] of Object.entries(object(top.users ?? {}, 'users'))) {
@@ -189,7 +194,7 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         bots.set(identity, { key, identity, name, avatar, secret, rooms: roomIds, rights });
     }
 
-    return { users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots };
+    return { name: serverName, users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots };
 }
 
 let loaded: Config = OPEN;

@@ -9,6 +9,7 @@ import { useParticipantContextMenu } from '../hooks/useParticipantContextMenu';
 import { useCameraFlip } from '../hooks/useCameraFlip';
 import { setScreenShareSubscribed } from '../lib/screenShare';
 import { useRoomUIContext } from '../RoomUIContext';
+import { TileGrid } from './TileGrid';
 import './video-grid.css';
 import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
 
@@ -58,11 +59,9 @@ export function VideoGrid({ onFocusTile, onCamEnabled }: VideoGridProps) {
         trackMap.set(t.participant.identity, t);
     }
 
-    const count = Math.max(participants.length, 1);
-
     return (
-        <div className="vg-area">
-            <div className="vg-grid" data-count={String(Math.min(count, 9))}>
+        <>
+            <TileGrid count={participants.length}>
                 {participants.map((p) => {
                     const trackRef = trackMap.get(p.identity);
                     const hasActiveVideo =
@@ -87,11 +86,11 @@ export function VideoGrid({ onFocusTile, onCamEnabled }: VideoGridProps) {
                         />
                     );
                 })}
-            </div>
+            </TileGrid>
 
             {contextMenuProps && (
                 <ParticipantContextMenu {...contextMenuProps} onClose={closeContextMenu} />
             )}
-        </div>
+        </>
     );
 }

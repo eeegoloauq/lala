@@ -4,6 +4,7 @@ import './lib/i18n';
 import { ChannelSidebar } from './features/channels';
 import { RoomView } from './features/room';
 import { WaveformWelcome } from './features/welcome/WaveformWelcome';
+import { RoomHeader } from './features/room/RoomHeader';
 import { useSettings } from './features/settings';
 import { useRooms } from './hooks/useRooms';
 import { useMe } from './hooks/useMe';
@@ -199,6 +200,7 @@ export default function App() {
                         </svg>
                     </button>
 
+                    {activeRoom && <RoomHeader room={rooms.find(r => r.id === activeRoom)} />}
                     {activeRoom ? (
                         <RoomView
                             roomName={activeRoom}
@@ -213,7 +215,7 @@ export default function App() {
                             onVolumeChange={handleVolumeChange}
                         />
                     ) : (
-                        <WaveformWelcome />
+                        <WaveformWelcome rooms={rooms} onJoinRoom={handleJoinRoom} />
                     )}
                 </main>
 

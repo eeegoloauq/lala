@@ -1,0 +1,90 @@
+.room-header {
+    height: 56px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--panel-header-bg);
+    color: var(--panel-header-color);
+    min-width: 0;
+}
+
+.room-header-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    text-shadow: var(--panel-header-text-shadow);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.room-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.room-header-meta > span + span::before {
+    content: '·';
+    margin-right: 6px;
+}
+
+.room-header-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.room-header-listens {
+    color: var(--color-warning);
+}
+
+.room-header-invite {
+    margin-left: auto;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    background: var(--bg-control);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.room-header-invite svg {
+    color: var(--accent);
+}
+
+.room-header-invite:hover {
+    border-color: var(--accent);
+}
+
+.room-header-invite.copied svg {
+    color: var(--color-success);
+}
+
+/* The menu button sits over the left edge; the details give way to the invite. */
+@media (max-width: 640px) {
+    .room-header {
+        padding-left: calc(60px + env(safe-area-inset-left, 0px));
+    }
+    .room-header-meta {
+        display: none;
+    }
+}

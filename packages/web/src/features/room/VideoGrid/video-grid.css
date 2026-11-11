@@ -1,54 +1,30 @@
 .vg-area {
     flex: 1;
     padding: 12px;
+    /* The control bar floats over the bottom of the stage. */
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
+    /* Tiles size against the stage, both ways. */
+    container-type: size;
 }
 
+/* --cols and --rows come from TileGrid. A tile is the largest 16:10 box that fits its
+   share of the width and of the height, but no smaller than 160px; below that the
+   stage scrolls. */
 .vg-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-    max-width: 1200px;
-    align-content: center;
+    --gap: 8px;
+    --tile-w: max(160px, min(
+        (100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols),
+        (100cqh - (var(--rows) - 1) * var(--gap)) / var(--rows) * 1.6
+    ));
+    display: grid;
+    grid-template-columns: repeat(var(--cols), min(var(--tile-w), 100%));
+    gap: var(--gap);
     justify-content: center;
-    margin: 0 auto;
+    align-content: center;
     min-height: 100%;
-}
-
-/* ── Desktop Layout / Default ── */
-.vg-grid[data-count="1"] .p-tile {
-    width: 100%;
-    max-width: 720px;
-}
-
-.vg-grid[data-count="2"] .p-tile {
-    width: calc(50% - 4px);
-    max-width: 560px;
-}
-
-.vg-grid[data-count="3"] .p-tile,
-.vg-grid[data-count="4"] .p-tile {
-    width: calc(50% - 4px);
-    max-width: 480px;
-}
-
-.vg-grid[data-count="5"] .p-tile,
-.vg-grid[data-count="6"] .p-tile {
-    width: calc(33.333% - 6px);
-    max-width: 360px;
-}
-
-.vg-grid[data-count="7"] .p-tile,
-.vg-grid[data-count="8"] .p-tile,
-.vg-grid[data-count="9"] .p-tile,
-.vg-grid[data-count="10"] .p-tile,
-.vg-grid[data-count="11"] .p-tile,
-.vg-grid[data-count="12"] .p-tile {
-    width: calc(25% - 6px);
-    max-width: 280px;
 }
 
 /* ─── Participant Tile ─── */
@@ -60,7 +36,7 @@
     border: 2px solid transparent;
     transition: border-color var(--transition-normal);
     width: 100%;
-    aspect-ratio: 4/3;
+    aspect-ratio: 16 / 10;
     flex-shrink: 0;
 }
 
@@ -210,20 +186,8 @@
 /* ─── Mobile ─── */
 @media (max-width: 640px) {
     .vg-area {
-        padding: 8px;
-    }
-
-    /* 1, 2 people: 1 column */
-    .vg-grid[data-count="1"] .p-tile,
-    .vg-grid[data-count="2"] .p-tile {
-        width: 100%;
-        max-width: 480px;
-    }
-
-    /* 3+ people: 2 columns */
-    .vg-grid:not([data-count="1"]):not([data-count="2"]) .p-tile {
-        width: calc(50% - 4px);
-        max-width: none;
+        padding-top: 8px;
+        padding-inline: 8px;
     }
 
     .p-tile-meta {

@@ -3,6 +3,7 @@ import type { Me } from '@lala/shared';
 import { callerIdentity } from '../lib/identity';
 import { canCreateRooms, mayEnter, roleOf } from '../lib/rights';
 import { isShutOut } from '../lib/bans';
+import { config } from '../lib/config';
 
 /** GET /api/me: the caller's public identity (to put in the config) and what they may do. */
 export function createMeRouter(): Router {
@@ -19,6 +20,7 @@ export function createMeRouter(): Router {
             role: roleOf(identity) ?? 'guest',
             allowed,
             canCreateRooms: allowed && canCreateRooms(identity),
+            serverName: config().name,
         };
         res.json(me);
     });

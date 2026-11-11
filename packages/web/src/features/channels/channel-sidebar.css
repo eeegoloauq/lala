@@ -10,8 +10,8 @@
 }
 
 .sidebar-header {
-    padding: 16px;
-    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding: 10px 16px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
     font-size: 16px;
     font-weight: 700;
     color: var(--panel-header-color);
@@ -23,11 +23,28 @@
     gap: 8px;
 }
 
+.sidebar-server {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+}
+
 .sidebar-header .logo {
     color: var(--accent);
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
     letter-spacing: -0.5px;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-online {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-shadow: none;
 }
 
 .sidebar-section {
@@ -156,8 +173,9 @@
 .channel-user-card {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 5px 6px;
+    gap: 10px;
+    height: 38px;
+    padding: 0 6px;
     border-radius: 6px;
     transition: background var(--transition-fast);
     cursor: default;
@@ -168,8 +186,8 @@
 }
 
 .channel-user-avatar {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: var(--avatar-radius);
     display: flex;
     align-items: center;
@@ -374,9 +392,7 @@
 
 /* ─── Room templates (history) ─── */
 .channel-templates {
-    margin-top: 4px;
-    padding-top: 4px;
-    border-top: 1px solid var(--border-color, rgba(255,255,255,0.08));
+    margin-top: 8px;
 }
 
 .channel-item-locked {
