@@ -29,6 +29,8 @@ import { useAdminActions } from './hooks/useAdminActions';
 import { useParticipantVolumeSync } from './hooks/useParticipantVolumeSync';
 import { useChatNotifications } from './hooks/useChatNotifications';
 import { useReconnectingBanner } from './hooks/useReconnectingBanner';
+import { useListeningBotsNotice } from './hooks/useListeningBots';
+import { EarIcon } from './icons/Icons';
 import { RoomUIProvider } from './RoomUIContext';
 import type { AppSettings } from '../settings/types';
 import { IS_ELECTRON as isElectron } from '../../lib/env';
@@ -228,6 +230,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     }), [audioMuted, avatarCache, volumes, onVolumeChange, screenVolumes, handleScreenVolumeChange, adminProps, settings, onOpenSettings]);
 
     const showReconnecting = useReconnectingBanner(connectionState);
+    const listeningNotice = useListeningBotsNotice();
 
     const chatPanel = (overlay: boolean) => (
         <ChatPanel
@@ -302,6 +305,14 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
                     >
                         ✕
                     </button>
+                </div>
+            )}
+
+            {listeningNotice.names.length > 0 && (
+                <div className="bot-listen-toast" role="status">
+                    <EarIcon size={16} strokeWidth={2} />
+                    <span>{t('bot.toast', { names: listeningNotice.names.join(', '), count: listeningNotice.names.length })}</span>
+                    <button className="bot-listen-toast-close" onClick={listeningNotice.dismiss} title={t('bot.dismiss')} aria-label={t('bot.dismiss')}>✕</button>
                 </div>
             )}
 

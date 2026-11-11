@@ -153,6 +153,7 @@ function describe(r: DemoRoom): RoomInfo {
         mutedParticipants: [...r.muted],
         deafenedParticipants: [...r.deafened],
         serverMutedParticipants: [...r.serverMuted],
+        listeningParticipants: [],
     };
 }
 

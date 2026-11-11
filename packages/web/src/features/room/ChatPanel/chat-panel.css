@@ -674,3 +674,6 @@
 .cp-lightbox-btn:hover {
   background: color-mix(in srgb, #000 65%, transparent);
 }
+.cp-group-header .bot-badge {
+  align-self: center;
+}

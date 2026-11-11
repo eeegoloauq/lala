@@ -17,6 +17,38 @@ which is what other participants see and what the [server config](self-hosting.m
 Without the header, `/api/token` issues a one-off identity, and creating rooms fails with
 `identity_required`.
 
+## Bots
+
+A bot account sends `Authorization: Bearer <credential>` on every request instead of
+`X-Lala-Device`. The admin makes the credential (see [self-hosting](self-hosting.md#bots)); it
+is `<key>.<secret>`, and the bot's identity is `bot-<key>`. A valid credential stands in for the
+server password; a wrong one answers `401 invalid_bot_credential`, and after 10 wrong ones in
+15 minutes an IP gets `429`.
+
+| Request | Body | Result |
+|---|---|---|
+| `GET /api/bot` | | `BotInfo`: identity, name, rooms, rights, status and commands |
+| `POST /api/bot/profile` | `BotProfile`, fields optional | The stored `BotProfile` |
+
+A bot joins with `POST /api/token` like anyone else, only into the rooms its entry lists, and
+password rooms still need the room key. Its token:
+
+- carries the name from the config, whatever `name` the request sends;
+- lets it publish the microphone with `speak` and send data (chat, files) with `chat`, never
+  camera or screen;
+- lets it subscribe to tracks only with `listen`; chat reaches it either way;
+- does not let it change its own name, metadata or attributes, and is never `hidden`.
+
+A bot never moderates or creates rooms and can't make server invites. Moderators can mute,
+kick and ban it as they would a person, but not give it the floor.
+
+The server sets the bot's attributes when it joins and on every profile change:
+`lala.avatar` (from the config), `lala.bot-status` (at most 100 characters) and
+`lala.bot-commands` (JSON `BotCommand[]`: at most 20, each named `!` plus 1 to 24 of `a-z`,
+`0-9`, `_`, `-`, with a description of at most 80 characters). Clients read these and mark a
+participant as a bot only for identities starting with `bot-`. `RoomInfo.listeningParticipants`
+lists the bots in a room that can listen.
+
 ## Server password
 
 When the server has `LALA_ACCESS_PASSWORD`, every endpoint except `/api/health` and
@@ -69,6 +101,7 @@ limited to 30 per 15 minutes per IP and room.
 | Attribute | `lala.avatar` | the participant | JPEG data URL, at most 32 KB; empty clears it |
 | Attribute | `lala.hand` | the participant | `1` while asking for the floor |
 | Attribute | `lala.server-muted`, `lala.voice` | server | `1` or empty |
+| Attribute | `lala.avatar`, `lala.bot-status`, `lala.bot-commands` | server, on bots | See [Bots](#bots) |
 | Metadata | `{ "deafened": true }` | the participant | JSON |
 | Text stream | `lk.chat` | the participant | Chat message, as sent by LiveKit's `useChat` |
 | Byte stream | `files` | the participant | File transfer |

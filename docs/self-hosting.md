@@ -52,6 +52,25 @@ and keep rooms that always exist, copy [`config/lala.example.yaml`](../config/la
 to `config/lala.yaml` and restart the `api` container. People are listed by the ID shown in
 Settings → Profile; calls keep going through the restart.
 
+## Bots
+
+A bot is a program you run that joins calls through the [client API](api.md). Pick a key for
+it (lowercase letters, digits, dashes) and make its credential:
+
+```sh
+docker compose exec api node dist/bot-secret.js radio
+```
+
+Give the printed credential to the bot and put the printed `secret:` line under `bots:` in
+`config/lala.yaml`, with the rooms it may join (rooms from the same file) and its rights:
+`speak`, `chat` and `listen`. Without `listen` the bot hears and sees nothing; people in the
+call see an ear next to a bot that can. An `avatar:` is an image file in the config directory,
+under 24 KB. Restart the `api` container to apply a change. Removing a bot, or a room from its
+list, takes it out of those calls at the restart and voids the tokens it holds.
+
+The bot's avatar, status line and commands reach the call through the LiveKit webhook
+(`/api/webhook`), which `livekit.yaml.example` already configures.
+
 ## Private server
 
 Set `LALA_ACCESS_PASSWORD` to keep the server to people you give the password to. Without it nobody

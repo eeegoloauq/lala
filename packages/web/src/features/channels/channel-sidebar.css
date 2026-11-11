@@ -449,3 +449,8 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+.channel-listens {
+    display: flex;
+    flex-shrink: 0;
+    color: var(--color-warning);
+}

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { AvatarBadge } from '../../ui/AvatarBadge';
 import { getCachedAvatar, avatarColorForIdentity } from '../../lib/avatarUtils';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../room/icons/Icons';
+import { isBotIdentity } from '../../lib/bots';
+import { BotBadge, ListensMark } from '../../ui/BotBadge';
 import { useIsSpeaking, useIsMutedInRoom, useIsDeafenedInRoom, useAvatarForIdentity } from '../../lib/roomStatusStore';
 
 export interface ChannelUserRowProps {
@@ -22,6 +24,8 @@ export interface ChannelUserRowProps {
     staticMuted: boolean;
     staticDeafened: boolean;
     isScreenSharing: boolean;
+    /** A bot that receives the room's audio and video, from the server's room list. */
+    listens: boolean;
     onContextMenu: (e: React.MouseEvent) => void;
 }
 
@@ -42,6 +46,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
     staticMuted,
     staticDeafened,
     isScreenSharing,
+    listens,
     onContextMenu,
 }: ChannelUserRowProps) {
     const { t } = useTranslation();
@@ -81,10 +86,12 @@ export const ChannelUserRow = memo(function ChannelUserRow({
                 </div>
             </AvatarBadge>
             <span className="channel-user-name">{name}</span>
+            {isBotIdentity(identity) && <BotBadge />}
             {isSelf && (
                 <span className="channel-user-you">{t('sidebar.you')}</span>
             )}
             <span className="channel-user-indicators">
+                {listens && <ListensMark size={11} />}
                 {(isMuted || serverMuted) ? (
                     <span className={`channel-user-indicator${serverMuted ? ' server-muted' : ''}`} title={serverMuted ? t('tile.serverMuted') : t('sidebar.micOff')}><MicOffIcon /></span>
                 ) : null}

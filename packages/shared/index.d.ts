@@ -25,6 +25,7 @@ export interface RoomInfo {
     mutedParticipants: string[];         // mic muted by the participant
     deafenedParticipants: string[];      // from participant metadata
     serverMutedParticipants: string[];   // muted by a moderator
+    listeningParticipants: string[];     // bots in the room that receive its audio and video
 }
 
 /** One banned participant, from GET /api/rooms/:id/admin/bans. */
@@ -80,6 +81,29 @@ export interface TokenResponse {
     canModerate: boolean;
 }
 
+/** A chat command a bot answers to, such as `!play`. */
+export interface BotCommand {
+    name: string;        // `!` and 1 to 24 of a-z, 0-9, `_` and `-`
+    description: string; // at most 80 characters; may be empty
+}
+
+/**
+ * Payload of POST /api/bot/profile (fields left out keep their value) and its response.
+ * The server sets it on the bot as the lala.bot-status and lala.bot-commands attributes.
+ */
+export interface BotProfile {
+    status: string;          // at most 100 characters; empty clears it
+    commands: BotCommand[];  // at most 20, names unique
+}
+
+/** Response from GET /api/bot, for a request with a bot credential. */
+export interface BotInfo extends BotProfile {
+    identity: string;   // `bot-<key>`
+    name: string;
+    rooms: Array<{ id: string; name: string }>;
+    rights: { speak: boolean; chat: boolean; listen: boolean };
+}
+
 /** Payload for POST /api/rooms/:id/admin/{kick,ban,unban} */
 export interface ModerationRequest { identity: string; }
 /** Payload for POST /api/rooms/:id/admin/mute */
@@ -89,9 +113,11 @@ export interface VoiceRequest { identity: string; allowed: boolean; }
 
 /**
  * Participant attributes. The server sets lala.server-muted and lala.voice ('1' or
- * absent); a participant sets lala.hand on itself to ask for the floor.
+ * absent); a participant sets lala.hand on itself to ask for the floor. On a bot
+ * (identity `bot-…`, which can't change its own attributes) the server also sets
+ * lala.avatar, lala.bot-status and lala.bot-commands (BotCommand[] as JSON).
  */
-export type ParticipantAttribute = 'lala.server-muted' | 'lala.voice' | 'lala.hand';
+export type ParticipantAttribute = 'lala.server-muted' | 'lala.voice' | 'lala.hand' | 'lala.bot-status' | 'lala.bot-commands';
 
 /** Data topic of moderation events. Only the server publishes on it. */
 export type ModerationTopic = 'lala.moderation';
@@ -125,6 +151,7 @@ export type ApiErrorCode =
     | 'access_required'
     | 'banned'
     | 'forbidden'
+    | 'invalid_bot_credential'
     | 'invalid_input'
     | 'invalid_invite'
     | 'invalid_json'

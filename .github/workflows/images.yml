@@ -46,6 +46,8 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.arch }}-${{ hashFiles('e2e/package-lock.json') }}
+      - name: API unit tests
+        run: cd packages/api && npm ci && npm test
       - name: Install Playwright
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - name: Run e2e

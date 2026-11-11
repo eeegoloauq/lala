@@ -36,3 +36,15 @@ rooms:
   # - name: Members
   #   join: members
   #   password: change-me
+
+# Programs that join calls (see docs/api.md). Make a credential with
+# `docker compose exec api node dist/bot-secret.js <key>`: the bot gets the credential, this
+# file gets only the hash. A bot never moderates or creates rooms. Its identity is bot-<key>
+# and everyone sees it marked as a bot.
+bots:
+  # radio:
+  #   name: Radio
+  #   avatar: radio.png      # optional, an image in this directory, under 24 KB
+  #   secret: "scrypt$16384$8$1$…"
+  #   rooms: [General]       # rooms from the list above
+  #   rights: [speak, chat]  # any of speak, chat, listen; listen lets it hear and see the call

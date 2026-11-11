@@ -91,3 +91,43 @@
 .screen-share-error-toast-close:hover {
     opacity: 1;
 }
+
+/* Above the control bar like the screen share error, but informational. */
+.bot-listen-toast {
+    position: absolute;
+    left: 50%;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    font-size: 13px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 40;
+    max-width: min(420px, calc(100vw - 32px));
+}
+
+.bot-listen-toast > svg {
+    color: var(--color-warning);
+    flex-shrink: 0;
+}
+
+.bot-listen-toast-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px;
+    flex-shrink: 0;
+}
+
+.bot-listen-toast-close:hover {
+    color: var(--text-primary);
+}

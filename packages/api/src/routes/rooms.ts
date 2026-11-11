@@ -9,6 +9,7 @@ import { can, canCreateRooms, isModerator, mayEnter } from '../lib/rights';
 import { claimRoom, dropRoom, findRoomByName, generateRoomId, getRoom, listMuted, listRoomStates, putPermanentRoom, type RoomState } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
 import { isShutOut } from '../lib/bans';
+import { botOf } from '../lib/bots';
 
 type ListedRoom = Omit<RoomInfo, 'canModerate' | 'canJoin'> & { state: RoomState };
 
@@ -56,6 +57,8 @@ async function describe(state: RoomState): Promise<ListedRoom> {
         mutedParticipants: withTrack(TrackSource.MICROPHONE, true),
         deafenedParticipants: participants.filter((p) => readDeafened(p.metadata)).map((p) => p.identity),
         serverMutedParticipants: serverMuted,
+        // From the config, so a bot can't claim it doesn't listen.
+        listeningParticipants: participants.filter((p) => botOf(p.identity)?.rights.listen).map((p) => p.identity),
     };
 }
 

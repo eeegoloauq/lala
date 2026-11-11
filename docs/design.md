@@ -10,7 +10,7 @@ Internal work that shouldn't be done in passing. Remove an item when it ships.
 
 A bot is a separate program that joins a call through the [client API](api.md), like any
 other client. Lala does not load plugins into the server or the clients, so a bot can do no
-more than its token allows. Planned bot accounts:
+more than its token allows. Bot accounts (set up as in [self-hosting](self-hosting.md#bots)):
 
 - The admin defines each bot in `lala.yaml` with a hashed secret. Removing the entry revokes it.
 - The server gives a bot an identity starting with `bot-`. The bot cannot change it, and

@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { AccessStatus, InviteResponse } from '@lala/shared';
+import { botCaller } from '../lib/bots';
 
 /**
  * Optional instance-wide password (LALA_ACCESS_PASSWORD). LiveKit only admits
@@ -76,8 +77,9 @@ function checkSession(req: Request, res: Response): boolean {
     return true;
 }
 
+/** A bot's credential stands in for the password: the config that holds it is the admin's. */
 export function requireAccess(req: Request, res: Response, next: NextFunction) {
-    if (!required || checkSession(req, res)) return next();
+    if (!required || botCaller(req) || checkSession(req, res)) return next();
     res.status(401).json({ error: 'access_required' });
 }
 
@@ -120,7 +122,12 @@ export function createAccessRouter(): Router {
     });
 
     // POST /api/access/invite — an expiring stand-in for the password, for someone already in.
-    router.post('/invite', requireAccess, (_req, res) => {
+    // Not for bots: a bot's credential lets in the bot, not whoever it hands a link to.
+    router.post('/invite', requireAccess, (req, res) => {
+        if (botCaller(req)) {
+            res.status(403).json({ error: 'forbidden' });
+            return;
+        }
         if (!required) {
             res.status(404).json({ error: 'not_found' });
             return;

@@ -15,3 +15,17 @@ rooms:
   - name: Members
     join: members
     password: members-password
+  - name: Bots
+
+# Secrets: e2e-<key>-secret-not-used-outside-tests (see tests/bots.spec.ts).
+bots:
+  radio:
+    name: Radio
+    secret: "scrypt$16384$8$1$Yh2ASz2epSoWBVgaL546mw==$M2HEIWWs5sDSp4Oak3ATwjHiZLpUd/o4IdF5wvTeJZQ="
+    rooms: [Bots]
+    rights: [speak, chat]
+  minutes:
+    name: Minutes
+    secret: "scrypt$16384$8$1$opl/ysRCdq3cpPsg9yvA1w==$AJZr0e6awiGiFmEJSxPsEFwVsq7Uk7Ycrjsncc+TTyM="
+    rooms: [Bots]
+    rights: [chat, listen]

@@ -3,6 +3,8 @@ import { WebhookReceiver, type WebhookEvent } from 'livekit-server-sdk';
 import { broadcastSse } from '../lib/sse';
 import { dropRoom, getRoom } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
+import { isBotIdentity } from '../lib/bots';
+import { applyBotConfig } from '../lib/botSync';
 
 // LiveKit events that change the room list. Mute and metadata changes are not webhook
 // events; clients in the room get those over LiveKit itself.
@@ -37,6 +39,12 @@ export function createWebhookRouter(): Router {
         if (event.event === 'room_finished' && event.room?.name) {
             const room = await getRoom(event.room.name);
             if (room && !room.permanent) await dropRoom(room.id);
+        }
+        // A bot gets what the client can't set itself once it is in: avatar, status, commands.
+        // A token issued before the config changed is turned away here.
+        if (event.event === 'participant_joined' && event.room?.name && event.participant && isBotIdentity(event.participant.identity)) {
+            await applyBotConfig(event.room.name, event.participant)
+                .catch((err) => console.error(`[bots] applying the config to ${event.participant?.identity} failed:`, err));
         }
         if (ROOM_EVENTS.has(event.event)) {
             // Invalidated before broadcasting, so clients that refetch on the event get fresh data.

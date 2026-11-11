@@ -4,6 +4,8 @@ import type { ReceivedChatMessage } from '@livekit/components-react';
 import { avatarColorForIdentity } from '../../../lib/avatarUtils';
 import type { FileTransferItem } from '../../../lib/fileTransfer';
 import { FileBubble } from './FileBubble';
+import { isBotIdentity } from '../../../lib/bots';
+import { BotBadge } from '../../../ui/BotBadge';
 import { ImageLightbox } from './ImageLightbox';
 
 export type ChatEntry =
@@ -127,6 +129,7 @@ export function MessageList({ entries, localIdentity, onCancelFile }: MessageLis
                             <span className="cp-sender" style={{ color: avatarColorForIdentity(item.identity) }}>
                                 {item.displayName}
                             </span>
+                            {isBotIdentity(item.identity) && <BotBadge />}
                             <span className="cp-time">{formatTime(item.entries[0].timestamp)}</span>
                         </div>
                         {item.entries.map((e) => (

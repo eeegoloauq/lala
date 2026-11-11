@@ -124,9 +124,16 @@
     padding: 3px 8px;
     border-radius: var(--overlay-radius);
     max-width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.p-tile-name-text {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
     min-width: 0;
 }
 

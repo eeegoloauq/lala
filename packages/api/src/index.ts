@@ -9,6 +9,9 @@ import { createEventsRouter } from './routes/events';
 import { createAccessRouter, requireAccess } from './routes/access';
 import { createMeRouter } from './routes/me';
 import { createServerAdminRouter } from './routes/server-admin';
+import { createBotRouter } from './routes/bot';
+import { botAuth } from './lib/bots';
+import { syncBots } from './lib/botSync';
 import { loadConfig } from './lib/config';
 import { connectRedis, redisReady } from './lib/redis';
 import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
@@ -24,6 +27,7 @@ import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
  * - GET  /api/events          — SSE stream for real-time room updates
  * - GET/POST /api/access       — Optional instance password (LALA_ACCESS_PASSWORD)
  * - POST /api/access/invite     — Expiring invite that stands in for that password
+ * - GET /api/bot, POST /api/bot/profile — A bot's account, status line and commands
  */
 const app = express();
 app.set('trust proxy', 1);
@@ -55,6 +59,10 @@ app.get('/api/health', (_req, res) => {
     res.status(redisReady() ? 200 : 503).json({ status: redisReady() ? 'ok' : 'redis_unavailable', service: 'lala-api' });
 });
 
+// A bot credential is checked first: it stands in for both the device ID and the
+// instance password, and a wrong one is refused outright.
+app.use('/api', botAuth);
+
 // Everything registered after the gate needs the instance password when one is set;
 // health, webhook and the access endpoint itself stay open.
 app.use('/api/access', limiter(30), createAccessRouter());
@@ -78,6 +86,7 @@ app.use('/api/rooms',
 app.use('/api/events', limiter(5), createEventsRouter());
 app.use('/api/me', limiter(30), createMeRouter());
 app.use('/api/admin', limiter(20), createServerAdminRouter());
+app.use('/api/bot', limiter(20), createBotRouter());
 
 // 404 handler — don't leak Express default page
 app.use((_req, res) => {
@@ -115,6 +124,7 @@ process.on('uncaughtException', (err) => {
     loadConfig();
     await connectRedis();
     await syncPermanentRooms();
+    await syncBots().catch((err) => console.error('[bots] syncing connected bots with the config failed:', err));
     const dropStale = () => dropStaleRooms().catch((err) => console.error('[rooms] dropping stale rooms failed:', err));
     await dropStale();
     setInterval(dropStale, 5 * 60 * 1000);

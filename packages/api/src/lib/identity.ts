@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from 'crypto';
 import type { Request } from 'express';
+import { botCaller } from './bots';
 
 /**
  * The device ID is the client's private credential; the identity derived from it is
@@ -14,8 +15,13 @@ export function deriveIdentity(deviceId: string | undefined): string {
         : randomUUID();
 }
 
-/** The caller's identity from the `X-Lala-Device` header the web client sends on every request. */
+/**
+ * The caller's identity: a bot's from its credential (checked by `botAuth`), otherwise
+ * derived from the `X-Lala-Device` header the web client sends on every request.
+ */
 export function callerIdentity(req: Request): string | undefined {
+    const bot = botCaller(req);
+    if (bot) return bot.identity;
     const deviceId = req.header('X-Lala-Device');
     return deviceId && deviceId.length <= 100 ? deriveIdentity(deviceId) : undefined;
 }

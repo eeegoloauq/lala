@@ -5,6 +5,7 @@ import type { ParticipantContextMenuProps } from '../VideoGrid/ParticipantContex
 import { useRoomUIContext } from '../RoomUIContext';
 import { canSpeak, hasAttribute, isServerMuted } from '../lib/permissions';
 import { setScreenShareSubscribed } from '../lib/screenShare';
+import { isBotIdentity } from '../../../lib/bots';
 
 /**
  * Admin-action wiring shared by VideoGrid and FocusLayout: both accept identity-scoped
@@ -51,7 +52,8 @@ export function useParticipantContextMenu() {
             serverMuted: isServerMuted(participant),
             voiced: hasAttribute(participant, 'lala.voice'),
             // Someone who may not speak by right, and hasn't been muted, can be given the floor.
-            canBeVoiced: !canSpeak(participant) && !isServerMuted(participant),
+            // Not a bot: the server config decides whether it speaks.
+            canBeVoiced: !isBotIdentity(participant.identity) && !canSpeak(participant) && !isServerMuted(participant),
             x,
             y,
         });

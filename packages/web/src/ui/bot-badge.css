@@ -1,0 +1,31 @@
+/* Built from the semantic colors every theme defines, so each theme gets it as is. */
+.bot-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--color-info);
+  background: color-mix(in srgb, var(--color-info) 16%, transparent);
+}
+
+.bot-listens {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--color-warning);
+}
+
+/* Over video the badge needs its own contrast. */
+.p-tile-meta .bot-badge {
+  color: #fff;
+  background: color-mix(in srgb, var(--color-info) 70%, transparent);
+}
+.p-tile-meta .bot-listens {
+  color: #ffd38a;
+}

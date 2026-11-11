@@ -1,6 +1,8 @@
 import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
+import { basename, dirname, join } from 'path';
 import { parse } from 'yaml';
+import { parseSecretHash, type SecretHash } from './secrets';
 
 /**
  * The optional server config (LALA_CONFIG, see config/lala.example.yaml): who is an admin
@@ -22,6 +24,22 @@ export interface ConfigRoom {
     password?: string;
 }
 
+export type BotRight = 'speak' | 'chat' | 'listen';
+
+/** A bot account: a program that joins calls with a secret instead of a device ID. */
+export interface BotConfig {
+    /** The key under `bots:`; the bot's identity is `bot-<key>`. */
+    key: string;
+    identity: string;
+    name: string;
+    /** Image data URL read from a file next to the config. */
+    avatar?: string;
+    secret: SecretHash;
+    /** IDs of the configured rooms the bot may join. */
+    rooms: Set<string>;
+    rights: Record<BotRight, boolean>;
+}
+
 export interface Config {
     /** Keyed by public identity, the ID each person copies from their settings. */
     users: Map<string, { name: string; role: Role }>;
@@ -29,12 +47,19 @@ export interface Config {
     createRooms: Level | 'nobody';
     defaults: Rights;
     rooms: ConfigRoom[];
+    /** Keyed by identity (`bot-<key>`). */
+    bots: Map<string, BotConfig>;
 }
 
 const RIGHTS: Right[] = ['join', 'speak', 'video', 'screen', 'chat'];
 const LEVELS: Level[] = ['everyone', 'members', 'admins'];
 const ROLES: Role[] = ['admin', 'member'];
 const IDENTITY = /^[0-9a-f]{36}$/;
+const BOT_RIGHTS: BotRight[] = ['speak', 'chat', 'listen'];
+const BOT_KEY = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
+/** Same cap as the clients put on avatars. */
+const MAX_AVATAR_LENGTH = 32 * 1024;
+export const BOT_PREFIX = 'bot-';
 
 const OPEN: Config = {
     users: new Map(),
@@ -42,6 +67,7 @@ const OPEN: Config = {
     createRooms: 'everyone',
     defaults: { join: 'everyone', speak: 'everyone', video: 'everyone', screen: 'everyone', chat: 'everyone' },
     rooms: [],
+    bots: new Map(),
 };
 
 /** Stable across restarts and config edits, so links to a configured room keep working. */
@@ -50,7 +76,19 @@ export const configRoomId = (name: string) =>
 
 type Raw = Record<string, unknown>;
 
-function parseConfig(raw: unknown): Config {
+/** The image type from the file's first bytes, so a renamed file can't pass for an image. */
+function imageType(data: Buffer): string | undefined {
+    if (data.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return 'jpeg';
+    if (data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
+    if (data.subarray(0, 4).toString('latin1') === 'RIFF' && data.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp';
+    return undefined;
+}
+
+/**
+ * Parses the config. `readFile` reads a file named in it (a bot avatar) from the config's
+ * directory; tests pass their own.
+ */
+export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = () => { throw new Error('no config directory'); }): Config {
     const fail = (path: string, problem: string): never => { throw new Error(`${path}: ${problem}`); };
     const object = (value: unknown, path: string): Raw =>
         value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Raw : fail(path, 'expected a mapping');
@@ -63,7 +101,7 @@ function parseConfig(raw: unknown): Config {
         Object.fromEntries(RIGHTS.map((r) => [r, value[r] === undefined ? base[r] : oneOf(value[r], `${path}.${r}`, LEVELS)])) as Rights;
 
     const top = object(raw ?? {}, 'config');
-    known(top, 'config', ['users', 'guests', 'defaults', 'rooms']);
+    known(top, 'config', ['users', 'guests', 'defaults', 'rooms', 'bots']);
 
     const users = new Map<string, { name: string; role: Role }>();
     for (const [name, value] of Object.entries(object(top.users ?? {}, 'users'))) {
@@ -103,7 +141,55 @@ function parseConfig(raw: unknown): Config {
         rooms.push({ id, name, rights: rightsOf(room, path, defaults), maxParticipants: max as number, password: room.password as string | undefined });
     }
 
-    return { users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms };
+    const bots = new Map<string, BotConfig>();
+    for (const [key, value] of Object.entries(object(top.bots ?? {}, 'bots'))) {
+        const path = `bots.${key}`;
+        if (!BOT_KEY.test(key)) fail(path, 'expected a name of lowercase letters, digits and dashes, at most 32 characters');
+        const bot = object(value, path);
+        known(bot, path, ['name', 'avatar', 'secret', 'rooms', 'rights']);
+
+        const name = bot.name === undefined ? key : typeof bot.name === 'string' ? bot.name.trim() : '';
+        if (!name || name.length > 50) fail(`${path}.name`, 'expected a name of 1 to 50 characters');
+
+        if (typeof bot.secret !== 'string') fail(`${path}.secret`, 'expected the hash that `node dist/bot-secret.js` prints');
+        const secret = parseSecretHash(bot.secret as string)
+            ?? fail(`${path}.secret`, 'not a hash from `node dist/bot-secret.js`; never put the secret itself here');
+
+        let avatar: string | undefined;
+        if (bot.avatar !== undefined) {
+            const file = bot.avatar;
+            if (typeof file !== 'string' || !file || basename(file) !== file || file.startsWith('.')) {
+                fail(`${path}.avatar`, 'expected the name of an image file in the config directory');
+            }
+            let data: Buffer;
+            try {
+                data = readFile(file as string);
+            } catch (err) {
+                return fail(`${path}.avatar`, `can't read ${String(file)}: ${(err as Error).message}`);
+            }
+            const type = imageType(data);
+            if (!type) fail(`${path}.avatar`, 'expected a JPEG, PNG or WebP image');
+            avatar = `data:image/${type};base64,${data.toString('base64')}`;
+            if (avatar.length > MAX_AVATAR_LENGTH) fail(`${path}.avatar`, 'expected an image under 24 KB, such as a 128x128 JPEG');
+        }
+
+        if (!Array.isArray(bot.rooms) || bot.rooms.length === 0) fail(`${path}.rooms`, 'expected a list of room names from rooms');
+        const roomIds = new Set<string>();
+        for (const roomName of bot.rooms as unknown[]) {
+            const room = typeof roomName === 'string' ? rooms.find((r) => r.id === configRoomId(roomName)) : undefined;
+            if (!room) fail(`${path}.rooms`, `"${String(roomName)}" is not a room listed under rooms`);
+            roomIds.add(room!.id);
+        }
+
+        if (bot.rights !== undefined && !Array.isArray(bot.rights)) fail(`${path}.rights`, `expected a list of ${BOT_RIGHTS.join(', ')}`);
+        const listed = ((bot.rights ?? []) as unknown[]).map((r) => oneOf(r, `${path}.rights`, BOT_RIGHTS));
+        const rights = Object.fromEntries(BOT_RIGHTS.map((r) => [r, listed.includes(r)])) as Record<BotRight, boolean>;
+
+        const identity = BOT_PREFIX + key;
+        bots.set(identity, { key, identity, name, avatar, secret, rooms: roomIds, rights });
+    }
+
+    return { users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots };
 }
 
 let loaded: Config = OPEN;
@@ -123,11 +209,17 @@ export function loadConfig(): void {
         throw err;
     }
     try {
-        loaded = parseConfig(parse(text));
+        // Only a plain file name reaches here (parseConfig checks), so it stays in the directory.
+        loaded = parseConfig(parse(text), (name) => readFileSync(join(dirname(path), name)));
     } catch (err) {
         throw new Error(`${path}: ${(err as Error).message}`);
     }
-    console.log(`[config] ${loaded.users.size} IDs, ${loaded.rooms.length} rooms, guests ${loaded.guests ? 'allowed' : 'not allowed'}`);
+    console.log(`[config] ${loaded.users.size} IDs, ${loaded.rooms.length} rooms, ${loaded.bots.size} bots, guests ${loaded.guests ? 'allowed' : 'not allowed'}`);
 }
 
 export const config = (): Config => loaded;
+
+/** Replaces the loaded config; for tests. */
+export function setConfig(next: Config): void {
+    loaded = next;
+}

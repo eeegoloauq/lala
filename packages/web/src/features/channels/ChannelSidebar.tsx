@@ -7,7 +7,7 @@ import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { getRoomPassword } from '../../lib/passwords';
 import { createAccessInvite } from '../../lib/api';
 import { useAccessRequired } from '../access/accessContext';
-import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon } from '../room/icons/Icons';
+import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { CreateRoomModal } from './CreateRoomModal';
 import { RoomContextMenu } from './RoomContextMenu';
@@ -257,6 +257,11 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                         >
                             <SpeakerIcon className="channel-icon" size={14} />
                             <span className="channel-name">{room.displayName}</span>
+                            {room.listeningParticipants?.length > 0 && (
+                                <span className="channel-listens" title={t('bot.roomListens')} aria-label={t('bot.roomListens')} role="img">
+                                    <EarIcon size={12} strokeWidth={2.2} />
+                                </span>
+                            )}
                             {room.passwordSalt && (
                                 <span title={t('sidebar.passwordProtected')} style={{ display: 'flex', flexShrink: 0 }}>
                                     <LockIcon size={11} strokeWidth={2.5} style={{ opacity: 0.5 }} />
@@ -304,6 +309,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                         staticMuted={room.mutedParticipants?.includes(p.identity) ?? false}
                                         staticDeafened={room.deafenedParticipants?.includes(p.identity) ?? false}
                                         isScreenSharing={room.screenSharingParticipants?.includes(p.identity) ?? false}
+                                        listens={room.listeningParticipants?.includes(p.identity) ?? false}
                                         onContextMenu={(e) => handleUserContextMenu(e, p.identity, p.name, room.id)}
                                     />
                                 ))}

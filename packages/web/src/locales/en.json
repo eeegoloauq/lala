@@ -413,5 +413,14 @@
       "good point"
     ],
     "screenOf": "{{name}}'s screen"
+  },
+  "bot": {
+    "badge": "BOT",
+    "badgeTitle": "A program, not a person",
+    "listens": "Can hear the call",
+    "roomListens": "A bot can hear this room",
+    "toast_one": "{{names}} can hear this call.",
+    "toast_other": "{{names}} can hear this call.",
+    "dismiss": "Dismiss"
   }
 }

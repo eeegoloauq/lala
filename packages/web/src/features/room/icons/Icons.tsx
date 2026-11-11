@@ -182,3 +182,13 @@ export function FlipCameraIcon(props: IconProps) {
         </Svg>
     );
 }
+
+/** Marks a bot that receives the call's audio and video. */
+export function EarIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M6 9a6 6 0 1 1 12 0c0 3-2 4-3 5.5S14 18 12 20a3 3 0 0 1-4-1" />
+            <path d="M9.5 9a2.5 2.5 0 0 1 5 0" />
+        </Svg>
+    );
+}

@@ -5,7 +5,8 @@ import type { TokenResponse } from '@lala/shared';
 import { getRoomService } from '../lib/livekit';
 import { callerIdentity, deriveIdentity } from '../lib/identity';
 import { verifyRoomKey } from '../lib/passwords';
-import { attributesFor, can, isModerator, permissionFor } from '../lib/rights';
+import { attributesFor, can, grantFor, isModerator } from '../lib/rights';
+import { botOf } from '../lib/bots';
 import { flagsOf, getRoom, isBanned } from '../lib/rooms';
 import { isShutOut, recordIp } from '../lib/bans';
 import { sanitizeDisplayText } from '../lib/sanitize';
@@ -82,21 +83,15 @@ export function createTokenRouter(): Router {
 
         await recordIp(identity, req.ip ?? '');
         const flags = await flagsOf(room.id, identity);
-        const permission = permissionFor(identity, room, flags);
+        // A bot is named by the config; its avatar, status and commands follow once it
+        // joins (see the webhook), since an image would make the token too long for a URL.
+        const bot = botOf(identity);
         const token = new AccessToken(apiKey, apiSecret, {
             identity,
-            name: (typeof name === 'string' && sanitizeDisplayText(name, 50)) || identity,
+            name: bot?.name ?? ((typeof name === 'string' && sanitizeDisplayText(name, 50)) || identity),
             attributes: attributesFor(flags),
         });
-        token.addGrant({
-            room: room.id,
-            roomJoin: true,
-            canSubscribe: permission.canSubscribe,
-            canPublish: permission.canPublish,
-            canPublishSources: permission.canPublishSources,
-            canPublishData: permission.canPublishData,
-            canUpdateOwnMetadata: true,
-        });
+        token.addGrant(grantFor(identity, room, flags));
 
         const response: TokenResponse = {
             token: await token.toJwt(),
