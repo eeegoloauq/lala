@@ -1,0 +1,623 @@
+<title>Lala Bots</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: prototype strip, then the Lala window (sidebar · call or home · chat), notes below.
+   Dark-first like Lala; neutrals lean toward the rose accent instead of slate. */
+:root {
+  color-scheme: dark;
+  --ground: #0c0b10;
+  --surface: #121117;
+  --rail: #16141c;
+  --raise: #1e1b26;
+  --line: #262230;
+  --ink: #ebe8ef;
+  --ink-2: #9a94a6;
+  --ink-3: #635d6f;
+  --accent: #e05a6f;
+  --accent-soft: rgba(224, 90, 111, 0.14);
+  --bot: #8b8ff5;
+  --bot-soft: rgba(139, 143, 245, 0.16);
+  --listen: #f0a63a;
+  --listen-soft: rgba(240, 166, 58, 0.15);
+  --ok: #3fbf74;
+  --danger: #ef4d4d;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Menlo, monospace;
+  --r: 8px;
+  --r-lg: 12px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --ground: #ebe7ec; --surface: #faf8fa; --rail: #f3f0f4; --raise: #ffffff; --line: #ddd7df;
+    --ink: #1c1820; --ink-2: #5d5664; --ink-3: #8b8392;
+    --accent: #c94459; --accent-soft: rgba(201, 68, 89, 0.10);
+    --bot: #5257d6; --bot-soft: rgba(82, 87, 214, 0.11);
+    --listen: #b46a00; --listen-soft: rgba(180, 106, 0, 0.11);
+    --ok: #1f9a55; --danger: #d23434;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ground: #ebe7ec; --surface: #faf8fa; --rail: #f3f0f4; --raise: #ffffff; --line: #ddd7df;
+  --ink: #1c1820; --ink-2: #5d5664; --ink-3: #8b8392;
+  --accent: #c94459; --accent-soft: rgba(201, 68, 89, 0.10);
+  --bot: #5257d6; --bot-soft: rgba(82, 87, 214, 0.11);
+  --listen: #b46a00; --listen-soft: rgba(180, 106, 0, 0.11);
+  --ok: #1f9a55; --danger: #d23434;
+}
+:root[data-theme="dark"] { color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+[hidden] { display: none !important; }
+
+/* Prototype strip */
+.proto { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.proto h1 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+.proto h1 span { color: var(--ink-3); font-weight: 500; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--rail); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { padding: 5px 12px; border-radius: 999px; color: var(--ink-2); font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--raise); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+
+/* Window */
+.app {
+  display: grid; grid-template-columns: 256px 1fr 300px; height: 660px;
+  border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface);
+  box-shadow: 0 24px 60px rgba(0,0,0,.28);
+}
+.app.no-chat { grid-template-columns: 256px 1fr; }
+.app.no-chat .chat { display: none; }
+
+/* Sidebar */
+.side { background: var(--rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.server { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); }
+.server .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.server div { flex: 1; min-width: 0; display: grid; }
+.server strong { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.server small { font-size: 11.5px; color: var(--ink-3); }
+.icon-btn { width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-2); }
+.icon-btn:hover { background: var(--raise); color: var(--ink); }
+.side-scroll { flex: 1; overflow: auto; padding: 12px 8px; display: grid; align-content: start; gap: 2px; }
+.label { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 6px; font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.label + .channel { margin-top: 0; }
+.channel { display: grid; grid-template-columns: 16px 1fr auto auto; align-items: center; gap: 8px; height: 34px; padding: 0 8px; border-radius: 6px; color: var(--ink-2); text-align: left; width: 100%; }
+.channel:hover { background: var(--raise); color: var(--ink); }
+.channel.on { background: var(--accent-soft); color: var(--ink); }
+.channel.on .ch-icon { color: var(--accent); }
+.channel .flags { display: flex; gap: 6px; color: var(--ink-3); }
+.channel .flags svg { width: 13px; height: 13px; }
+.channel .flags .ear { color: var(--listen); }
+.channel.saved { color: var(--ink-3); }
+.count { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--ink-3); min-width: 18px; text-align: right; }
+.members { display: grid; gap: 2px; padding: 4px 0 10px 20px; }
+.member { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 10px; height: 38px; padding: 0 8px; border-radius: 6px; text-align: left; width: 100%; }
+.member:hover { background: var(--raise); }
+.member .name { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13.5px; color: var(--ink); }
+.member .name b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member .trail { display: flex; gap: 6px; color: var(--ink-3); }
+.member .trail svg { width: 14px; height: 14px; }
+.member .trail .ear { color: var(--listen); }
+.you { font-size: 10.5px; color: var(--ink-3); }
+
+.av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; position: relative; flex: none; }
+.av.speaking { box-shadow: 0 0 0 2px var(--rail), 0 0 0 4px var(--ok); }
+
+.badge { display: inline-flex; align-items: center; height: 16px; padding: 0 5px; border-radius: 4px; font-size: 9.5px; font-weight: 750; letter-spacing: .06em; background: var(--bot-soft); color: var(--bot); flex: none; }
+.badge.lg { height: 20px; padding: 0 7px; font-size: 11px; }
+.badge.listen { background: var(--listen-soft); color: var(--listen); gap: 4px; letter-spacing: .02em; font-weight: 650; }
+.badge.listen svg { width: 11px; height: 11px; }
+
+.me { height: 56px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+.me .av { width: 32px; height: 32px; font-size: 13px; }
+.me strong { flex: 1; font-weight: 600; }
+
+/* Call area */
+.call { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.call-head { height: 56px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.call-head strong { font-weight: 600; }
+.call-head .meta { color: var(--ink-3); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+.call-head .meta .ear { color: var(--listen); display: inline-flex; align-items: center; gap: 4px; }
+.call-head .meta .ear svg { width: 13px; height: 13px; }
+.invite { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 6px; background: var(--raise); border: 1px solid var(--line); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.invite:hover { border-color: var(--accent); }
+.invite svg { width: 14px; height: 14px; color: var(--accent); }
+@media (max-width: 640px) { .call-head .meta { display: none; } }
+.stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 16px 16px 92px; container-type: size; }
+.grid { display: grid; gap: 12px; width: 100%; max-height: 100%; }
+.tile { position: relative; aspect-ratio: 16 / 10; background: var(--raise); border-radius: var(--r-lg); display: grid; place-items: center; border: 2px solid transparent; max-width: 100%; }
+.tile.speaking { border-color: var(--ok); }
+.tile .big { width: 72px; height: 72px; font-size: 28px; }
+.tile .tag { position: absolute; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; background: rgba(0,0,0,.45); color: #fff; font-size: 12.5px; font-weight: 600; max-width: calc(100% - 20px); }
+.tile .tag .badge { background: rgba(139,143,245,.3); color: #dcdeff; }
+.tile .tag .badge.listen { background: rgba(240,166,58,.32); color: #ffe3b8; }
+.tile .corner { position: absolute; right: 10px; bottom: 10px; width: 24px; height: 24px; border-radius: 6px; background: rgba(0,0,0,.45); color: #fff; display: grid; place-items: center; }
+.tile .corner svg { width: 14px; height: 14px; }
+.status { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+.status svg { color: var(--bot); width: 14px; height: 14px; }
+.status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq { display: inline-flex; gap: 2px; align-items: end; height: 12px; flex: none; }
+.eq i { width: 3px; background: var(--bot); border-radius: 1px; animation: eq 900ms ease-in-out infinite; }
+.eq i:nth-child(2) { animation-delay: -300ms; } .eq i:nth-child(3) { animation-delay: -600ms; }
+@keyframes eq { 0%,100% { height: 4px; } 50% { height: 12px; } }
+@media (prefers-reduced-motion: reduce) { .eq i, .toast { animation: none !important; } .eq i { height: 8px; } }
+
+.bar { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; border-radius: 999px; background: var(--rail); border: 1px solid var(--line); box-shadow: 0 8px 28px rgba(0,0,0,.3); }
+.bar button { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); background: var(--raise); }
+.bar button:hover { color: var(--ink); }
+.bar button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.bar .leave { color: #fff; background: var(--danger); }
+.bar .sep { width: 1px; margin: 8px 2px; background: var(--line); }
+.bar svg { width: 18px; height: 18px; }
+
+.toast { position: absolute; top: 68px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; border-radius: var(--r); background: var(--rail); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(0,0,0,.3); font-size: 13px; width: max-content; max-width: calc(100% - 32px); animation: drop 220ms ease-out; }
+.toast > svg { color: var(--listen); }
+@keyframes drop { from { transform: translate(-50%, -8px); opacity: 0; } }
+
+/* Home (not in a call): the waveform stays, with one useful next step under it */
+.home { flex: 1; overflow: auto; padding: 24px; display: grid; align-content: center; justify-items: center; gap: 24px; }
+.wave { display: flex; align-items: center; gap: 5px; height: 72px; }
+.wave i { width: 4px; border-radius: 2px; background: var(--accent); animation: wave 2.4s ease-in-out infinite; }
+@keyframes wave { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .wave i { animation: none; } }
+.hero-room { display: grid; gap: 12px; justify-items: center; text-align: center; }
+.hero-room .faces { justify-content: center; }
+.hero-room .join { min-width: 220px; height: 40px; font-size: 14px; }
+.hero-room .note { justify-content: center; }
+.hero-room small { color: var(--ink-3); font-size: 12.5px; }
+.hero-actions { display: flex; gap: 8px; }
+.hero-actions .join { height: 34px; padding: 0 16px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+.home h2 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+.home .sub { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; }
+.home h3 { margin: 0 0 10px; font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.room { display: grid; gap: 12px; padding: 14px; border-radius: var(--r-lg); background: var(--raise); border: 1px solid var(--line); }
+.room .top { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.room .top svg { color: var(--ink-3); width: 14px; height: 14px; }
+.room .top .count { margin-left: auto; }
+.faces { display: flex; align-items: center; min-height: 28px; }
+.faces .av { box-shadow: 0 0 0 2px var(--raise); }
+.faces .av + .av { margin-left: -6px; }
+.faces span { margin-left: 10px; font-size: 12.5px; color: var(--ink-2); }
+.room .join { height: 32px; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; }
+.room .join.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.room .note { font-size: 12px; color: var(--listen); display: flex; align-items: center; gap: 6px; }
+.room .note svg { width: 13px; height: 13px; }
+
+/* Chat */
+.chat { background: var(--rail); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; position: relative; }
+.chat-head { height: 56px; flex: none; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+.msgs { flex: 1; overflow: auto; padding: 12px 12px 4px; display: grid; align-content: end; gap: 12px; }
+.msg { display: grid; grid-template-columns: 28px 1fr; gap: 10px; }
+.msg .who { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.msg .who time { font-weight: 400; color: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.msg p { margin: 2px 0 0; color: var(--ink); font-size: 13.5px; overflow-wrap: anywhere; }
+code { font-family: var(--mono); font-size: 12.5px; background: var(--raise); padding: 1px 5px; border-radius: 4px; }
+.msg .card { margin-top: 6px; display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; padding: 8px; border-radius: var(--r); background: var(--raise); border: 1px solid var(--line); }
+.msg .card .art { width: 40px; height: 40px; border-radius: 6px; background: linear-gradient(135deg, var(--bot), var(--accent)); }
+.msg .card b { display: block; font-size: 13px; }
+.msg .card small { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.suggest { margin: 0 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raise); overflow: hidden; }
+.suggest .h { padding: 8px 10px 4px; font-size: 11px; color: var(--ink-3); display: flex; align-items: center; gap: 6px; }
+.suggest button { display: grid; grid-template-columns: auto 1fr; gap: 10px; width: 100%; text-align: left; padding: 7px 10px; font-size: 13px; }
+.suggest button:hover, .suggest button:focus-visible { background: var(--accent-soft); outline: none; }
+.suggest button span { color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compose { margin: 8px 12px 12px; display: flex; gap: 8px; align-items: center; padding: 0 6px 0 12px; height: 40px; border-radius: var(--r); background: var(--raise); border: 1px solid var(--line); }
+.compose input { flex: 1; min-width: 0; background: none; border: 0; color: var(--ink); font: inherit; outline: none; }
+.compose button { width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center; color: var(--accent); }
+
+/* Profile popover */
+.pop { position: absolute; z-index: 5; width: 288px; background: var(--rail); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 16px 40px rgba(0,0,0,.35); overflow: hidden; }
+.pop .cover { height: 60px; }
+.pop .body { padding: 0 16px 16px; display: grid; gap: 12px; }
+.pop .head { margin-top: -30px; }
+.pop .head .av { width: 64px; height: 64px; font-size: 24px; box-shadow: 0 0 0 4px var(--rail); }
+.pop h3 { margin: 0; font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pop .ident { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.pop .about { color: var(--ink-2); font-size: 13px; margin: 0; }
+.pop .now { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
+.pop .now svg { color: var(--bot); width: 14px; height: 14px; }
+.pop h4 { margin: 0 0 6px; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); font-weight: 650; }
+.cmds { display: flex; flex-wrap: wrap; gap: 6px; }
+.cmd { height: 26px; padding: 0 9px; border-radius: 999px; background: var(--raise); border: 1px solid var(--line); font-family: var(--mono); font-size: 12px; }
+.cmd:hover { border-color: var(--bot); color: var(--bot); }
+.rights { display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); }
+.right { display: grid; grid-template-columns: 16px 1fr; gap: 8px; align-items: center; font-size: 13px; }
+.right svg { width: 14px; height: 14px; }
+.right.yes svg { color: var(--ok); }
+.right.no { color: var(--ink-3); }
+.right.warn svg { color: var(--listen); }
+
+/* Settings sheet */
+.sheet { position: absolute; inset: 0; z-index: 6; background: rgba(8,6,12,.55); display: grid; place-items: center; padding: 16px; }
+.panel { width: min(640px, 100%); max-height: 100%; overflow: auto; background: var(--rail); border: 1px solid var(--line); border-radius: var(--r-lg); display: grid; }
+.panel header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.panel header h2 { margin: 0; font-size: 16px; }
+.panel .inner { padding: 16px 20px 20px; display: grid; gap: 16px; }
+.panel .lede { margin: 0; color: var(--ink-2); font-size: 13px; max-width: 60ch; }
+.botrow { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.botrow .av { width: 40px; height: 40px; font-size: 16px; }
+.botrow h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.botrow .ident { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); color: var(--ink-2); }
+.chip.on { color: var(--ink); border-color: transparent; background: var(--raise); }
+.chip.on::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.chip.warn { color: var(--listen); background: var(--listen-soft); border-color: transparent; }
+.chip.off { text-decoration: line-through; color: var(--ink-3); }
+.yaml { margin: 0; overflow-x: auto; padding: 12px 14px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: var(--ink-2); }
+.yaml .k { color: var(--ink); } .yaml .c { color: var(--ink-3); } .yaml .s { color: var(--accent); }
+
+/* Notes */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; padding: 4px 4px 0; }
+.notes section h2 { margin: 0 0 6px; font-size: 13px; font-weight: 650; }
+.notes ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; display: grid; gap: 4px; max-width: 62ch; }
+.notes code { font-size: 12px; background: var(--rail); }
+
+@media (max-width: 980px) { .app, .app.no-chat { grid-template-columns: 230px 1fr; } .chat { display: none; } }
+@media (max-width: 640px) {
+  .app, .app.no-chat { grid-template-columns: 1fr; height: auto; }
+  .side { border-right: 0; border-bottom: 1px solid var(--line); }
+  .side-scroll { max-height: 300px; }
+  .stage { min-height: 460px; }
+  .tile .big { width: 52px; height: 52px; font-size: 20px; }
+  .pop { left: 12px !important; right: 12px; width: auto; }
+}
+</style>
+
+<div class="wrap">
+  <div class="proto">
+    <h1>Lala bots <span>· prototype v2</span></h1>
+    <div class="seg" role="group" aria-label="Scenario">
+      <button id="sc-radio" aria-pressed="true" data-sc="radio">Music bot</button>
+      <button id="sc-minutes" aria-pressed="false" data-sc="minutes">Bot that listens</button>
+      <button id="sc-home" aria-pressed="false" data-sc="home">Not in a call</button>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button id="th-auto" aria-pressed="true" data-th="">System</button>
+      <button id="th-dark" aria-pressed="false" data-th="dark">Dark</button>
+      <button id="th-light" aria-pressed="false" data-th="light">Light</button>
+    </div>
+  </div>
+
+  <div class="app" id="app">
+    <aside class="side">
+      <div class="server">
+        <span class="mark">L</span>
+        <div><strong>Lala</strong><small>4 online · name and icon set in config</small></div>
+      </div>
+      <div class="side-scroll">
+        <div class="label">Rooms <button class="icon-btn" aria-label="New room" style="width:22px;height:22px"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <button class="channel" id="ch-general"><svg class="ch-icon" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg><span>General</span><span class="flags" id="general-flags"></span><span class="count" id="count">4</span></button>
+        <div class="members" id="members"></div>
+        <button class="channel"><svg class="ch-icon" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg><span>Late night</span><span class="flags"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="count">2</span></button>
+        <div class="label">Saved</div>
+        <button class="channel saved"><svg class="ch-icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Movie night</span><span></span><span class="count"></span></button>
+        <button class="channel saved"><svg class="ch-icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Stage</span><span></span><span class="count"></span></button>
+      </div>
+      <div class="me">
+        <div class="av" style="background:#c8394f">E</div>
+        <strong>Egor</strong>
+        <button class="icon-btn" aria-label="Theme"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+        <button class="icon-btn" id="open-settings" aria-label="Server settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></button>
+      </div>
+    </aside>
+
+    <main class="call" id="call">
+      <div class="call-head" id="call-head">
+        <strong id="head-title">General</strong><span class="meta" id="meta"></span>
+        <button class="invite" id="invite"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg><span id="invite-label">Copy invite link</span></button>
+      </div>
+      <div class="stage" id="stage"><div class="grid" id="grid"></div></div>
+      <div class="home" id="home" hidden>
+        <div class="wave" id="wave" aria-hidden="true"></div>
+        <div class="hero-room" id="rooms"></div>
+        <div class="hero-actions"><button class="join ghost">New room</button></div>
+      </div>
+      <div class="toast" id="toast" hidden role="status">
+        <svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 3-2 4-3 5.5S14 18 12 20a3 3 0 0 1-4-1"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0"/></svg>
+        <span><strong>Minutes</strong> can hear this call.</span>
+        <button class="icon-btn" id="toast-close" aria-label="Dismiss"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="bar" id="bar">
+        <button aria-label="Microphone"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+        <button aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12"/></svg></button>
+        <span class="sep"></span>
+        <button aria-label="Share screen"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M12 13V8M9.5 10.5 12 8l2.5 2.5"/></svg></button>
+        <button aria-label="Camera"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3"/></svg></button>
+        <span class="sep"></span>
+        <button id="chat-toggle" aria-label="Chat" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></button>
+        <button class="leave" aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-2.5 2.5-3-1.5v-3a10 10 0 0 0-7 0v3l-3 1.5z"/></svg></button>
+      </div>
+
+      <div class="pop" id="pop" hidden role="dialog" aria-label="Profile"></div>
+
+      <div class="sheet" id="sheet" hidden>
+        <div class="panel" role="dialog" aria-label="Bots">
+          <header><h2>Bots</h2><button class="icon-btn" id="close-settings" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+          <div class="inner">
+            <p class="lede">Bots are defined in the server config. Each one runs as its own program and joins calls with a secret. Deleting its entry signs it out everywhere. Only server admins see this list.</p>
+            <div class="botrow">
+              <div class="av" style="background:#6a5fd8">R</div>
+              <div>
+                <h3>Radio <span class="badge">BOT</span></h3>
+                <div class="ident">bot-radio · General, Late night</div>
+                <div class="chips"><span class="chip on">Speak</span><span class="chip on">Chat</span><span class="chip off">Listen</span><span class="chip off">Moderate</span></div>
+              </div>
+            </div>
+            <div class="botrow">
+              <div class="av" style="background:#2f8f86">M</div>
+              <div>
+                <h3>Minutes <span class="badge">BOT</span> <span class="badge listen"><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 3-2 4-3 5.5S14 18 12 20a3 3 0 0 1-4-1"/></svg>Listens</span></h3>
+                <div class="ident">bot-minutes · General</div>
+                <div class="chips"><span class="chip on">Chat</span><span class="chip warn">Listen</span><span class="chip off">Speak</span><span class="chip off">Moderate</span></div>
+              </div>
+            </div>
+<pre class="yaml"><span class="k">bots:</span>
+  <span class="k">radio:</span>
+    <span class="k">name:</span> Radio
+    <span class="k">avatar:</span> radio.png
+    <span class="k">secret:</span> <span class="s">scrypt$16384$8$1$…</span>
+    <span class="k">rooms:</span> [general, late-night]
+    <span class="k">rights:</span> [speak, chat]          <span class="c"># listen is off unless listed</span>
+  <span class="k">minutes:</span>
+    <span class="k">name:</span> Minutes
+    <span class="k">secret:</span> <span class="s">scrypt$16384$8$1$…</span>
+    <span class="k">rooms:</span> [general]
+    <span class="k">rights:</span> [chat, listen]</pre>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="chat" id="chat">
+      <div class="chat-head">Chat</div>
+      <div class="msgs" id="msgs"></div>
+      <div class="suggest" id="suggest" hidden></div>
+      <div class="compose"><input id="compose" placeholder="Message General" aria-label="Message" autocomplete="off"><button aria-label="Send"><svg viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button></div>
+    </aside>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Bots look like bots</h2>
+      <ul>
+        <li>Round avatars for everyone. The BOT badge is the marker, in the list, on the tile, in chat and on the profile.</li>
+        <li>The badge comes from the <code>bot-</code> identity, so a bot can't hide it.</li>
+        <li>A bot's status line ("Teardrop · Massive Attack") sits on its tile and its profile. A music bot shows a level meter instead of the green speaking ring.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Commands</h2>
+      <ul>
+        <li>The profile lists the bot's commands. Clicking one puts it in the message box; it doesn't send.</li>
+        <li>Typing <code>!</code> in chat suggests commands from bots in the room.</li>
+        <li>Bots publish status and commands through the API. The server checks length and format before others see them.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Listening</h2>
+      <ul>
+        <li>Off by default. A bot without it gets no audio or video.</li>
+        <li>Before joining: an ear icon on the room and a line on its card. After joining: a toast once, then the ear in the header, list and tile.</li>
+        <li>Every bot in a room sees chat. The chat right only controls sending.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+const ICON = {
+  micOff: '<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M9 9v2a3 3 0 0 0 5 2.2M15 10V6a3 3 0 0 0-5.7-1.3"/><path d="M19 11a7 7 0 0 1-1.2 4M5 11a7 7 0 0 0 11 5.7M12 18v3"/></svg>',
+  ear: '<svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 3-2 4-3 5.5S14 18 12 20a3 3 0 0 1-4-1"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0"/></svg>',
+  crown: '<svg viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/></svg>',
+  music: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  note: '<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>',
+  lock: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+};
+
+const people = [
+  { id: 'egor', name: 'Egor', letter: 'E', color: '#c8394f', you: true, admin: true },
+  { id: 'masha', name: 'Masha', letter: 'M', color: '#b5527a', speaking: true },
+  { id: 'den', name: 'Den', letter: 'D', color: '#8a5a44', muted: true },
+];
+const bots = {
+  radio: { id: 'bot-radio', name: 'Radio', letter: 'R', color: '#6a5fd8', bot: true, listens: false, music: true,
+    status: 'Teardrop · Massive Attack', statusIcon: 'music',
+    about: 'Plays music from links and searches.',
+    commands: [['!play', 'song name or link'], ['!skip', 'next song'], ['!queue', "what's next"], ['!clear', 'empty the queue']],
+    rights: [['yes', 'Plays audio in the call'], ['yes', 'Sends chat messages'], ['no', "Can't hear the call"], ['no', "Can't moderate or create rooms"]] },
+  minutes: { id: 'bot-minutes', name: 'Minutes', letter: 'M', color: '#2f8f86', bot: true, listens: true, muted: true,
+    status: 'Taking notes · 21 min', statusIcon: 'note',
+    about: 'Posts a summary in chat when the call ends.',
+    commands: [['!stop', 'pause notes'], ['!resume', 'continue'], ['!summary', 'summary so far']],
+    rights: [['warn', 'Hears everyone in the call'], ['yes', 'Sends chat messages'], ['no', "Can't speak in the call"], ['no', "Can't moderate or create rooms"]] },
+};
+const chats = {
+  radio: [
+    { who: 'masha', t: '21:04', text: '<code>!play massive attack teardrop</code>' },
+    { who: 'bot', t: '21:04', text: 'Now playing', card: ['Teardrop', 'Massive Attack · 5:29 · added by Masha'] },
+    { who: 'den', t: '21:06', text: 'louder pls' },
+    { who: 'masha', t: '21:06', text: '<code>!queue</code>' },
+    { who: 'bot', t: '21:06', text: 'Up next: Angel, then Unfinished Sympathy. 2 songs, 10:31.' },
+  ],
+  minutes: [
+    { who: 'bot', t: '21:00', text: 'Taking notes for this call. Type <code>!stop</code> to pause.' },
+    { who: 'masha', t: '21:18', text: 'ok so we ship the bot api first' },
+    { who: 'bot', t: '21:31', text: 'Summary so far', card: ['Call notes · General', '31 min · 3 people · 6 decisions'] },
+  ],
+};
+
+let scenario = 'radio';
+let botKey = 'radio';
+const el = (id) => document.getElementById(id);
+const bot = () => bots[botKey];
+const lookup = (key) => key === 'bot' ? bot() : people.find((p) => p.id === key);
+const roster = () => [...people, bot()];
+
+const avatar = (p, cls = '') => `<div class="av ${cls}" style="background:${p.color}">${p.letter}</div>`;
+const badges = (p, lg = '') => (p.bot ? `<span class="badge ${lg}">BOT</span>` : '') + (p.listens ? `<span class="badge listen">${ICON.ear}Listens</span>` : '');
+const speaking = (p) => p.speaking && !p.music;
+
+function layoutGrid() {
+  const n = roster().length;
+  const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3;
+  const rows = Math.ceil(n / cols);
+  const stage = el('stage');
+  const w = stage.clientWidth - 32, h = stage.clientHeight - 108;
+  // Largest 16:10 tile that fits both ways, so tiles never turn into tall strips.
+  const tileW = Math.max(120, Math.min((w - 12 * (cols - 1)) / cols, ((h - 12 * (rows - 1)) / rows) * 1.6));
+  el('grid').style.gridTemplateColumns = `repeat(${cols}, ${Math.floor(tileW)}px)`;
+  el('grid').style.justifyContent = 'center';
+}
+
+function render() {
+  const home = scenario === 'home';
+  const list = roster();
+  const b = bot();
+  el('stage').hidden = home; el('bar').hidden = home; el('home').hidden = !home;
+  el('app').classList.toggle('no-chat', home || el('chat-toggle').getAttribute('aria-pressed') !== 'true');
+  el('ch-general').classList.toggle('on', !home);
+  el('head-title').textContent = home ? 'Rooms' : 'General';
+  el('invite-label').textContent = home ? 'Copy server invite' : 'Copy invite link';
+  el('count').textContent = list.length;
+  el('general-flags').innerHTML = b.listens ? `<span class="ear" title="A bot can hear this room">${ICON.ear}</span>` : '';
+  el('meta').innerHTML = home ? '2 live rooms'
+    : `${list.length} in call · encrypted${b.listens ? ` · <span class="ear">${ICON.ear}Minutes can hear</span>` : ''}`;
+  el('toast').hidden = home || !b.listens || toastDismissed;
+
+  el('members').innerHTML = list.map((p) => `
+    <button class="member" data-p="${p.bot ? 'bot' : p.id}">
+      ${avatar(p, speaking(p) ? 'speaking' : '')}
+      <span class="name"><b>${p.name}</b>${p.bot ? '<span class="badge">BOT</span>' : ''}${p.you ? '<span class="you">you</span>' : ''}</span>
+      <span class="trail">${p.listens ? `<span class="ear" title="Can hear the call">${ICON.ear}</span>` : ''}${p.music ? '<span class="eq"><i></i><i></i><i></i></span>' : ''}${p.admin ? ICON.crown : ''}${p.muted ? ICON.micOff : ''}</span>
+    </button>`).join('');
+
+  el('grid').innerHTML = list.map((p) => `
+    <div class="tile ${speaking(p) ? 'speaking' : ''}" data-p="${p.bot ? 'bot' : p.id}" tabindex="0">
+      ${p.status ? `<div class="status">${ICON[p.statusIcon]}<span>${p.status}</span>${p.music ? '<span class="eq"><i></i><i></i><i></i></span>' : ''}</div>` : ''}
+      ${avatar(p, 'big')}
+      <span class="tag">${p.name}${badges(p)}</span>
+      ${p.muted ? `<span class="corner">${ICON.micOff}</span>` : ''}
+    </div>`).join('');
+
+  el('rooms').innerHTML = `
+      <div class="faces">${list.map((p) => avatar(p)).join('')}</div>
+      <button class="join">Join General</button>
+      <small>${list.map((p) => p.name).join(', ')} ${list.length > 1 ? 'are' : 'is'} talking</small>
+      ${b.listens ? `<div class="note">${ICON.ear}Minutes can hear this room</div>` : ''}`;
+
+  el('msgs').innerHTML = chats[botKey].map((m) => {
+    const p = lookup(m.who);
+    return `<div class="msg">${avatar(p)}<div>
+      <div class="who">${p.name}${p.bot ? '<span class="badge">BOT</span>' : ''}<time>${m.t}</time></div>
+      <p>${m.text}</p>
+      ${m.card ? `<div class="card"><span class="art"></span><span><b>${m.card[0]}</b><small>${m.card[1]}</small></span></div>` : ''}
+    </div></div>`;
+  }).join('');
+  el('msgs').scrollTop = el('msgs').scrollHeight;
+  if (!home) requestAnimationFrame(layoutGrid);
+}
+let toastDismissed = false;
+
+function openProfile(key, anchor) {
+  const p = lookup(key);
+  const pop = el('pop');
+  const extra = p.bot ? `
+    <p class="about">${p.about}</p>
+    <div class="now">${ICON[p.statusIcon]}${p.status}</div>
+    <div><h4>Commands</h4><div class="cmds">${p.commands.map(([c, d]) => `<button class="cmd" data-cmd="${c}" title="${d}">${c}</button>`).join('')}</div></div>
+    <div class="rights"><h4>What it can do</h4>${p.rights.map(([k, t]) =>
+      `<div class="right ${k}">${k === 'yes' ? ICON.check : k === 'warn' ? ICON.ear : ICON.x}<span>${t}</span></div>`).join('')}</div>`
+    : `<p class="about">${p.you ? 'This is you.' : 'In General since 21:02.'}${p.admin ? ' Server admin.' : ''}</p>`;
+  pop.innerHTML = `<div class="cover" style="background:linear-gradient(120deg, ${p.color}, color-mix(in srgb, ${p.color} 35%, var(--rail)))"></div>
+    <div class="body"><div class="head">${avatar(p)}</div>
+    <div><h3>${p.name}${badges(p, 'lg')}</h3><div class="ident">${p.bot ? p.id : 'identity 3f9a…c21e'}</div></div>${extra}</div>`;
+  const call = el('call').getBoundingClientRect();
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(12, Math.min(r.left - call.left + 8, call.width - 300)) + 'px';
+  pop.hidden = false;
+  pop.style.top = Math.max(12, Math.min(r.top - call.top, call.height - pop.offsetHeight - 12)) + 'px';
+}
+
+function suggest(value) {
+  const box = el('suggest');
+  if (!value.startsWith('!') || value.includes(' ')) { box.hidden = true; return; }
+  const b = bot();
+  const hits = b.commands.filter(([c]) => c.startsWith(value));
+  box.hidden = hits.length === 0;
+  box.innerHTML = `<div class="h"><span class="badge">BOT</span>${b.name}</div>` +
+    hits.map(([c, d]) => `<button data-cmd="${c}"><code>${c}</code><span>${d}</span></button>`).join('');
+}
+function fillCommand(cmd) {
+  el('pop').hidden = true;
+  if (el('app').classList.contains('no-chat')) { el('chat-toggle').setAttribute('aria-pressed', 'true'); el('app').classList.remove('no-chat'); }
+  const input = el('compose');
+  input.value = cmd + ' ';
+  el('suggest').hidden = true;
+  input.focus();
+}
+
+el('compose').addEventListener('input', (e) => suggest(e.target.value));
+document.addEventListener('click', (e) => {
+  const sc = e.target.closest('[data-sc]');
+  if (sc) {
+    scenario = sc.dataset.sc;
+    if (scenario !== 'home') botKey = scenario;
+    toastDismissed = false;
+    document.querySelectorAll('[data-sc]').forEach((b) => b.setAttribute('aria-pressed', String(b === sc)));
+    el('pop').hidden = true;
+    render();
+    return;
+  }
+  const th = e.target.closest('[data-th]');
+  if (th) {
+    if (th.dataset.th) document.documentElement.setAttribute('data-theme', th.dataset.th);
+    else document.documentElement.removeAttribute('data-theme');
+    document.querySelectorAll('[data-th]').forEach((b) => b.setAttribute('aria-pressed', String(b === th)));
+    return;
+  }
+  const cmd = e.target.closest('[data-cmd]');
+  if (cmd) { fillCommand(cmd.dataset.cmd); return; }
+  const who = e.target.closest('[data-p]');
+  if (who) { openProfile(who.dataset.p, who); return; }
+  if (e.target.closest('#invite')) {
+    el('invite-label').textContent = scenario === 'home' ? 'Link copied · server invite, 7 days' : 'Link copied · opens General';
+    setTimeout(() => { el('invite-label').textContent = scenario === 'home' ? 'Copy server invite' : 'Copy invite link'; }, 2200);
+    return;
+  }
+  if (e.target.closest('#toast-close')) { toastDismissed = true; el('toast').hidden = true; return; }
+  if (e.target.closest('#open-settings')) { el('pop').hidden = true; el('sheet').hidden = false; return; }
+  if (e.target.closest('#close-settings') || e.target.id === 'sheet') { el('sheet').hidden = true; return; }
+  if (e.target.closest('#chat-toggle')) {
+    const btn = el('chat-toggle');
+    const on = btn.getAttribute('aria-pressed') !== 'true';
+    btn.setAttribute('aria-pressed', String(on));
+    el('app').classList.toggle('no-chat', !on);
+    requestAnimationFrame(layoutGrid);
+    return;
+  }
+  if (!e.target.closest('#pop')) el('pop').hidden = true;
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { el('pop').hidden = true; el('sheet').hidden = true; el('suggest').hidden = true; }
+  if (e.key === 'Enter' && e.target.matches('.tile')) openProfile(e.target.dataset.p, e.target);
+});
+el('wave').innerHTML = Array.from({ length: 36 }, (_, i) => {
+  const h = 18 + 54 * Math.abs(Math.sin(i * 0.33 + 1.1)) * (0.55 + 0.45 * Math.cos(i * 0.11));
+  return `<i style="height:${h.toFixed(0)}px;animation-delay:${(-i * 0.09).toFixed(2)}s"></i>`;
+}).join('');
+new ResizeObserver(() => { if (scenario !== 'home') layoutGrid(); }).observe(el('stage'));
+render();
+</script>
