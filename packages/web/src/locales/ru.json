@@ -339,13 +339,7 @@
     "sourceCode": "Исходный код",
     "donate": "Донат (BTC)",
     "copied": "Скопировано!",
-    "appIcon": "Иконка приложения",
-    "appIconHint": "Стиль иконки в трее и заголовке окна",
     "restartToApply": "Перезапустить для применения",
-    "iconVoiceWave": "Бары",
-    "iconDarkSphere": "Сфера",
-    "iconSingleWave": "Волна",
-    "iconDoubleWave": "Дуэт",
     "noMicAccess": "Нет доступа к микрофону",
     "inputLevel": "Уровень входа",
     "monitor": "Мониторинг",
@@ -364,7 +358,11 @@
     "microphoneN": "Микрофон {{n}}",
     "speakerN": "Динамик {{n}}",
     "cameraN": "Камера {{n}}",
-    "advanced": "Дополнительно"
+    "advanced": "Дополнительно",
+    "themeServer": "Как на сервере ({{name}})",
+    "userCss": "Свой CSS",
+    "userCssLabel": "Пользовательский CSS",
+    "userCssHint": "Применяется поверх темы только на этом устройстве: никто другой его не видит, и он никуда не отправляется."
   },
   "update": {
     "available": "Обновление {{version}} доступно — загрузка...",

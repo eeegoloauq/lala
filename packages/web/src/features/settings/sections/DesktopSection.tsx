@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UpdateStatus } from '../../../types/electron';
-import { ICON_VARIANTS } from '../../../lib/iconVariants';
 import type { AppSettings } from '../types';
 
 interface DesktopSectionProps {
@@ -48,11 +47,6 @@ export function DesktopSection({ headerRef, settings, onUpdate }: DesktopSection
         </div>
       </div>
       <div className="settings-section">
-        <div className="settings-section-title">{t('settings.appIcon')}</div>
-        <div className="settings-row-desc" style={{ marginBottom: 12 }}>{t('settings.appIconHint')}</div>
-        <AppIconPicker />
-      </div>
-      <div className="settings-section">
         <div className="settings-section-title">{t('settings.updates')}</div>
         <UpdateSection />
       </div>
@@ -88,33 +82,6 @@ function AutoLaunchToggle() {
         />
         <span className="toggle-slider" />
       </label>
-    </div>
-  );
-}
-
-function AppIconPicker() {
-  const { t } = useTranslation();
-  const [currentIcon, setCurrentIcon] = useState<string>('voice-wave');
-
-  useEffect(() => {
-    window.electronAPI?.getAppIcon?.().then(setCurrentIcon);
-  }, []);
-
-  return (
-    <div className="settings-icon-picker">
-      {ICON_VARIANTS.map(v => (
-        <button
-          key={v.id}
-          className={`settings-icon-option${currentIcon === v.id ? ' settings-icon-option--active' : ''}`}
-          onClick={async () => {
-            const ok = await window.electronAPI?.setAppIcon?.(v.id);
-            if (ok) setCurrentIcon(v.id);
-          }}
-        >
-          <div className="settings-icon-preview">{v.svg}</div>
-          <span className="settings-icon-label">{t(v.labelKey)}</span>
-        </button>
-      ))}
     </div>
   );
 }

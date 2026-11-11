@@ -13,10 +13,20 @@ const { IS_MAC, IS_LINUX, INSTALL_CHANNEL, USER_DATA } = require('./constants');
 const { state } = require('./state');
 
 const APP_DIR = path.join(__dirname, '..');
-const ICON_VARIANTS = ['voice-wave', 'dark-sphere', 'single-wave', 'double-wave'];
 const ICONS_DIR = path.join(USER_DATA, 'icons');
-const ICON_PREF_FILE = path.join(USER_DATA, 'icon-preference.json');
-let cachedIconPref = null;
+const APP_ICON_DIR = path.join(ICONS_DIR, 'app');
+// Written by versions that let people pick one of four icons; its presence means the
+// shortcuts may still show the picked one.
+const LEGACY_PREF_FILE = path.join(USER_DATA, 'icon-preference.json');
+
+function copyDir(src, dest) {
+    try {
+        fs.mkdirSync(dest, { recursive: true });
+        for (const file of fs.readdirSync(src)) {
+            fs.writeFileSync(path.join(dest, file), fs.readFileSync(path.join(src, file)));
+        }
+    } catch {}
+}
 
 function ensureIconsExtracted() {
     const versionFile = path.join(ICONS_DIR, '.version');
@@ -29,68 +39,22 @@ function ensureIconsExtracted() {
         }
     } catch {}
 
-    // Extract variant icons
-    const asarBase = path.join(APP_DIR, 'build', 'icon-variants');
-    for (const variant of ICON_VARIANTS) {
-        const srcDir = path.join(asarBase, variant);
-        const destDir = path.join(ICONS_DIR, 'variants', variant);
-        try {
-            fs.mkdirSync(destDir, { recursive: true });
-            for (const file of fs.readdirSync(srcDir)) {
-                fs.writeFileSync(path.join(destDir, file), fs.readFileSync(path.join(srcDir, file)));
-            }
-        } catch {}
-    }
-
-    // Extract tray icons
-    const traySrc = path.join(APP_DIR, 'build', 'tray');
-    const trayDest = path.join(ICONS_DIR, 'tray');
-    try {
-        fs.mkdirSync(trayDest, { recursive: true });
-        for (const file of fs.readdirSync(traySrc)) {
-            fs.writeFileSync(path.join(trayDest, file), fs.readFileSync(path.join(traySrc, file)));
-        }
-    } catch {}
+    copyDir(path.join(APP_DIR, 'build', 'app-icon'), APP_ICON_DIR);
+    copyDir(path.join(APP_DIR, 'build', 'tray'), path.join(ICONS_DIR, 'tray'));
+    // The variants older versions extracted.
+    try { fs.rmSync(path.join(ICONS_DIR, 'variants'), { recursive: true, force: true }); } catch {}
 
     try { fs.writeFileSync(versionFile, currentVersion); } catch {}
 }
 
-// ─── Icon Preference ─────────────────────────────────────────────────────────
-
-function getIconPreference() {
-    if (cachedIconPref) return cachedIconPref;
-    try {
-        if (fs.existsSync(ICON_PREF_FILE)) {
-            const { icon } = JSON.parse(fs.readFileSync(ICON_PREF_FILE, 'utf8'));
-            if (ICON_VARIANTS.includes(icon)) {
-                cachedIconPref = icon;
-                return icon;
-            }
-        }
-    } catch { /* ignore */ }
-    cachedIconPref = 'voice-wave';
-    return 'voice-wave';
-}
-
-function saveIconPreference(name) {
-    cachedIconPref = name;
-    try {
-        fs.writeFileSync(ICON_PREF_FILE, JSON.stringify({ icon: name }));
-    } catch { /* ignore */ }
-}
-
-function getVariantIconPath(variantName) {
-    return path.join(ICONS_DIR, 'variants', variantName);
-}
-
-function buildMultiSizeIcon(variantDir) {
+function buildMultiSizeIcon(iconDir) {
     // Build a nativeImage with multiple size representations.
     // Windows uses the appropriate size for each context (taskbar=32, alt-tab=64, etc.)
     const sizes = [16, 32, 48, 64, 256];
     let img = null;
 
     for (const size of sizes) {
-        const p = path.join(variantDir, `icon-${size}.png`);
+        const p = path.join(iconDir, `icon-${size}.png`);
         if (!fs.existsSync(p)) continue;
 
         if (!img) {
@@ -103,67 +67,50 @@ function buildMultiSizeIcon(variantDir) {
     return img;
 }
 
-function applyIcon(variantName, { forceRedraw = false } = {}) {
-    const variantDir = getVariantIconPath(variantName);
-
-    // Update tray icon
-    const { tray, mainWindow } = state;
-    if (tray) {
-        const p16 = path.join(variantDir, 'tray-16.png');
-        const p32 = path.join(variantDir, 'tray-32.png');
-        const p48 = path.join(variantDir, 'tray-48.png');
-
-        if (IS_MAC) {
-            // macOS: use default tray template (doesn't change per variant)
-        } else if (process.platform === 'win32' && fs.existsSync(p16)) {
-            const img = nativeImage.createFromPath(p16);
-            if (fs.existsSync(p32)) {
-                img.addRepresentation({ scaleFactor: 2, filename: p32 });
-            }
-            tray.setImage(img);
-        } else if (fs.existsSync(p48)) {
-            tray.setImage(nativeImage.createFromPath(p48));
-        } else if (fs.existsSync(p32)) {
-            tray.setImage(nativeImage.createFromPath(p32));
-        }
+/** Whether this install once showed another icon, which its shortcuts may still have. */
+function hadOtherIcon() {
+    try {
+        if (!fs.existsSync(LEGACY_PREF_FILE)) return false;
+        const { icon } = JSON.parse(fs.readFileSync(LEGACY_PREF_FILE, 'utf8'));
+        return icon !== 'voice-wave';
+    } catch {
+        return true;
+    } finally {
+        try { fs.rmSync(LEGACY_PREF_FILE, { force: true }); } catch {}
     }
+}
 
-    // Update window icon (title bar + alt-tab).
+/**
+ * Puts the app icon where the system looks for it: the Windows .ico our shortcuts point
+ * at, and the AppImage's desktop entry. Shortcuts that showed a different icon are
+ * pointed back at it once.
+ */
+function applyIcon() {
+    const { mainWindow } = state;
+    const migrate = hadOtherIcon();
+
     // On Windows, .ico files trigger the LoadImage Win32 API path which correctly
     // extracts per-size HICONs. PNG-based buildMultiSizeIcon is ignored for HICON
     // generation — addRepresentation doesn't affect GetHICON().
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        if (process.platform === 'win32') {
-            const icoPath = path.join(variantDir, 'icon.ico');
-            if (fs.existsSync(icoPath)) {
-                mainWindow.setIcon(nativeImage.createFromPath(icoPath));
-            }
-        } else {
-            const icon = buildMultiSizeIcon(variantDir);
-            if (icon) mainWindow.setIcon(icon);
-        }
+    if (mainWindow && !mainWindow.isDestroyed() && migrate) {
+        const icon = process.platform === 'win32'
+            ? nativeImage.createFromPath(path.join(APP_ICON_DIR, 'icon.ico'))
+            : buildMultiSizeIcon(APP_ICON_DIR);
+        if (icon && !icon.isEmpty()) mainWindow.setIcon(icon);
     }
 
-    // Windows: copy .ico to userData and update .lnk shortcuts + shell notify.
-    // Same approach as AyuGram: write .ico → update .lnk IconLocation →
-    // SHChangeNotify(SHCNE_ASSOCCHANGED) to force Explorer to refresh icon cache.
+    // Windows: the .ico in userData is what updated shortcuts point at (same approach
+    // as AyuGram: write .ico, update .lnk IconLocation, then SHChangeNotify).
     if (process.platform === 'win32') {
-        const srcIco = path.join(variantDir, 'icon.ico');
+        const srcIco = path.join(APP_ICON_DIR, 'icon.ico');
         const fixedIco = path.join(USER_DATA, 'app-icon.ico');
         if (fs.existsSync(srcIco)) {
-            try {
-                fs.copyFileSync(srcIco, fixedIco);
-            } catch {}
+            try { fs.copyFileSync(srcIco, fixedIco); } catch {}
         }
-        if (forceRedraw) {
-            updateWindowsShortcutIcons(fixedIco);
-        }
+        if (migrate) updateWindowsShortcutIcons(fixedIco);
     }
 
-    // Linux: install icons to ~/.local/share/icons/hicolor/ and update .desktop override.
-    if (IS_LINUX) {
-        installLinuxDesktopIcon(variantDir);
-    }
+    if (IS_LINUX) installLinuxDesktopIcon(APP_ICON_DIR);
 }
 
 /**
@@ -237,7 +184,7 @@ function updateWindowsShortcutIcons(icoPath) {
     execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], () => {});
 }
 
-function installLinuxDesktopIcon(variantDir) {
+function installLinuxDesktopIcon(iconDir) {
     // Only AppImage lacks system-installed .desktop/icons. RPM installs
     // (electron-builder /opt/Lala or Copr /usr/lib/lala) ship a valid
     // /usr/share/applications/lala-desktop.desktop — a user-level override
@@ -248,9 +195,9 @@ function installLinuxDesktopIcon(variantDir) {
     const home = os.homedir();
     const sizes = [16, 32, 48, 64, 256];
 
-    // Copy variant PNGs to user's hicolor theme (overrides system icons)
+    // Copy the PNGs to the user's hicolor theme (overrides system icons)
     for (const size of sizes) {
-        const src = path.join(variantDir, `icon-${size}.png`);
+        const src = path.join(iconDir, `icon-${size}.png`);
         if (!fs.existsSync(src)) continue;
 
         const destDir = path.join(home, '.local', 'share', 'icons',
@@ -271,8 +218,8 @@ function installLinuxDesktopIcon(variantDir) {
     } catch (_) { /* best-effort */ }
 
     // Update icon cache (best-effort, commands may not be installed)
-    const iconDir = path.join(home, '.local', 'share', 'icons', 'hicolor');
-    execFile('gtk-update-icon-cache', ['-f', '-t', iconDir], () => {});
+    const hicolorDir = path.join(home, '.local', 'share', 'icons', 'hicolor');
+    execFile('gtk-update-icon-cache', ['-f', '-t', hicolorDir], () => {});
     execFile('update-desktop-database', [appsDir], () => {});
 }
 
@@ -311,23 +258,14 @@ function removeStaleDesktopOverride() {
 // ─── Window and Tray Icons ───────────────────────────────────────────────────
 
 function getInitialWindowIcon() {
-    // Use saved icon variant for window creation (avoids flash of default icon)
-    const variant = getIconPreference();
-    const variantDir = getVariantIconPath(variant);
-
-    // On Windows, prefer the fixed .ico in userData (written by applyIcon on previous run)
+    // On Windows, prefer the fixed .ico in userData (written by applyIcon on a previous run)
     if (process.platform === 'win32') {
-        const fixedIco = path.join(USER_DATA, 'app-icon.ico');
-        if (fs.existsSync(fixedIco)) {
-            return nativeImage.createFromPath(fixedIco);
-        }
-        const variantIco = path.join(variantDir, 'icon.ico');
-        if (fs.existsSync(variantIco)) {
-            return nativeImage.createFromPath(variantIco);
+        for (const ico of [path.join(USER_DATA, 'app-icon.ico'), path.join(APP_ICON_DIR, 'icon.ico')]) {
+            if (fs.existsSync(ico)) return nativeImage.createFromPath(ico);
         }
     }
 
-    const icon = buildMultiSizeIcon(variantDir);
+    const icon = buildMultiSizeIcon(APP_ICON_DIR);
     if (icon) return icon;
     // Fallback to default build icon
     const fallbackPath = path.join(APP_DIR, 'build', 'icon.png');
@@ -384,11 +322,8 @@ function getTrayIcon() {
 }
 
 module.exports = {
-    ICON_VARIANTS,
     ensureIconsExtracted,
     removeStaleDesktopOverride,
-    getIconPreference,
-    saveIconPreference,
     applyIcon,
     getInitialWindowIcon,
     getTrayIcon,

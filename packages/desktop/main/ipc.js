@@ -7,7 +7,6 @@ const { app, ipcMain, net, powerSaveBlocker } = require('electron');
 const { IS_WAYLAND, IPC } = require('./constants');
 const { state, sendToRenderer } = require('./state');
 const { isUrlAllowed, isFileSender, isTrustedSender, isFileOrTrustedSender } = require('./trust');
-const { ICON_VARIANTS, getIconPreference, saveIconPreference, applyIcon } = require('./icons');
 const { loadServer, navigateToConnectionPage } = require('./window');
 const { setBadgeCount } = require('./tray');
 
@@ -73,20 +72,6 @@ function registerIpcHandlers() {
     ipcMain.handle(IPC.SET_AUTO_LAUNCH, (event, enabled) => {
         if (!isFileOrTrustedSender(event)) return false;
         app.setLoginItemSettings({ openAtLogin: enabled });
-        return true;
-    });
-
-    // Icon preference
-    ipcMain.handle(IPC.GET_APP_ICON, (event) => {
-        if (!isFileOrTrustedSender(event)) return null;
-        return getIconPreference();
-    });
-
-    ipcMain.handle(IPC.SET_APP_ICON, (event, name) => {
-        if (!isFileOrTrustedSender(event)) return false;
-        if (!ICON_VARIANTS.includes(name)) return false;
-        saveIconPreference(name);
-        applyIcon(name, { forceRedraw: true });
         return true;
     });
 

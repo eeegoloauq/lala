@@ -42,7 +42,7 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding');
 const { IS_MAC } = require('./main/constants');
 const { state } = require('./main/state');
 const { setupPermissionHandlers } = require('./main/trust');
-const { ensureIconsExtracted, removeStaleDesktopOverride, getIconPreference, applyIcon } = require('./main/icons');
+const { ensureIconsExtracted, removeStaleDesktopOverride, applyIcon } = require('./main/icons');
 const { createWindow, saveWindowState, setupDownloadHandler } = require('./main/window');
 const { createTray, clearBadge } = require('./main/tray');
 const { setupScreenShareHandler, registerScreenShareIpc, clearPendingScreenShare } = require('./main/screen-share');
@@ -72,8 +72,8 @@ app.whenReady().then(() => {
     createTray();
     setupAutoUpdater();
 
-    // Apply saved icon preference (also writes the fixed .ico on Windows for next launch)
-    applyIcon(getIconPreference());
+    // Writes the .ico on Windows for shortcuts and the next launch, and the AppImage's desktop icon
+    applyIcon();
 
     state.mainWindow?.on('focus', clearBadge);
 

@@ -333,13 +333,7 @@
     "sourceCode": "Source code",
     "donate": "Donate (BTC)",
     "copied": "Copied!",
-    "appIcon": "App icon",
-    "appIconHint": "Tray and window icon style",
     "restartToApply": "Restart to apply",
-    "iconVoiceWave": "Bars",
-    "iconDarkSphere": "Sphere",
-    "iconSingleWave": "Wave",
-    "iconDoubleWave": "Duet",
     "noMicAccess": "No mic access",
     "inputLevel": "Input level",
     "monitor": "Monitor",
@@ -358,7 +352,11 @@
     "microphoneN": "Microphone {{n}}",
     "speakerN": "Speaker {{n}}",
     "cameraN": "Camera {{n}}",
-    "advanced": "Advanced"
+    "advanced": "Advanced",
+    "themeServer": "Server default ({{name}})",
+    "userCss": "Your CSS",
+    "userCssLabel": "Custom CSS",
+    "userCssHint": "Applied over the theme on this device only; nobody else sees it, and it is never sent anywhere."
   },
   "update": {
     "available": "Update {{version}} available — downloading...",

@@ -23,8 +23,6 @@ export interface UpdateStatus {
     error?: string;
 }
 
-export type IconVariant = 'voice-wave' | 'dark-sphere' | 'single-wave' | 'double-wave';
-
 export interface ElectronAPI {
     /** Navigate the window to a server URL */
     loadUrl: (url: string) => void;
@@ -65,12 +63,6 @@ export interface ElectronAPI {
 
     /** Notify main process about call state (for power save blocker) */
     setInCall: (inCall: boolean) => void;
-
-    /** Get current app icon variant name */
-    getAppIcon: () => Promise<IconVariant>;
-
-    /** Set app icon variant (saves preference, updates tray) */
-    setAppIcon: (name: IconVariant) => Promise<boolean>;
 
     /** Ping a server (health check via Node.js, bypasses CORS) */
     pingServer: (url: string) => Promise<number | null>;

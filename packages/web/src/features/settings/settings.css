@@ -283,54 +283,6 @@
   color: var(--text-muted);
 }
 
-/* ─── Icon picker ─── */
-
-.settings-icon-picker {
-  display: flex;
-  gap: 10px;
-}
-
-.settings-icon-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 8px;
-  background: transparent;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
-}
-
-.settings-icon-option:hover {
-  background: var(--bg-hover);
-}
-
-.settings-icon-option--active {
-  border-color: var(--accent);
-  background: var(--bg-hover);
-}
-
-.settings-icon-preview {
-  width: 48px;
-  height: 48px;
-}
-
-.settings-icon-preview svg {
-  width: 100%;
-  height: 100%;
-}
-
-.settings-icon-label {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.settings-icon-option--active .settings-icon-label {
-  color: var(--text-primary);
-}
-
 .settings-restart-btn {
   margin-top: 10px;
   padding: 8px 16px;
@@ -812,4 +764,19 @@
 
 .settings-advanced > summary:hover {
   color: var(--text-primary);
+}
+
+.settings-row-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.settings-css-input {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
 }

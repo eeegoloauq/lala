@@ -2,7 +2,7 @@
 /**
  * Generate all app icons from the SVG source.
  * Outputs PNG files at standard sizes for electron-builder + tray.
- * Also generates variant PNGs from SVGs in build/icon-variants/.
+ * Also the runtime set in build/app-icon/ (window icon sizes and the Windows .ico).
  *
  * Usage: node scripts/generate-icons.js
  */
@@ -12,7 +12,7 @@ const fs = require('fs');
 
 const SVG_PATH = path.join(__dirname, '..', 'build', 'icon.svg');
 const BUILD_DIR = path.join(__dirname, '..', 'build');
-const VARIANTS_DIR = path.join(BUILD_DIR, 'icon-variants');
+const APP_ICON_DIR = path.join(BUILD_DIR, 'app-icon');
 
 // Standard sizes for electron-builder + tray
 const SIZES = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
@@ -147,65 +147,27 @@ function buildIco(pngBuffers) {
     return Buffer.concat([header, ...dirEntries, ...imageData]);
 }
 
-async function generateVariants() {
-    if (!fs.existsSync(VARIANTS_DIR)) {
-        console.log('\nNo icon-variants/ directory found, skipping variants.');
-        return;
+/** What main/icons.js sets at runtime: window icons and the .ico for Windows shortcuts. */
+async function generateAppIcon() {
+    const svg = fs.readFileSync(SVG_PATH);
+    fs.mkdirSync(APP_ICON_DIR, { recursive: true });
+    const sizes = [16, 32, 48, 64, 256];
+    const pngBuffers = [];
+    for (const size of sizes) {
+        const png = await sharp(svg).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
+        fs.writeFileSync(path.join(APP_ICON_DIR, `icon-${size}.png`), png);
+        pngBuffers.push(png);
+        console.log(`  app-icon/icon-${size}.png`);
     }
-
-    const svgFiles = fs.readdirSync(VARIANTS_DIR).filter(f => f.endsWith('.svg'));
-    if (svgFiles.length === 0) {
-        console.log('\nNo SVG files in icon-variants/, skipping variants.');
-        return;
-    }
-
-    console.log(`\nGenerating variants (${svgFiles.length} found)...`);
-
-    for (const file of svgFiles) {
-        const name = path.basename(file, '.svg');
-        const outDir = path.join(VARIANTS_DIR, name);
-        fs.mkdirSync(outDir, { recursive: true });
-
-        const svg = fs.readFileSync(path.join(VARIANTS_DIR, file));
-
-        // Window icons at multiple sizes (Windows needs these for taskbar/alt-tab)
-        for (const size of [16, 32, 48, 64, 256]) {
-            await sharp(svg)
-                .resize(size, size)
-                .png({ compressionLevel: 9 })
-                .toFile(path.join(outDir, `icon-${size}.png`));
-            console.log(`  icon-variants/${name}/icon-${size}.png`);
-        }
-
-        // Build .ico (multi-size) for Windows setAppDetails({ appIconPath })
-        const icoSizes = [16, 32, 48, 64, 256];
-        const pngBuffers = [];
-        for (const size of icoSizes) {
-            pngBuffers.push(await sharp(svg)
-                .resize(size, size)
-                .png({ compressionLevel: 9 })
-                .toBuffer());
-        }
-        const ico = buildIco(pngBuffers);
-        fs.writeFileSync(path.join(outDir, 'icon.ico'), ico);
-        console.log(`  icon-variants/${name}/icon.ico`);
-
-        // Tray icons: resize directly (circles fill most of viewBox)
-        for (const size of [16, 32, 48]) {
-            await sharp(svg)
-                .resize(size, size)
-                .png({ compressionLevel: 9 })
-                .toFile(path.join(outDir, `tray-${size}.png`));
-            console.log(`  icon-variants/${name}/tray-${size}.png`);
-        }
-    }
+    fs.writeFileSync(path.join(APP_ICON_DIR, 'icon.ico'), buildIco(pngBuffers));
+    console.log('  app-icon/icon.ico');
 }
 
 async function generate() {
     console.log('Generating main icons...');
     await generateMain();
 
-    await generateVariants();
+    await generateAppIcon();
 
     console.log('\nDone! All icons generated in build/');
 }

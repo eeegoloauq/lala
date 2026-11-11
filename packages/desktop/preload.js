@@ -14,8 +14,6 @@ const IPC = {
     GET_AUTO_LAUNCH: 'lala:get-auto-launch',
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
     SET_IN_CALL: 'lala:set-in-call',
-    GET_APP_ICON: 'lala:get-app-icon',
-    SET_APP_ICON: 'lala:set-app-icon',
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',
     LOAD_URL_ERROR: 'lala:load-url-error',
@@ -69,12 +67,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** Notify main process about call state (for power save blocker) */
     setInCall: (inCall) => ipcRenderer.send(IPC.SET_IN_CALL, !!inCall),
-
-    /** Get current app icon variant name */
-    getAppIcon: () => ipcRenderer.invoke(IPC.GET_APP_ICON),
-
-    /** Set app icon variant (saves preference, updates tray) */
-    setAppIcon: (name) => ipcRenderer.invoke(IPC.SET_APP_ICON, name),
 
     /** Ping a server (health check, bypasses CORS) */
     pingServer: (url) => ipcRenderer.invoke(IPC.PING_SERVER, url),
