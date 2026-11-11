@@ -1,7 +1,7 @@
 # Roadmap
 
-## Next
+## Later
 
-- Bot accounts with scoped rights and a BOT badge
+- Add a bot to your own room ([design](docs/design.md#planned-adding-a-bot-to-a-room))
 
 Maintenance work is in the [design notes](docs/design.md#maintenance).
