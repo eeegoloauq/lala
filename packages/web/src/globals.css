@@ -121,14 +121,11 @@ a:hover {
 
 .btn-primary:hover {
   opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-glow);
 }
 
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 .btn-ghost {

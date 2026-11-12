@@ -234,5 +234,4 @@
 
 .empty-state-cta:hover {
     background: var(--accent-hover);
-    transform: translateY(-1px);
 }

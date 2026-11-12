@@ -135,21 +135,45 @@
     min-width: 0;
 }
 
+/* One chip for every state icon, beside the name chip. */
 .p-tile-status {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 5px;
     flex-shrink: 0;
+    background: var(--overlay-bg);
+    backdrop-filter: var(--overlay-backdrop);
+    padding: 3px 6px;
+    border-radius: var(--overlay-radius);
+}
+
+.p-tile-status:empty {
+    display: none;
 }
 
 .p-tile-status-icon {
-    background: var(--overlay-bg);
-    backdrop-filter: var(--overlay-backdrop);
-    padding: 3px 5px;
-    border-radius: var(--overlay-radius);
     display: flex;
     align-items: center;
     color: white;
+}
+
+/* Small tiles, such as the strip beside a screen share: the name and the states that
+   matter; the connection bars return in a bigger tile. */
+@container (max-width: 220px) {
+    .p-tile-meta .cq-bars {
+        display: none;
+    }
+
+    .p-tile-status:not(:has(.p-tile-status-icon)) {
+        display: none;
+    }
+
+    .p-tile-meta {
+        left: 6px;
+        right: 6px;
+        bottom: 6px;
+        gap: 4px;
+    }
 }
 
 .p-tile-status-icon svg {

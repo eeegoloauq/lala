@@ -183,7 +183,8 @@ export function ParticipantTileView({ name, identity, avatarUrl, video, speaking
                 <div className="p-tile-status">
                     {listens && <span className="p-tile-status-icon"><ListensMark /></span>}
                     {handRaised && <span className="p-tile-status-icon p-tile-hand" title={t('tile.handRaised')}>✋</span>}
-                    {micMuted && <span className={`p-tile-status-icon${serverMuted ? ' server-muted' : ''}`} title={serverMuted ? t('tile.serverMuted') : t('tile.micOff')}><MicOffIcon /></span>}
+                    {/* A bot plays audio or doesn't; the level meter shows which, so no mic icon. */}
+                    {micMuted && !isBot && <span className={`p-tile-status-icon${serverMuted ? ' server-muted' : ''}`} title={serverMuted ? t('tile.serverMuted') : t('tile.micOff')}><MicOffIcon /></span>}
                     {deafened && <span className="p-tile-status-icon" title={t('tile.soundOff')}><SpeakerOffIcon /></span>}
                     {quality && (
                         <div
