@@ -165,6 +165,14 @@
     transition: background 0.15s;
 }
 
+@media (pointer: coarse) {
+    .fl-fullscreen-btn,
+    .fl-back-btn {
+        width: 40px;
+        height: 40px;
+    }
+}
+
 .fl-fullscreen-btn:hover {
     background: rgba(255, 255, 255, 0.15);
 }
@@ -266,5 +274,37 @@
 
     .fl-main {
         flex: 1;
+    }
+}
+
+/* ─── Phone in portrait: the screen at its own height, everyone in a grid below ───
+   A landscape screen in a tall box leaves most of it black and squeezes the people into a
+   strip that scrolls sideways out of sight. Rotating or fullscreen gives the screen the room. */
+@media (max-width: 640px) and (orientation: portrait) {
+    .fl-main {
+        flex: 0 1 auto;
+        min-height: 160px;
+    }
+
+    .fl-main video {
+        width: 100%;
+        height: auto;
+        max-height: 62dvh;
+    }
+
+    .fl-strip {
+        flex: 1;
+        height: auto;
+        min-height: 0;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .fl-strip-tile {
+        width: calc((100% - 12px) / 3);
+        height: auto;
+        aspect-ratio: 16 / 10;
     }
 }

@@ -87,4 +87,19 @@
     .room-header-meta {
         display: none;
     }
+    /* An icon button: the room name keeps the width, and a tap shares the link. */
+    .room-header-invite {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+        margin-right: -8px;
+    }
+    .room-header-invite svg {
+        width: 18px;
+        height: 18px;
+    }
+    .room-header-invite-label {
+        display: none;
+    }
 }

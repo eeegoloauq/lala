@@ -274,10 +274,12 @@
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 14px;
-    padding: 4px;
-    border-radius: 4px;
-    margin-left: auto;
+    font-size: 16px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 6px;
+    margin: -8px -12px -8px auto;
     line-height: 1;
     transition: color var(--transition-fast);
 }
@@ -452,4 +454,23 @@
     display: flex;
     flex-shrink: 0;
     color: var(--color-warning);
+}
+
+/* ─── Touch screens: rows and buttons big enough for a finger (44px, Apple's minimum) ─── */
+@media (pointer: coarse) {
+    .channel-item {
+        min-height: 44px;
+    }
+    .channel-user-card {
+        height: 44px;
+    }
+    .sidebar-add-btn,
+    .sidebar-theme-btn,
+    .sidebar-settings-btn {
+        width: 44px;
+        height: 44px;
+    }
+    .sidebar-section-header {
+        padding-right: 0;
+    }
 }

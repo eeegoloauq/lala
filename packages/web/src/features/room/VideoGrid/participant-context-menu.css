@@ -123,3 +123,34 @@
     background: rgba(239, 68, 68, 0.1);
     color: var(--color-danger);
 }
+
+/* ─── Phones: a bottom sheet instead of a menu at the finger ───
+   The menus place themselves with inline top/left at the pointer; on a phone that lands
+   under the finger or off screen, so the sheet overrides them and sits within thumb reach. */
+@media (max-width: 640px) {
+    .ctx-menu {
+        top: auto !important;
+        left: calc(8px + env(safe-area-inset-left, 0px)) !important;
+        right: calc(8px + env(safe-area-inset-right, 0px));
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        min-width: 0;
+        max-height: 70dvh;
+        overflow-y: auto;
+        animation: ctxSheetUp 160ms ease-out;
+    }
+
+    .ctx-menu-name {
+        padding: 14px 16px 10px;
+        font-size: 13px;
+    }
+
+    .ctx-menu-item {
+        min-height: 48px;
+        padding: 0 16px;
+        font-size: 15px;
+    }
+}
+
+@keyframes ctxSheetUp {
+    from { transform: translateY(16px); opacity: 0; }
+}

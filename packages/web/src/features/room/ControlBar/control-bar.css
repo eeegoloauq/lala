@@ -171,18 +171,15 @@
 /* ─── Mobile ─── */
 @media (max-width: 640px) {
     .cb-wrap {
-        height: 64px;
+        height: 68px;
     }
 
     .cb-pill {
         gap: 2px;
-        padding: 6px 10px;
+        padding: 6px 8px;
     }
 
-    .cb-btn {
-        width: 40px;
-        height: 40px;
-    }
+    /* 44px stays: Apple's minimum touch target; six buttons still fit 320px. */
 
     .cb-divider {
         margin: 0 2px;

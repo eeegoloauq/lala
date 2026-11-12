@@ -13,7 +13,7 @@ import './room-header.css';
 export function RoomHeader({ room }: { room: RoomInfo | undefined }) {
     const { t } = useTranslation();
     const live = useLiveParticipants();
-    const { copy, copied } = useCopyInvite();
+    const { share, copied } = useCopyInvite();
     if (!room) return <div className="room-header" />;
 
     const count = live.size > 0 ? live.size : room.numParticipants;
@@ -39,10 +39,11 @@ export function RoomHeader({ room }: { room: RoomInfo | undefined }) {
             </span>
             <button
                 className={`room-header-invite${copied === room.id ? ' copied' : ''}`}
-                onClick={() => copy(room.id, !!room.passwordSalt)}
+                onClick={() => share(room.id, !!room.passwordSalt)}
+                aria-label={copied === room.id ? t('roomHeader.copied') : t('roomHeader.copyInvite')}
             >
                 <LinkIcon size={14} strokeWidth={2} />
-                <span>{copied === room.id ? t('roomHeader.copied') : t('roomHeader.copyInvite')}</span>
+                <span className="room-header-invite-label">{copied === room.id ? t('roomHeader.copied') : t('roomHeader.copyInvite')}</span>
             </button>
         </div>
     );

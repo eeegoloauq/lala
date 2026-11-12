@@ -35,6 +35,19 @@ export default function App() {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [nameDraft, setNameDraft] = useState('');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    // The phone drawer is a history entry, so the Back button closes it as people expect.
+    // Closing it any other way drops that entry again; joining a room from it pushes the
+    // room's URL over the entry instead, which then needs no cleanup.
+    useEffect(() => {
+        if (!sidebarOpen) return;
+        window.history.pushState({ lalaDrawer: true }, '');
+        const onPop = () => setSidebarOpen(false);
+        window.addEventListener('popstate', onPop);
+        return () => {
+            window.removeEventListener('popstate', onPop);
+            if (window.history.state?.lalaDrawer) window.history.back();
+        };
+    }, [sidebarOpen]);
     const { volumes, handleVolumeChange } = usePersistedVolumes();
     const [myAvatar, setMyAvatar] = useState(getMyAvatar);
     const handleAvatarChange = useCallback((dataUrl: string | null) => {
