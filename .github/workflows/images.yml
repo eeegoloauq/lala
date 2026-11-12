@@ -51,6 +51,9 @@ jobs:
         run: cd packages/api && npm ci && npm test
       - name: Install Playwright
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
+      # The example bot that tests/add-bot.spec.ts runs.
+      - name: Install the example bot
+        run: cd examples/bots && npm ci
       - name: Run e2e
         run: cd e2e && npm test
       # Traces of failed tests: open with `npx playwright show-trace`.

@@ -4,8 +4,7 @@
     "private": true,
     "description": "End-to-end call tests against a local LiveKit, API and web build",
     "scripts": {
-        "setup": "playwright install chromium",
-        "pretest": "npm ci --prefix ../examples/bots",
+        "setup": "playwright install chromium && npm ci --prefix ../examples/bots",
         "test": "playwright test --project=web",
         "test:desktop": "playwright test --project=desktop"
     },

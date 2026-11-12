@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import { createRoom, enter } from './helpers';
@@ -16,6 +17,7 @@ const withoutProxy = (env: NodeJS.ProcessEnv) => Object.fromEntries(Object.entri
 
 /** Starts the example bot and waits until it listens for invitations. */
 function startBot(key: string): Promise<ChildProcess> {
+    if (!existsSync(join(EXAMPLE, 'node_modules'))) throw new Error('Install the example bot first: npm run setup in e2e, or npm ci in examples/bots');
     const child = spawn(process.execPath, ['dice.mjs'], {
         cwd: EXAMPLE,
         // Everything it talks to is on this machine: no proxy, which LiveKit's SDK would use.
