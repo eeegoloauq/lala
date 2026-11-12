@@ -2,13 +2,13 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import type { BansResponse, ModerationEvent } from '@lala/shared';
 import { announceModeration, getRoomService, isNotFound } from '../lib/livekit';
 import { callerIdentity } from '../lib/identity';
-import { attributesFor, isModerator, permissionFor } from '../lib/rights';
-import { addBan, flagsOf, getRoom, listBans, removeBan, setMuted, setVoice, type RoomState } from '../lib/rooms';
+import { attributesFor, can, isModerator, permissionFor } from '../lib/rights';
+import { addBan, flagsOf, getRoom, isBanned, listBans, removeBan, setMuted, setVoice, type RoomState } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
 import { broadcastSse } from '../lib/sse';
 import { isBotIdentity } from '../lib/bots';
 import { removeBot } from '../lib/botInvites';
-import { lastIpOf } from '../lib/bans';
+import { isShutOut, lastIpOf } from '../lib/bans';
 
 /** Kicking or banning a bot someone added also ends the invitation, so it isn't asked back. */
 async function endInvitation(ctx: Context): Promise<void> {
@@ -36,10 +36,28 @@ async function applyFlags(ctx: Context, extra: Record<string, string> = {}): Pro
 }
 
 /** Logged so the operator can see who moderated whom. */
-async function announce(ctx: Context, action: ModerationEvent['action'], targetName: string): Promise<void> {
+async function announce(ctx: Context, action: ModerationEvent['action'], targetName: string, extra: Partial<ModerationEvent> = {}): Promise<void> {
     const byName = await nameOf(ctx.room.id, ctx.caller);
-    console.log(`[moderation] ${ctx.room.id}: ${byName} (${ctx.caller}) ${action} ${targetName} (${ctx.target})`);
-    await announceModeration(ctx.room.id, { action, target: ctx.target, targetName, byName }).catch(ignoreNotFound);
+    const where = extra.to ? ` to ${extra.to.id}` : '';
+    console.log(`[moderation] ${ctx.room.id}: ${byName} (${ctx.caller}) ${action} ${targetName} (${ctx.target})${where}`);
+    await announceModeration(ctx.room.id, { action, target: ctx.target, targetName, byName, ...extra }).catch(ignoreNotFound);
+}
+
+/**
+ * Why the person can't be moved into the room, or null when they can: the checks the
+ * token route makes, so a move doesn't send someone to a room that turns them away.
+ * A password room is never a destination: the server can't give anyone its key.
+ */
+async function refuseMove(target: string, to: RoomState): Promise<{ status: number; error: string } | null> {
+    if (to.password) return { status: 400, error: 'password_room' };
+    if (!can(target, to, 'join')) return { status: 403, error: 'not_allowed' };
+    const ip = isModerator(target, to) ? undefined : await lastIpOf(target) ?? undefined;
+    if (await isShutOut(target, ip) || await isBanned(to.id, target, ip)) return { status: 403, error: 'banned' };
+    if (to.maxParticipants > 0) {
+        const participants = await getRoomService().listParticipants(to.id).catch(() => []);
+        if (participants.length >= to.maxParticipants) return { status: 403, error: 'room_full' };
+    }
+    return null;
 }
 
 export function createAdminRouter(): Router {
@@ -133,6 +151,40 @@ export function createAdminRouter(): Router {
         invalidateRoomsCache();
         broadcastSse('rooms_updated', { trigger: 'voice' });
         await announce(ctx, allowed ? 'voiced' : 'unvoiced', await nameOf(ctx.room.id, ctx.target));
+        res.json({ ok: true });
+    });
+
+    // Moves someone into another room the caller also moderates. The server only checks
+    // and announces; the person's own client switches, through the token route like any
+    // join, so nothing here grants more than joining would.
+    router.post('/move', async (req, res: Response) => {
+        const ctx = res.locals.ctx as Context;
+        const { to: toId } = req.body ?? {};
+        if (typeof toId !== 'string' || !toId || toId.length > 50 || toId === ctx.room.id
+            || ctx.target === ctx.caller || isBotIdentity(ctx.target)) {
+            res.status(400).json({ error: 'invalid_input' });
+            return;
+        }
+        const to = await getRoom(toId);
+        if (!to) {
+            res.status(404).json({ error: 'room_not_found' });
+            return;
+        }
+        if (!isModerator(ctx.caller, to)) {
+            res.status(403).json({ error: 'forbidden' });
+            return;
+        }
+        const participant = await getRoomService().getParticipant(ctx.room.id, ctx.target).catch(ignoreNotFound);
+        if (!participant) {
+            res.status(404).json({ error: 'not_found' });
+            return;
+        }
+        const refused = await refuseMove(ctx.target, to);
+        if (refused) {
+            res.status(refused.status).json({ error: refused.error });
+            return;
+        }
+        await announce(ctx, 'moved', participant.name || ctx.target, { to: { id: to.id, name: to.name } });
         res.json({ ok: true });
     });
 

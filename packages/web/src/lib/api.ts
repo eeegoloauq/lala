@@ -118,6 +118,10 @@ export const muteParticipant = (roomId: string, identity: string, muted: boolean
 export const setVoice = (roomId: string, identity: string, allowed: boolean) =>
     request<void>(admin(roomId, 'voice'), send('POST', { identity, allowed }));
 
+/** Asks the person's client to switch to `to`, another room the caller moderates. */
+export const moveParticipant = (roomId: string, identity: string, to: string) =>
+    request<void>(admin(roomId, 'move'), send('POST', { identity, to }));
+
 export async function getBans(roomId: string): Promise<RoomBan[]> {
     return (await request<BansResponse>(admin(roomId, 'bans'))).bans;
 }

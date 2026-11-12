@@ -6,6 +6,7 @@ import { useRoomUIContext } from '../RoomUIContext';
 import { floorActionInRoom, isServerMutedInRoom } from '../../../lib/roomStatusStore';
 import { setScreenShareSubscribed } from '../lib/screenShare';
 import { openProfile } from '../../../lib/profileCard';
+import { moveTargetsInList } from '../../../lib/moving';
 
 /**
  * Admin-action wiring shared by VideoGrid and FocusLayout: both accept identity-scoped
@@ -17,6 +18,7 @@ export interface ParticipantAdminActions {
     onBan: (identity: string) => Promise<void>;
     onToggleMute: (identity: string, serverMuted: boolean) => Promise<void>;
     onToggleVoice: (identity: string, voiced: boolean) => Promise<void>;
+    onMove: (identity: string, to: string) => Promise<void>;
     /** Server admins only. */
     onServerBan?: (identity: string) => Promise<void>;
 }
@@ -81,6 +83,8 @@ export function useParticipantContextMenu() {
                 onServerBan: admin.onServerBan && (() => admin.onServerBan!(identity)),
                 voice: contextMenu.floor,
                 onToggleVoice: () => admin.onToggleVoice(identity, contextMenu.floor === 'take'),
+                moveTargets: moveTargetsInList(admin.roomId, identity),
+                onMove: (to) => admin.onMove(identity, to),
             } : undefined,
             screenShareHidden: !!screenSharePub && !screenSharePub.isSubscribed,
             onToggleScreenShare: screenSharePub && (() => setScreenShareSubscribed(participant, !screenSharePub.isSubscribed)),

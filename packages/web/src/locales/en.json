@@ -54,7 +54,8 @@
     "membersOnly": "Members only",
     "online_one": "{{count}} online",
     "online_other": "{{count}} online",
-    "saved": "Saved"
+    "saved": "Saved",
+    "hide": "Hide the room list"
   },
   "room": {
     "wrongPassword": "Wrong password",
@@ -110,7 +111,8 @@
     "giveVoice": "Let speak",
     "takeVoice": "Take the floor back",
     "raiseHand": "Raise hand",
-    "lowerHand": "Lower hand"
+    "lowerHand": "Lower hand",
+    "moveTo": "Move to…"
   },
   "admin": {
     "kicked": "{{by}} kicked {{target}}",
@@ -121,7 +123,8 @@
     "unvoiced": "{{by}} took the floor back from {{target}}",
     "added": "{{by}} added {{target}}",
     "addedListens": "{{by}} added {{target}}, which can hear the call",
-    "removed": "{{by}} removed {{target}}"
+    "removed": "{{by}} removed {{target}}",
+    "moved": "{{by}} moved {{target}} to {{room}}"
   },
   "theme": {
     "dark": "Dark",
@@ -205,7 +208,8 @@
     "left": "{{name}} left",
     "screenShareStarted": "{{name}} started sharing their screen",
     "screenShareStopped": "{{name}} stopped sharing their screen",
-    "someone": "Someone"
+    "someone": "Someone",
+    "movedYou": "{{by}} moved you here"
   },
   "settings": {
     "title": "Settings",
@@ -305,6 +309,7 @@
     "keyChat": "Open / close chat",
     "keyFullscreen": "Toggle fullscreen",
     "keyScreenShare": "Screen share",
+    "keySidebar": "Show or hide the room list",
     "resetDefaults": "Reset to default",
     "keyPTT": "Push to talk (when PTT is on)",
     "keyEsc": "Close dialogs",
@@ -374,7 +379,7 @@
     "hearts": "Hearts"
   },
   "app": {
-    "openSidebar": "Open sidebar"
+    "openSidebar": "Show the room list"
   },
   "roomAdmin": {
     "bannedUsers": "Banned users",
@@ -505,5 +510,11 @@
       "quitTitle": "Lala has to close",
       "quitBody": "The window keeps crashing. Crash logs: {{path}}"
     }
+  },
+  "moveErrors": {
+    "banned": "They're banned from that room",
+    "not_allowed": "They aren't allowed in that room",
+    "room_full": "That room is full",
+    "not_found": "They aren't in the room any more"
   }
 }

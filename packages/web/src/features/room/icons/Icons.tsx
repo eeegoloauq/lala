@@ -235,6 +235,16 @@ export function PlusIcon(props: IconProps) {
     );
 }
 
+/** Showing or hiding the room list. */
+export function SidebarIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+        </Svg>
+    );
+}
+
 /** Taking someone out of the room. */
 export function OutIcon(props: IconProps) {
     return (

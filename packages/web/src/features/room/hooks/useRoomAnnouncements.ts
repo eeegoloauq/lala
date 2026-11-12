@@ -7,16 +7,18 @@ import { speak } from '../../../lib/tts';
 import { ttsOptsFromSettings } from '../lib/ttsOpts';
 import type { ModerationEvent, ModerationTopic } from '../../../lib/types';
 import type { AppSettings } from '../../settings/types';
+import { noteMovedBy, takeMovedBy } from '../../../lib/moving';
 
 const MODERATION_TOPIC: ModerationTopic = 'lala.moderation';
-const ACTIONS: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'muted', 'unmuted', 'voiced', 'unvoiced', 'added', 'removed', 'left']);
+const ACTIONS: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'muted', 'unmuted', 'voiced', 'unvoiced', 'added', 'removed', 'left', 'moved']);
 // After these the participant's disconnect needs no line of its own.
-const GONE: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'removed', 'left']);
+const GONE: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'removed', 'left', 'moved']);
 
 function parseModerationEvent(payload: Uint8Array): ModerationEvent | null {
     try {
         const e = JSON.parse(new TextDecoder().decode(payload));
-        const valid = ACTIONS.has(e?.action) && [e.target, e.targetName, e.byName].every(v => typeof v === 'string');
+        const valid = ACTIONS.has(e?.action) && [e.target, e.targetName, e.byName].every(v => typeof v === 'string')
+            && (e.action !== 'moved' || (typeof e.to?.id === 'string' && typeof e.to?.name === 'string'));
         return valid ? e : null;
     } catch {
         return null;
@@ -28,7 +30,7 @@ function parseModerationEvent(payload: Uint8Array): ModerationEvent | null {
  * and the server's moderation events, each as a sound (where the settings allow), a chat
  * notice and, with chat speech on, spoken aloud.
  */
-export function useRoomAnnouncements(room: Room, settings: AppSettings, addSystem: (text: string, id: string) => void) {
+export function useRoomAnnouncements(room: Room, settings: AppSettings, addSystem: (text: string, id: string) => void, onMoved: (roomId: string) => void) {
     const { t } = useTranslation();
     // Identities just kicked or banned: their disconnect is already announced. Used up by
     // that disconnect, or dropped when they join again.
@@ -47,7 +49,12 @@ export function useRoomAnnouncements(room: Room, settings: AppSettings, addSyste
     // of being cut by it. Without a microphone it plays 300 ms after connecting.
     const announceSelfJoin = useEffectEvent(() => {
         if (settings.soundJoinLeave) playJoinSound();
-        addSystem(t('system.youJoined'), 'self-join');
+        const movedBy = takeMovedBy(room.name);
+        addSystem(movedBy ? t('system.movedYou', { by: movedBy }) : t('system.youJoined'), 'self-join');
+    });
+    const moved = useEffectEvent((roomId: string, by: string) => {
+        noteMovedBy(roomId, by);
+        onMoved(roomId);
     });
     useEffect(() => {
         let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -109,9 +116,14 @@ export function useRoomAnnouncements(room: Room, settings: AppSettings, addSyste
             if (!event) return;
             if (GONE.has(event.action)) kickedRef.current.add(event.target);
             if (event.action === 'added') addedRef.current.add(event.target);
+            // The server checked that this client may join there; the switch is an ordinary join.
+            if (event.action === 'moved' && event.to && event.target === room.localParticipant.identity) {
+                moved(event.to.id, event.byName);
+                return;
+            }
             const key = event.action === 'left' ? 'system.left'
                 : event.action === 'added' && event.listens === true ? 'admin.addedListens' : `admin.${event.action}`;
-            announce(t(key, { by: event.byName, target: event.targetName, name: event.targetName }), `admin-${event.action}-${event.target}`);
+            announce(t(key, { by: event.byName, target: event.targetName, name: event.targetName, room: event.to?.name }), `admin-${event.action}-${event.target}`);
         };
 
         room.on(RoomEvent.ParticipantConnected, onJoin)

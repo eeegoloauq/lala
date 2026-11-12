@@ -296,6 +296,35 @@
     }
 }
 
+/* ─── Hide button (wider screens; phones close the drawer with ✕) ─── */
+.sidebar-hide-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: -4px -8px -4px auto;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.sidebar-hide-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+@media (max-width: 640px) {
+    .sidebar-hide-btn {
+        display: none;
+    }
+}
+
 /* Settings button in sidebar using cb-btn style but smaller and flat */
 .sidebar-settings-btn {
     width: 32px;
@@ -473,4 +502,21 @@
     .sidebar-section-header {
         padding-right: 0;
     }
+}
+
+/* A room someone is being dragged onto. */
+.channel-item.channel-item-drop {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    outline: 1px dashed var(--accent);
+    outline-offset: -1px;
+}
+
+.channel-user-card[draggable="true"] {
+    cursor: grab;
+}
+
+.channel-move-error {
+    margin: 2px 8px 4px 30px;
+    font-size: 12px;
+    color: var(--color-danger, #ef4444);
 }

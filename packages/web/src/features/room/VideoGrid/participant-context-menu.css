@@ -154,3 +154,18 @@
 @keyframes ctxSheetUp {
     from { transform: translateY(16px); opacity: 0; }
 }
+
+/* Rooms to move someone to, under "Move to": indented, scrolling past a handful. */
+.ctx-menu-moves {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.ctx-menu-move {
+    padding-left: 36px;
+    color: var(--text-secondary);
+}
+
+.ctx-menu-move:hover {
+    color: var(--text-primary);
+}

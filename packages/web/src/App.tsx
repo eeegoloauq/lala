@@ -12,6 +12,9 @@ import { useRooms } from './hooks/useRooms';
 import { useMe } from './hooks/useMe';
 import { MeContext } from './lib/meContext';
 import { useRoute } from './hooks/useRoute';
+import { useMediaQuery } from './hooks/useMediaQuery';
+import { useSidebarShortcut } from './hooks/useSidebarShortcut';
+import { SidebarIcon } from './features/room/icons/Icons';
 import { useDisplayName } from './hooks/useDisplayName';
 import { usePersistedVolumes } from './hooks/usePersistedVolumes';
 import type { NewRoom } from './lib/types';
@@ -23,6 +26,7 @@ import { usePublishAvatars } from './hooks/usePublishAvatars';
 import { saveRoomPassword, getRoomPassword } from './lib/passwords';
 import { getTemplates, saveTemplate } from './lib/roomTemplates';
 import { resetRoomSession, setModerationInRoom } from './lib/roomStatusStore';
+import { setListedRooms } from './lib/moving';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
@@ -50,6 +54,14 @@ export default function App() {
             if (window.history.state?.lalaDrawer) window.history.back();
         };
     }, [sidebarOpen]);
+    // Phones open the room list as a drawer over the call; wider screens dock it and may hide it.
+    const isPhone = useMediaQuery('(max-width: 640px)');
+    const sidebarHidden = settings.sidebarHidden && !isPhone;
+    const toggleSidebar = useCallback(() => {
+        if (isPhone) setSidebarOpen(open => !open);
+        else updateSettings({ sidebarHidden: !settings.sidebarHidden });
+    }, [isPhone, settings.sidebarHidden, updateSettings]);
+    useSidebarShortcut(settings, toggleSidebar);
     const { volumes, handleVolumeChange } = usePersistedVolumes();
     const [myAvatar, setMyAvatar] = useState(getMyAvatar);
     // The server is where others get the avatar from; this device's copy is the original.
@@ -72,9 +84,11 @@ export default function App() {
         if (local && !me.avatar) uploadAvatar(local).catch(err => console.warn('[App] Uploading the avatar failed:', err));
     }, [me]);
     usePublishAvatars(rooms, me?.identity, myAvatar);
-    // The call's tiles and menus read server mutes and the floor from the same list as the sidebar.
+    // The call's tiles and menus read server mutes, the floor and the rooms to move people
+    // to from the same list as the sidebar.
     useEffect(() => {
         setModerationInRoom(rooms.find(r => r.id === route.roomId));
+        setListedRooms(rooms);
     }, [rooms, route.roomId]);
 
 
@@ -188,7 +202,7 @@ export default function App() {
 
     return (
         <MeContext.Provider value={me}>
-            <div className={`app-layout${!activeRoom ? ' no-room' : ''}`}>
+            <div className={`app-layout${!activeRoom ? ' no-room' : ''}${sidebarHidden ? ' sidebar-hidden' : ''}`}>
                 {sidebarOpen && (
                     <div
                         className="sidebar-mobile-overlay"
@@ -208,6 +222,7 @@ export default function App() {
                         onCreateRoom={handleCreateRoom}
                         onOpenSettings={() => { setSettingsOpen(true); setSidebarOpen(false); }}
                         onClose={activeRoom ? () => setSidebarOpen(false) : undefined}
+                        onHide={() => updateSettings({ sidebarHidden: true })}
                         volumes={volumes}
                         onVolumeChange={handleVolumeChange}
                     />
@@ -216,14 +231,17 @@ export default function App() {
                 <main className="main-content">
                     <button
                         className="sidebar-hamburger"
-                        onClick={() => setSidebarOpen(true)}
+                        onClick={isPhone ? () => setSidebarOpen(true) : toggleSidebar}
                         title={t('app.openSidebar')}
+                        aria-label={t('app.openSidebar')}
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                            <line x1="3" y1="6" x2="21" y2="6" />
-                            <line x1="3" y1="12" x2="21" y2="12" />
-                            <line x1="3" y1="18" x2="21" y2="18" />
-                        </svg>
+                        {isPhone ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <line x1="3" y1="12" x2="21" y2="12" />
+                                <line x1="3" y1="18" x2="21" y2="18" />
+                            </svg>
+                        ) : <SidebarIcon size={18} />}
                     </button>
 
                     {activeRoom && <RoomHeader room={rooms.find(r => r.id === activeRoom)} />}
@@ -235,6 +253,7 @@ export default function App() {
                             settings={settings}
                             onUpdateSettings={updateSettings}
                             onLeave={handleLeave}
+                            onMoved={handleJoinRoom}
                             onOpenSettings={() => setSettingsOpen(true)}
                             volumes={volumes}
                             onVolumeChange={handleVolumeChange}

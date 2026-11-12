@@ -28,6 +28,9 @@ export interface ChannelUserRowProps {
     onContextMenu: (e: React.MouseEvent) => void;
     /** Opens the profile card; not on touch screens, where a tap opens the menu. */
     onOpenProfile?: (e: React.MouseEvent) => void;
+    /** Set when a moderator may drag this person to another room. */
+    onDragStart?: (e: React.DragEvent) => void;
+    onDragEnd?: () => void;
 }
 
 /**
@@ -49,6 +52,8 @@ export const ChannelUserRow = memo(function ChannelUserRow({
     listens,
     onContextMenu,
     onOpenProfile,
+    onDragStart,
+    onDragEnd,
 }: ChannelUserRowProps) {
     const { t } = useTranslation();
     const speaking = useIsSpeaking(identity);
@@ -69,6 +74,9 @@ export const ChannelUserRow = memo(function ChannelUserRow({
             data-participant-room={roomId}
             onContextMenu={onContextMenu}
             onClick={onOpenProfile}
+            draggable={!!onDragStart}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
         >
             <div
                 className={`channel-user-avatar${speaking && !isBot ? ' speaking' : ''}`}

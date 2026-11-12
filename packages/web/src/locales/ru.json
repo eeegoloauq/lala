@@ -56,7 +56,8 @@
     "online_few": "{{count}} в сети",
     "online_many": "{{count}} в сети",
     "online_other": "{{count}} в сети",
-    "saved": "Сохранённые"
+    "saved": "Сохранённые",
+    "hide": "Скрыть список комнат"
   },
   "room": {
     "wrongPassword": "Неверный пароль",
@@ -112,7 +113,8 @@
     "giveVoice": "Дать слово",
     "takeVoice": "Забрать слово",
     "raiseHand": "Поднять руку",
-    "lowerHand": "Опустить руку"
+    "lowerHand": "Опустить руку",
+    "moveTo": "Переместить в…"
   },
   "admin": {
     "kicked": "{{by}} кикнул {{target}}",
@@ -123,7 +125,8 @@
     "unvoiced": "{{by}} забрал слово у {{target}}",
     "added": "{{by}} добавил {{target}}",
     "addedListens": "{{by}} добавил {{target}}, бот слышит звонок",
-    "removed": "{{by}} убрал {{target}}"
+    "removed": "{{by}} убрал {{target}}",
+    "moved": "{{by}} переместил {{target}} в {{room}}"
   },
   "theme": {
     "dark": "Тёмная",
@@ -211,7 +214,8 @@
     "left": "{{name}} вышел",
     "screenShareStarted": "{{name}} начал демонстрацию экрана",
     "screenShareStopped": "{{name}} остановил демонстрацию экрана",
-    "someone": "Кто-то"
+    "someone": "Кто-то",
+    "movedYou": "{{by}} переместил вас сюда"
   },
   "settings": {
     "title": "Настройки",
@@ -311,6 +315,7 @@
     "keyChat": "Открыть / закрыть чат",
     "keyFullscreen": "Полный экран",
     "keyScreenShare": "Демонстрация экрана",
+    "keySidebar": "Показать или скрыть список комнат",
     "resetDefaults": "Сбросить по умолчанию",
     "keyPTT": "Кнопка разговора (при вкл. PTT)",
     "keyEsc": "Закрыть диалоги",
@@ -380,7 +385,7 @@
     "hearts": "Сердца"
   },
   "app": {
-    "openSidebar": "Открыть боковую панель"
+    "openSidebar": "Показать список комнат"
   },
   "roomAdmin": {
     "bannedUsers": "Забаненные",
@@ -517,5 +522,11 @@
       "quitTitle": "Lala нужно закрыть",
       "quitBody": "Окно продолжает завершаться со сбоем. Журналы сбоев: {{path}}"
     }
+  },
+  "moveErrors": {
+    "banned": "В той комнате у них бан",
+    "not_allowed": "В ту комнату им нельзя",
+    "room_full": "Та комната заполнена",
+    "not_found": "Их уже нет в комнате"
   }
 }

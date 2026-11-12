@@ -47,13 +47,14 @@ interface RoomShellProps {
     /** Back in after a dropped connection that was deafened: stays deafened. */
     startDeafened?: boolean;
     onOpenSettings?: () => void;
+    onMoved: (roomId: string) => void;
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     volumes: Map<string, number>;
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomShell({ canModerate, name, startDeafened = false, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
+export function RoomShell({ canModerate, name, startDeafened = false, onOpenSettings, onMoved, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
     const [audioMuted, setAudioMuted] = useState(startDeafened);
@@ -115,7 +116,7 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
     const { fileTransfers, sendFile, cancelSend } = useFileTransfers(room, localParticipant);
 
     const { chatEntries, addSystem } = useChatEntries(messages, fileTransfers);
-    useRoomAnnouncements(room, settings, addSystem);
+    useRoomAnnouncements(room, settings, addSystem, onMoved);
 
     const adminProps = useAdminActions(room.name, canModerate);
 

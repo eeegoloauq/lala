@@ -13,9 +13,8 @@ In this order; each builds on the one before.
    in or out of a call. Like everything the server keeps, it can be lost: the last 200
    messages for 24 hours. `@name` in any chat notifies the person mentioned when they are
    online (desktop notification, badge on the room).
-3. **Moving people and an AFK room.** Moderators drag someone into another room; the server
-   gives the client a token for it and the client switches. An AFK room from the config, where
-   people idle for a set time are moved with their microphone off.
+3. **An AFK room.** From the config: people idle for a set time are moved there with their
+   microphone off, using the move moderators already have.
 4. **Pinned rooms.** An admin pins a room someone created so it stays when empty, with its
    bans, stored like the rooms from the config.
 

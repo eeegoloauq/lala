@@ -17,6 +17,41 @@
     display: none;
 }
 
+/* Wider screens with the room list hidden: the call takes the width, and the button
+   that brings the list back sits at the left of the room header. */
+@media (min-width: 641px) {
+    .app-layout.sidebar-hidden .sidebar-wrapper {
+        display: none;
+    }
+
+    .app-layout.sidebar-hidden .sidebar-hamburger {
+        display: flex;
+        position: absolute;
+        z-index: 10;
+        top: 12px;
+        left: 12px;
+        width: 32px;
+        height: 32px;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-control);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+    }
+
+    .app-layout.sidebar-hidden .sidebar-hamburger:hover {
+        color: var(--text-primary);
+        border-color: var(--accent);
+    }
+
+    .app-layout.sidebar-hidden .room-header {
+        padding-left: 56px;
+    }
+}
+
 /* Mobile overlay */
 .sidebar-mobile-overlay {
     display: none;

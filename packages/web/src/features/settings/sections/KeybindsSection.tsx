@@ -48,6 +48,7 @@ function KeybindsTable({ settings, onUpdate }: KeybindsTableProps) {
     { key: 'keyChat',        label: t('settings.keyChat') },
     { key: 'keyFullscreen',  label: t('settings.keyFullscreen') },
     { key: 'keyScreenShare', label: t('settings.keyScreenShare') },
+    { key: 'keySidebar',     label: t('settings.keySidebar') },
   ] as const;
 
   const { listening, listen } = useKeyCapture<typeof BINDS[number]['key']>((key, code) => onUpdate({ [key]: code }));

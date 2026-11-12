@@ -354,6 +354,19 @@ function moderate(r: DemoRoom, action: string, body: Body): Response {
             if (typeof body.muted !== 'boolean') return fail(400, 'invalid_input');
             if (body.muted) r.serverMuted.add(target); else r.serverMuted.delete(target);
             break;
+        case 'move': {
+            // The same refusals as packages/api: a different, open room with space.
+            const to = rooms.find(x => x.id === body.to);
+            const person = r.people.find(p => p.identity === target);
+            if (!to || to === r) return fail(to ? 400 : 404, to ? 'invalid_input' : 'room_not_found');
+            if (!person || target === ME) return fail(person ? 400 : 404, person ? 'invalid_input' : 'not_found');
+            if (to.key) return fail(400, 'password_room');
+            if (to.bans.some(b => b.identity === target)) return fail(403, 'banned');
+            if (to.maxParticipants && to.people.length >= to.maxParticipants) return fail(403, 'room_full');
+            removePerson(r, target);
+            to.people.push(person);
+            break;
+        }
         case 'voice':
             if (typeof body.allowed !== 'boolean') return fail(400, 'invalid_input');
             if (body.allowed) r.voiced.add(target); else r.voiced.delete(target);

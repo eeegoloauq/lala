@@ -198,11 +198,12 @@ export type ModerationTopic = 'lala.moderation';
  * where `byName` is the bot's own name). Clients ignore actions they don't know.
  */
 export interface ModerationEvent {
-    action: 'kicked' | 'banned' | 'muted' | 'unmuted' | 'voiced' | 'unvoiced' | 'added' | 'removed' | 'left';
+    action: 'kicked' | 'banned' | 'muted' | 'unmuted' | 'voiced' | 'unvoiced' | 'added' | 'removed' | 'left' | 'moved';
     target: string;     // identity
     targetName: string;
     byName: string;
     listens?: boolean;  // on `added`: the bot will hear and see the call
+    to?: { id: string; name: string };  // on `moved`: the room the target's client switches to
 }
 
 /** Response from GET /api/access. POST /api/access takes `{ password }` or `{ invite }` and sets the session cookie. */

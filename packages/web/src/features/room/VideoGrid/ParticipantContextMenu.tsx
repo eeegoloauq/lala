@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SettingsIcon, RenameIcon, ProfileIcon } from '../icons/Icons';
+import { SettingsIcon, RenameIcon, ProfileIcon, OutIcon } from '../icons/Icons';
+import { moveErrorMessage, type MoveTarget } from '../../../lib/moving';
 import { errorMessage } from '../../../lib/errorMessage';
 import { useDismiss } from '../../../hooks/useDismiss';
 import './participant-context-menu.css';
@@ -15,6 +16,9 @@ export interface AdminActions {
     /** Give the floor to someone who may not speak, or take it back. */
     voice?: 'give' | 'take';
     onToggleVoice: () => Promise<void>;
+    /** Other rooms the caller moderates, without a password, to move this person to. */
+    moveTargets: MoveTarget[];
+    onMove: (to: string) => Promise<void>;
 }
 
 export interface ParticipantContextMenuProps {
@@ -40,12 +44,13 @@ export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVo
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const [adminError, setAdminError] = useState<string | null>(null);
+    const [movesOpen, setMovesOpen] = useState(false);
 
     // Stays open until the server answers, so a refused action says why instead of vanishing.
-    const runAdmin = (action: () => Promise<void>) => {
+    const runAdmin = (action: () => Promise<void>, describe = errorMessage) => {
         setAdminError(null);
         action().then(onClose, (err) => {
-            setAdminError(errorMessage(t, err));
+            setAdminError(describe(t, err));
         });
     };
 
@@ -139,6 +144,23 @@ export function ParticipantContextMenu({ name, isRemote, x, y, volume = 50, onVo
                                     <span aria-hidden="true">✋</span>
                                     {admin.voice === 'give' ? t('ctx.giveVoice') : t('ctx.takeVoice')}
                                 </button>
+                            )}
+                            {admin.moveTargets.length > 0 && (
+                                <>
+                                    <button className="ctx-menu-item" aria-expanded={movesOpen} onClick={() => setMovesOpen(open => !open)}>
+                                        <OutIcon size={14} />
+                                        {t('ctx.moveTo')}
+                                    </button>
+                                    {movesOpen && (
+                                        <div className="ctx-menu-moves">
+                                            {admin.moveTargets.map(room => (
+                                                <button key={room.id} className="ctx-menu-item ctx-menu-move" onClick={() => runAdmin(() => admin.onMove(room.id), moveErrorMessage)}>
+                                                    {room.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
                             )}
                             <button className="ctx-menu-item ctx-menu-item--warn" onClick={() => runAdmin(admin.onToggleMute)}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

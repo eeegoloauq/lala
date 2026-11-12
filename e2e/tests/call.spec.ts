@@ -122,7 +122,7 @@ test('on a phone, a tap beside the open sidebar closes it', async ({ browser }) 
     await createRoom(alice.page, 'Phone room');
 
     const drawer = alice.page.locator('.sidebar-wrapper');
-    await alice.page.getByRole('button', { name: 'Open sidebar' }).click();
+    await alice.page.getByRole('button', { name: 'Show the room list' }).click();
     await expect(drawer).toHaveClass(/sidebar-mobile-open/);
     // The call stays visible at the right edge, beside the drawer.
     await alice.page.mouse.click(380, 422);
@@ -447,6 +447,65 @@ test('on a stage only the creator speaks until giving someone the floor', async 
 
     expect(alice.errors).toEqual([]);
     expect(bob.errors).toEqual([]);
+});
+
+test('a moderator moves someone between rooms they moderate, by menu or by dragging', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    const bob = await enter(browser, 'Bob');
+    const carol = await enter(browser, 'Carol');
+    const roomOf = (page: Page) => new URL(page.url()).pathname.split('/').pop()!;
+    // One name is one live room; a run's own names keep a repeat out of the last run's rooms.
+    const run = Date.now().toString(36);
+    const [sideName, lobbyName, lockedName, backName] = ['Side', 'Lobby', 'Locked', 'Back'].map(n => `${n} ${run}`);
+    // A created room ends once empty, so each destination keeps someone in it.
+    await createRoom(alice.page, sideName);
+    const side = roomOf(alice.page);
+    await carol.page.goto(alice.page.url());
+    await createRoom(alice.page, lobbyName);
+    const lobby = roomOf(alice.page);
+    await bob.page.goto(alice.page.url());
+    await expect(alice.page.locator('.p-tile', { hasText: 'Bob' })).toBeVisible({ timeout: 20_000 });
+    await createRoom(alice.page, lockedName, { password: 'move-test-password' });
+    const locked = roomOf(alice.page);
+    const sidebarBob = (room: string) => alice.page.locator(`.channel-user-card[data-participant-room="${room}"]`, { hasText: 'Bob' });
+
+    // From the menu: Alice's open rooms are offered, the password room is not.
+    await sidebarBob(lobby).click({ button: 'right' });
+    await alice.page.getByRole('button', { name: 'Move to…' }).click();
+    const moves = alice.page.locator('.ctx-menu-moves');
+    await expect(moves.getByRole('button', { name: sideName })).toBeVisible();
+    await expect(moves.getByRole('button', { name: lockedName })).toHaveCount(0);
+    await moves.getByRole('button', { name: sideName }).click();
+    await bob.page.waitForURL(`**/room/${side}`);
+    // He arrives talking, as when switching rooms himself.
+    await expect.poll(async () => (await media(carol.page)).audio, { timeout: 20_000 }).toBe(1);
+
+    // The server refuses what the menu doesn't offer, and anyone but a moderator of both.
+    // Those refusals log on the pages that ask; nothing else may.
+    for (const { errors } of [alice, bob, carol]) expect(errors).toEqual([]);
+    const device = await alice.page.evaluate(() => localStorage.getItem('lala-device-id')!);
+    const bobId = await bob.page.evaluate(async () => (await (await fetch('/api/me', { headers: { 'X-Lala-Device': localStorage.getItem('lala-device-id')! } })).json()).identity);
+    const intoLocked = await api(alice.page, device, 'POST', `/rooms/${side}/admin/move`, { identity: bobId, to: locked });
+    expect(intoLocked).toEqual({ status: 400, body: { error: 'password_room' } });
+    const byOther = await api(bob.page, 'someone-else', 'POST', `/rooms/${side}/admin/move`, { identity: bobId, to: locked });
+    expect(byOther.status).toBe(403);
+    for (const { errors } of [alice, bob]) errors.splice(0, errors.length, ...errors.filter(e => !/status of 40[03]/.test(e)));
+
+    // By dragging his row onto another room. The events go to the two elements rather
+    // than to screen positions: rooms ending above would shift the list under a mouse drag.
+    await createRoom(alice.page, backName);
+    const back = roomOf(alice.page);
+    const dataTransfer = await alice.page.evaluateHandle(() => new DataTransfer());
+    const backItem = alice.page.locator('.channel-item', { hasText: backName });
+    await sidebarBob(side).dispatchEvent('dragstart', { dataTransfer });
+    await backItem.dispatchEvent('dragover', { dataTransfer });
+    await expect(backItem).toHaveClass(/channel-item-drop/);
+    await backItem.dispatchEvent('drop', { dataTransfer });
+    await sidebarBob(side).dispatchEvent('dragend', { dataTransfer });
+    await bob.page.waitForURL(`**/room/${back}`);
+    await expect(alice.page.locator('.p-tile', { hasText: 'Bob' })).toBeVisible({ timeout: 20_000 });
+
+    for (const { errors } of [alice, bob, carol]) expect(errors).toEqual([]);
 });
 
 test('switching rooms keeps the microphone', async ({ browser }) => {

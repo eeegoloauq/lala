@@ -29,6 +29,8 @@ interface RoomViewProps {
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onLeave: () => void;
+    /** A moderator moved this client to another room. */
+    onMoved: (roomId: string) => void;
     onOpenSettings: () => void;
     volumes: Map<string, number>;
     onVolumeChange: (identity: string, vol: number) => void;
@@ -62,7 +64,7 @@ const REJOIN_RETRYABLE = new Set(['server_unavailable', 'server_error']);
 /** Getting back into a call after a drop, and what to restore once in. */
 interface Rejoin { since: number; attempt: number; micMuted: boolean; deafened: boolean }
 
-export function RoomView({ roomName, name, hashPassword, settings, onUpdateSettings, onLeave, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
+export function RoomView({ roomName, name, hashPassword, settings, onUpdateSettings, onLeave, onMoved, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
     const [connection, setConnection] = useState<{ token: string; url: string; canModerate: boolean } | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -550,7 +552,7 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
                 onDisconnected={handleDisconnected}
                 style={{ height: '100%' }}
             >
-                <RoomShell canModerate={connection.canModerate} name={name} startDeafened={startDeafened} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
+                <RoomShell canModerate={connection.canModerate} name={name} onMoved={onMoved} startDeafened={startDeafened} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
             </LiveKitRoom>
         </div>
     );

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { kickParticipant, banParticipant, muteParticipant, setVoice, banFromServer } from '../../../lib/api';
+import { kickParticipant, banParticipant, muteParticipant, setVoice, banFromServer, moveParticipant } from '../../../lib/api';
 import { useMeContext } from '../../../lib/meContext';
 import type { ParticipantAdminActions } from './useParticipantContextMenu';
 
@@ -14,6 +14,7 @@ export function buildAdminActions(roomId: string, serverAdmin: boolean): Omit<Pa
         onBan: (identity) => banParticipant(roomId, identity),
         onToggleMute: (identity, serverMuted) => muteParticipant(roomId, identity, !serverMuted),
         onToggleVoice: (identity, voiced) => setVoice(roomId, identity, !voiced),
+        onMove: (identity, to) => moveParticipant(roomId, identity, to),
         onServerBan: serverAdmin ? banFromServer : undefined,
     };
 }

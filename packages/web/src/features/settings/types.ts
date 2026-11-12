@@ -47,6 +47,8 @@ export interface AppSettings {
   keyChat: string;
   keyFullscreen: string;
   keyScreenShare: string;
+  keySidebar: string;
+  sidebarHidden: boolean;  // desktop: the room list is hidden (phones use the drawer)
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -83,4 +85,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keyChat: 'KeyC',
   keyFullscreen: 'KeyF',
   keyScreenShare: 'KeyS',
+  keySidebar: 'KeyB',
+  sidebarHidden: false,
 };

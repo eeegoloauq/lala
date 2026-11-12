@@ -5,10 +5,12 @@ import { APP_NAME, MAX_NAME_LENGTH } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { openProfile } from '../../lib/profileCard';
-import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon, PlusIcon } from '../room/icons/Icons';
+import { SidebarIcon, SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon, PlusIcon } from '../room/icons/Icons';
 import { AddBotMenu } from './AddBotMenu';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { floorAction } from '../../lib/floor';
+import { moveErrorMessage, moveTargets } from '../../lib/moving';
+import { moveParticipant } from '../../lib/api';
 import { CreateRoomModal } from './CreateRoomModal';
 import { RoomContextMenu } from './RoomContextMenu';
 import { BannedUsersModal } from './BannedUsersModal';
@@ -35,6 +37,8 @@ interface ChannelSidebarProps {
     onCreateRoom: (req: NewRoom) => Promise<void>;
     onOpenSettings: () => void;
     onClose?: () => void;
+    /** Wider screens: hides the docked room list. */
+    onHide?: () => void;
     volumes?: Map<string, number>;
     onVolumeChange?: (identity: string, vol: number) => void;
 }
@@ -68,6 +72,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     onCreateRoom,
     onOpenSettings,
     onClose,
+    onHide,
     volumes,
     onVolumeChange,
 }: ChannelSidebarProps) {
@@ -91,6 +96,18 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenuState | null>(null);
     const [bansRoomId, setBansRoomId] = useState<string | null>(null);
+    // Dragging someone onto another room moves them (mouse only; touch uses the menu).
+    const [dragging, setDragging] = useState<{ identity: string; from: string } | null>(null);
+    const [dropRoom, setDropRoom] = useState<string | null>(null);
+    const [moveError, showMoveError] = useTimedValue<{ roomId: string; text: string }>(4000);
+    const canDropOn = (roomId: string) => !!dragging && moveTargets(rooms, dragging.from, dragging.identity).some(r => r.id === roomId);
+    const endDrag = () => { setDragging(null); setDropRoom(null); };
+    const dropOn = (roomId: string) => {
+        if (!dragging || !canDropOn(roomId)) return;
+        const { identity: who, from } = dragging;
+        endDrag();
+        moveParticipant(from, who, roomId).catch(err => showMoveError({ roomId, text: moveErrorMessage(t, err) }));
+    };
     const [addBotMenu, setAddBotMenu] = useState<{ roomId: string; locked: boolean; x: number; y: number } | null>(null);
     const closeAddBotMenu = useCallback(() => setAddBotMenu(null), []);
     const [renaming, setRenaming] = useState(false);
@@ -201,6 +218,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
             onToggleMute: () => actions.onToggleMute(participantIdentity, serverMuted),
             voice,
             onToggleVoice: () => actions.onToggleVoice(participantIdentity, voice === 'take'),
+            moveTargets: moveTargets(rooms, roomId, participantIdentity),
+            onMove: (to: string) => actions.onMove(participantIdentity, to),
             onServerBan: actions.onServerBan && (() => actions.onServerBan!(participantIdentity)),
         };
     }, [rooms, me?.role]);
@@ -213,6 +232,11 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                     <span className="logo">{me?.serverName ?? APP_NAME}</span>
                     <span className="sidebar-online">{t('sidebar.online', { count: onlineCount })}</span>
                 </div>
+                {onHide && (
+                    <button className="sidebar-hide-btn" onClick={onHide} title={t('sidebar.hide')} aria-label={t('sidebar.hide')}>
+                        <SidebarIcon size={18} />
+                    </button>
+                )}
                 {onClose && (
                     <button className="sidebar-close-btn" onClick={onClose} title={t('sidebar.close')}>✕</button>
                 )}
@@ -260,8 +284,16 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 {rooms.map((room) => (
                     <div key={room.id}>
                         <div
-                            className={`channel-item ${activeRoom === room.id ? 'active' : ''}${room.canJoin ? '' : ' channel-item-locked'}`}
+                            className={`channel-item ${activeRoom === room.id ? 'active' : ''}${room.canJoin ? '' : ' channel-item-locked'}${dropRoom === room.id ? ' channel-item-drop' : ''}`}
                             onClick={() => room.canJoin && onJoinRoom(room.id)}
+                            onDragOver={(e) => {
+                                if (!canDropOn(room.id)) return;
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                                if (dropRoom !== room.id) setDropRoom(room.id);
+                            }}
+                            onDragLeave={() => dropRoom === room.id && setDropRoom(null)}
+                            onDrop={(e) => { e.preventDefault(); dropOn(room.id); }}
                             title={room.canJoin ? undefined : t('sidebar.membersOnly')}
                             onContextMenu={(e) => handleRoomContextMenu(e, room)}
                             {...longPress((x, y) => openRoomMenu(room, x, y))}
@@ -286,6 +318,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                             )}
                         </div>
 
+                        {moveError?.roomId === room.id && <div className="channel-move-error" role="alert">{moveError.text}</div>}
+
                         {(() => {
                             const participants = roomParticipants.get(room.id) ?? [];
                             const isActiveRoom = room.id === activeRoom;
@@ -305,6 +339,14 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                         isScreenSharing={room.screenSharingParticipants?.includes(p.identity) ?? false}
                                         listens={room.listeningParticipants?.includes(p.identity) ?? false}
                                         onContextMenu={(e) => handleUserContextMenu(e, p.identity, p.name, room.id)}
+                                        onDragStart={!isTouchDevice && p.identity !== identity && moveTargets(rooms, room.id, p.identity).length > 0
+                                            ? (e) => {
+                                                e.dataTransfer.effectAllowed = 'move';
+                                                e.dataTransfer.setData('text/plain', p.name);
+                                                setDragging({ identity: p.identity, from: room.id });
+                                            }
+                                            : undefined}
+                                        onDragEnd={endDrag}
                                         onOpenProfile={isTouchDevice ? undefined : (e) => openProfileBeside(e, p.identity, p.name)}
                                     />
                                 ))}

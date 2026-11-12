@@ -63,8 +63,10 @@ export async function createRoom(page: Page, name: string, options: { stage?: bo
     await page.getByPlaceholder('e.g. "General"').fill(name);
     if (options.password) await page.getByPlaceholder('No password — open channel').fill(options.password);
     if (options.stage) await page.getByLabel('Only I speak').check();
+    const before = page.url();
     await page.getByRole('button', { name: 'Create', exact: true }).click();
-    await page.waitForURL(/\/room\//);
+    // From one room to another the URL changes from one /room/ to the next.
+    await page.waitForURL(url => url.href !== before && url.pathname.includes('/room/'));
 }
 
 /**
