@@ -31,16 +31,15 @@ sudo dnf install lala-desktop
 ## Self-hosting
 
 Runs on [LiveKit](https://livekit.io/) and Redis with Docker Compose. You need a server with a
-public IP and a domain.
+public IP and two domains.
 
 ```bash
 git clone https://github.com/eeegoloauq/lala.git && cd lala
-cp .env.example .env    # set your IP, domain, keys and passwords
-docker network create edge
+./setup.sh              # asks for your domains and makes the keys
 docker compose up -d
 ```
 
-[Full guide](docs/self-hosting.md): reverse proxy, environment, admins, private server, ports.
+[Step-by-step guide](docs/self-hosting.md): domains, reverse proxy, admins, private server, ports.
 
 ## Development
 

@@ -1,120 +1,87 @@
 # Self-hosting
 
-You need: Docker, a server with a public IP, a domain.
+You need a Linux server with a public IP, Docker, and two domains pointing at it: one for the
+app (`lala.example.com`) and one for calls (`rtc.example.com`).
 
-The four containers use about 75 MB of RAM when idle; LiveKit grows during calls.
+## Setup
 
-Images for amd64 and arm64 are published to GHCR: `:latest` and a version tag (`:0.0.27`) for each
-release, `:edge` for the latest commit on `main`.
+1. Point both domains at the server's IP.
 
-```bash
-git clone https://github.com/eeegoloauq/lala.git
-cd lala
-cp .env.example .env
-# edit .env: your IP, domain, LiveKit keys, Redis password and the image tag
+2. Get Lala, run the setup and start it. The setup asks for the domains and makes every key
+   and password in `.env`:
 
-docker network create edge   # compose attaches web and LiveKit to it for your reverse proxy
-docker compose up -d
-```
+   ```bash
+   git clone https://github.com/eeegoloauq/lala.git && cd lala
+   ./setup.sh
+   docker compose up -d
+   ```
 
-The web UI (`:80` in the `web` container) and LiveKit signaling (`:7880`) are reachable on the
-`edge` network and on the host's loopback (`127.0.0.1:3000`, `127.0.0.1:7880`). Put a reverse proxy
-with TLS on that network in front of both, with LiveKit at its own domain
-(`wss://rtc.example.com` → `lala-livekit:7880`).
+3. Open these ports in the firewall: 80, 443 and 7881 (TCP), 3478 and 50000 (UDP).
 
-To build the images yourself, use the repo root as the build context so `packages/shared` is
-included, and set `LALA_REGISTRY=local` and `LALA_TAG=dev`:
+4. Put a reverse proxy with HTTPS in front. The setup prints a [Caddy](https://caddyserver.com/)
+   config for your domains:
 
-```bash
-docker build -f packages/api/Dockerfile -t local/lala-api:dev .
-docker build -f packages/web/Dockerfile -t local/lala-web:dev .
-```
+   ```
+   lala.example.com {
+       reverse_proxy 127.0.0.1:3000
+   }
+   rtc.example.com {
+       reverse_proxy 127.0.0.1:7880
+   }
+   ```
 
-## Environment
+5. Open `https://lala.example.com`.
 
-| Variable | What |
-|----------|------|
-| `LIVEKIT_URL` | WebSocket URL clients connect to (`wss://rtc.example.com`) |
-| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | LiveKit credentials |
-| `NODE_IP` | Server public IP (WebRTC ICE) |
-| `LIVEKIT_DOMAIN` | Domain for TURN (must resolve to the server) |
-| `REDIS_PASSWORD` | Redis password (`openssl rand -hex 24`) |
-| `LALA_REGISTRY` / `LALA_TAG` | Where compose pulls the api/web images from (`ghcr.io/eeegoloauq`, `latest`) |
-| `ALLOWED_ORIGINS` | Allowed frontend origins (CORS) |
-| `LALA_ACCESS_PASSWORD` | Optional password for the whole server, at least 12 characters (`openssl rand -base64 18`) |
-| `CSP_CONNECT_SRC` | CSP connect-src (default `wss: ws:`, tighten for prod) |
-| `LALA_MAX_EVENT_STREAMS` | Optional: open apps the server holds at once, which is how many people can be online (1000) |
-| `LALA_MAX_EVENT_STREAMS_PER_IP` | Optional: open apps from one address, for a household or office behind one (20) |
+6. Make yourself admin: `cp config/lala.example.yaml config/lala.yaml`, put your ID from
+   Settings → Profile under `users:`, and run `docker compose restart api`.
 
-## Members, admins and permanent rooms
+To update: `docker compose pull && docker compose up -d`.
 
-Without a config, everyone who reaches the server may create rooms, and each room's creator
-moderates it. To name admins and members, set who may speak, share a screen or create rooms,
-and keep rooms that always exist, copy [`config/lala.example.yaml`](../config/lala.example.yaml)
-to `config/lala.yaml` and restart the `api` container. People are listed by the ID shown in
-Settings → Profile; calls keep going through the restart.
+## Config
 
-## Text chats
+`config/lala.yaml` sets who may do what, rooms, text chats and more. Every option is explained in
+[`config/lala.example.yaml`](../config/lala.example.yaml). Without the file the server is open
+to everyone and has no admins. After a change, run `docker compose restart api`; calls keep going.
 
-`chats:` in `config/lala.yaml` adds text chats above the rooms, and `rules:` the server's
-rules (see the example file). Redis keeps the newest 10,000 messages of each chat, however
-old; `chatHistory.messages: 0` keeps all of them and `chatHistory.days` also removes old ones.
-Redis holds history in memory, so watch its use when you keep everything. Files sent in chats go to the `chat_files`
-volume, 1 GB in total by default (`chatFiles.space`); `chatFiles.maxFile` optionally limits one
-file. When the space runs out the oldest files are removed and their messages show that. Pictures
-lose their GPS location when uploaded.
-
-The web container accepts uploads of any size and the API refuses one bigger than the space
-(or `maxFile`). A reverse proxy in front usually has its own limit: raise it (Caddy has none by
-default; nginx needs `client_max_body_size`). Taking a chat out of the config hides it and keeps
-its history, so putting it back brings the history back.
-
-## Look
-
-`name:` in `config/lala.yaml` names the server at the top of the room list. `theme:` sets the
-default look for people who haven't picked a theme: a built-in theme with some colors and
-sizes changed (see the example file). It takes no CSS, so nothing the server sends can hide
-the marks that tell people a bot is in the call or can hear it. Each person can still pick a
-theme and add their own CSS in Settings → Appearance; that CSS stays on their device.
-[Theming](theming.md) lists what CSS can change and how to add a theme.
-
-## Bots
-
-A bot is a program you run that joins calls through the [client API](api.md). Pick a key for
-it (lowercase letters, digits, dashes) and make its credential:
-
-```sh
-docker compose exec api node dist/bot-secret.js radio
-```
-
-Give the printed credential to the bot and put the printed `secret:` line under `bots:` in
-`config/lala.yaml`, with the rooms it may join (rooms from the same file) and its rights:
-`speak`, `chat` and `listen`. Without `listen` the bot hears and sees nothing; people in the
-call see an ear next to a bot that can. An `avatar:` is an image file in the config directory,
-under 24 KB. Restart the `api` container to apply a change. Removing a bot, or a room from its
-list, takes it out of those calls at the restart and voids the tokens it holds.
-
-With `invite:` (`everyone`, `members` or `admins`) people can add the bot to any room without a
-password from "Add bot" under the room's people, and it needs no `rooms:`. The bot must be
-running and connected for that; [`examples/bots`](../examples/bots) has one to start from.
-
-The bot's status line and commands reach the call through the LiveKit webhook
-(`/api/webhook`), which `livekit.yaml.example` already configures.
+If your reverse proxy limits upload size (nginx does, Caddy doesn't), raise it for files sent in
+text chats.
 
 ## Private server
 
-Set `LALA_ACCESS_PASSWORD` to keep the server to people you give the password to. Without it nobody
-can list or create rooms or join a call, in the browser or the desktop app. An invite link copied
-from the room list lets one person in without the password for 7 days. A device stays signed
-in for 30 days of inactivity. Changing the password signs everyone out and voids all invite links. Wrong attempts are limited
-to 10 per IP per 15 minutes.
+Set `LALA_ACCESS_PASSWORD` in `.env` (at least 12 characters) and run `docker compose up -d`.
+Only people with the password, or an invite link copied from a room, can get in.
 
-## Ports
+## Bots
 
-Open these to the internet; the web UI and signaling go through the reverse proxy.
+1. Make a credential: `docker compose exec api node dist/bot-secret.js radio`
+2. Give the credential to the bot, and put the printed `secret:` line under `bots:` in
+   `config/lala.yaml` with its rooms and rights.
+3. Run `docker compose restart api`.
 
-| Port | Proto | What |
+[`examples/bots`](../examples/bots) has a bot to start from; the [client API](api.md) has the rest.
+
+## Reference
+
+`./setup.sh` writes `.env`; to write it yourself, start from [`.env.example`](../.env.example).
+The LiveKit key and secret are made up, not signed up for: any name and a long random string.
+
+| `.env` variable | What |
+|----------|------|
+| `NODE_IP` | The server's public IP |
+| `LIVEKIT_URL` | `wss://rtc.example.com` |
+| `LIVEKIT_DOMAIN` | `rtc.example.com` |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | A name of letters and digits / 32+ random characters |
+| `REDIS_PASSWORD` | Letters and digits |
+| `ALLOWED_ORIGINS` | `https://lala.example.com` |
+| `LALA_REGISTRY` / `LALA_TAG` | Where images come from: `ghcr.io/eeegoloauq`, and `latest` or a version |
+| `LALA_ACCESS_PASSWORD` | Optional, see [Private server](#private-server) |
+| `CSP_CONNECT_SRC` | Optional: `wss://rtc.example.com` to allow only your LiveKit |
+| `LALA_MAX_EVENT_STREAMS` | Optional: how many people can be online at once (1000) |
+| `LALA_MAX_EVENT_STREAMS_PER_IP` | Optional: open apps from one address (20) |
+
+| Port | Protocol | For |
 |------|-------|------|
-| 7881 | TCP | ICE/TCP fallback |
-| 50000 | UDP | Media |
-| 3478 | UDP | TURN |
+| 80, 443 | TCP | Reverse proxy |
+| 7881 | TCP | Calls, when UDP is blocked |
+| 50000 | UDP | Call audio and video |
+| 3478 | UDP | TURN, for people behind strict networks |

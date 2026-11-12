@@ -19,6 +19,17 @@ The API needs Redis and LiveKit: run [`e2e/redis.sh`](e2e/redis.sh) and
 `LIVEKIT_URL=ws://127.0.0.1:7880` and the keys from [`e2e/livekit-e2e.yaml`](e2e/livekit-e2e.yaml).
 API response types live in [`packages/shared`](packages/shared/index.d.ts).
 
+## Build the images
+
+From the repo root, so `packages/shared` is included:
+
+```bash
+docker build -f packages/api/Dockerfile -t local/lala-api:dev .
+docker build -f packages/web/Dockerfile -t local/lala-web:dev .
+```
+
+Run them with `LALA_REGISTRY=local` and `LALA_TAG=dev` in `.env`.
+
 ## Test
 
 ```bash
