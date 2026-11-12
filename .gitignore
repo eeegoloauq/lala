@@ -46,3 +46,6 @@ e2e/.bin/
 e2e/test-results/
 e2e/playwright-report/
 config/lala.yaml
+
+# TypeScript incremental build state
+*.tsbuildinfo
