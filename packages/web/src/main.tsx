@@ -14,10 +14,19 @@ import '@livekit/components-styles';
  * React entry point.
  * Imports LiveKit styles and our global CSS.
  */
+// Only a built app gets the service worker. Under the dev server it would serve Vite's
+// unhashed modules from its cache, mixing old and new ones (two copies of React among them),
+// so one left over from a build on the same address is removed.
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {/* sw optional */});
-    });
+    if (import.meta.env.PROD) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {/* sw optional */});
+        });
+    } else {
+        navigator.serviceWorker.getRegistrations()
+            .then(regs => regs.forEach(r => r.unregister()))
+            .catch(() => {/* nothing registered */});
+    }
 }
 
 // Taken out of the URL before the router reads it, once: render effects may run twice.

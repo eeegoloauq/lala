@@ -1,4 +1,5 @@
-const CACHE = 'lala-v1';
+// A new name drops what older versions cached cache-first (unhashed files among them).
+const CACHE = 'lala-v2';
 
 // Static shell to cache on install; relative to this script, so the app may live under a subpath.
 const PRECACHE = ['./', './manifest.webmanifest', './icons/icon.svg'];
@@ -35,17 +36,26 @@ self.addEventListener('fetch', (e) => {
         return;
     }
 
-    // Cache-first for static assets (JS/CSS/fonts have hashed filenames)
+    // Cache-first only for built assets: their names carry a hash of their content, so a
+    // cached one is never stale. Everything else (icons, the audio worklet, RNNoise, the blur
+    // model) keeps its name across releases and comes from the network, the cache only offline.
+    if (/\/assets\/[^/]+$/.test(url.pathname)) {
+        e.respondWith(
+            caches.match(e.request).then(cached => cached || fetchAndCache(e.request))
+        );
+        return;
+    }
     e.respondWith(
-        caches.match(e.request).then(cached => {
-            if (cached) return cached;
-            return fetch(e.request).then(res => {
-                if (res.ok && e.request.method === 'GET') {
-                    const clone = res.clone();
-                    caches.open(CACHE).then(c => c.put(e.request, clone));
-                }
-                return res;
-            });
-        })
+        fetchAndCache(e.request).catch(() => caches.match(e.request).then(cached => cached || Response.error()))
     );
 });
+
+function fetchAndCache(request) {
+    return fetch(request).then(res => {
+        if (res.ok && request.method === 'GET') {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(request, clone));
+        }
+        return res;
+    });
+}
