@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
 import { SERVER_PASSWORD } from '../playwright.config';
-import { api, enter, media, openPage } from './helpers';
+import { api, createRoom, enter, media, openPage } from './helpers';
 
 // Participants of one test must not linger in the next one's rooms.
 test.afterEach(async ({ browser }) => {
@@ -313,15 +313,6 @@ test('background blur loads its model from the app under the production CSP', as
     expect(alice.errors).toEqual([]);
 });
 
-
-/** Creates a room from the sidebar and waits until the page is in it. */
-async function createRoom(page: Page, name: string, options: { stage?: boolean } = {}) {
-    await page.getByRole('button', { name: 'Create channel' }).click();
-    await page.getByPlaceholder('e.g. "General"').fill(name);
-    if (options.stage) await page.getByLabel('Only I speak').check();
-    await page.getByRole('button', { name: 'Create', exact: true }).click();
-    await page.waitForURL(/\/room\//);
-}
 
 test('on a stage only the creator speaks until giving someone the floor', async ({ browser }) => {
     const alice = await enter(browser, 'Alice');

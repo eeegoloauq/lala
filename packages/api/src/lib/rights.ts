@@ -1,5 +1,5 @@
 import { TrackSource, type ParticipantPermission, type VideoGrant } from 'livekit-server-sdk';
-import { config, type Level, type Right, type Role } from './config';
+import { config, type BotConfig, type Level, type Right, type Role } from './config';
 import { botOf, isBotIdentity } from './bots';
 import type { Flags, RoomState } from './rooms';
 
@@ -28,15 +28,26 @@ export const isModerator = (identity: string | undefined, room: RoomState) =>
 
 /**
  * A bot's rights come from its own entry, not from the room's levels: it joins the rooms
- * listed there, speaks and chats when it has those rights, and never shows video or a screen.
+ * listed there and rooms someone added it to (`invited`, while its entry still allows
+ * that), speaks and chats when it has those rights, and never shows video or a screen.
  */
-export function can(identity: string | undefined, room: RoomState, right: Right): boolean {
+export function can(identity: string | undefined, room: RoomState, right: Right, invited = false): boolean {
     if (isBotIdentity(identity)) {
         const bot = botOf(identity);
-        if (!bot || !bot.rooms.has(room.id)) return false;
+        if (!bot || !(bot.rooms.has(room.id) || (invited && bot.invite !== undefined))) return false;
         return right === 'join' || (right === 'speak' && bot.rights.speak) || (right === 'chat' && bot.rights.chat);
     }
     return mayEnter(identity) && rank(identity, room) >= RANK[room.rights[right]];
+}
+
+/**
+ * Whether this person may add the bot to the room: its `invite` level, counted as for room
+ * rights (a creator ranks as an admin in their own room), and they must be allowed in.
+ * Bots never add bots.
+ */
+export function mayAddBot(identity: string | undefined, room: RoomState, bot: BotConfig): boolean {
+    return bot.invite !== undefined && !isBotIdentity(identity) && can(identity, room, 'join')
+        && rank(identity, room) >= RANK[bot.invite];
 }
 
 export function canCreateRooms(identity: string | undefined): boolean {
@@ -48,19 +59,20 @@ export function canCreateRooms(identity: string | undefined): boolean {
  * What a participant may publish. It goes into their token and, on a change, to LiveKit
  * directly, so the media server enforces it whatever the client does.
  */
-export function permissionFor(identity: string, room: RoomState, { muted, voiced }: Flags): Partial<ParticipantPermission> {
+export function permissionFor(identity: string, room: RoomState, { muted, voiced, invited }: Flags): Partial<ParticipantPermission> {
     // A moderator can mute a bot but not give it the floor: what it may do is the admin's call.
     const bot = isBotIdentity(identity);
+    const may = (right: Right) => can(identity, room, right, invited);
     const sources: TrackSource[] = [];
-    if ((can(identity, room, 'speak') || (voiced && !bot)) && !muted) sources.push(TrackSource.MICROPHONE);
-    if (can(identity, room, 'video')) sources.push(TrackSource.CAMERA);
-    if (can(identity, room, 'screen')) sources.push(TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO);
+    if ((may('speak') || (voiced && !bot)) && !muted) sources.push(TrackSource.MICROPHONE);
+    if (may('video')) sources.push(TrackSource.CAMERA);
+    if (may('screen')) sources.push(TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO);
     return {
         // Without listen a bot gets no one's audio or video; chat still reaches it.
         canSubscribe: bot ? botOf(identity)?.rights.listen === true : true,
         canPublish: sources.length > 0,
         canPublishSources: sources,
-        canPublishData: can(identity, room, 'chat'),
+        canPublishData: may('chat'),
         // Name, avatar, status and commands of a bot are set by the server only.
         canUpdateMetadata: !bot,
         hidden: false,

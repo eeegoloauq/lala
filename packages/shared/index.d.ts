@@ -26,6 +26,41 @@ export interface RoomInfo {
     deafenedParticipants: string[];      // from participant metadata
     serverMutedParticipants: string[];   // muted by a moderator
     listeningParticipants: string[];     // bots in the room that receive its audio and video
+    canAddBots: boolean;                 // whether the caller may add a bot here (see GET /api/rooms/:id/bots)
+    addedBots: AddedBot[];               // bots people added to this room, joined or not
+}
+
+/** A bot someone added to a room; the invitation lasts until it is removed or the room ends. */
+export interface AddedBot {
+    identity: string;     // `bot-<key>`
+    addedBy: string;      // identity of the person who added it
+    addedByName: string;
+}
+
+/** One bot the caller may add to a room, from GET /api/rooms/:id/bots. */
+export interface RoomBot {
+    key: string;          // for POST and DELETE /api/rooms/:id/bots/:key
+    identity: string;
+    name: string;
+    avatar?: string;      // image data URL from the server config
+    listens: boolean;     // it would hear and see everyone in the call
+    online: boolean;      // the bot is connected to the server and can be added now
+    added: boolean;       // someone already added it to this room
+}
+
+/** Response from GET /api/rooms/:id/bots */
+export interface RoomBotsResponse { bots: RoomBot[]; }
+
+/**
+ * Events on GET /api/bot/events (server-sent events, with a bot credential). On connect the
+ * stream sends `invited` for every room the bot is already added to.
+ */
+export interface BotInvitedEvent {
+    room: { id: string; name: string };
+    byName: string;
+}
+export interface BotRemovedEvent {
+    room: { id: string };
 }
 
 /** One banned participant, from GET /api/rooms/:id/admin/bans. */
@@ -130,6 +165,17 @@ export interface MuteRequest { identity: string; muted: boolean; }
 export interface VoiceRequest { identity: string; allowed: boolean; }
 
 /**
+ * A card a bot attaches to a chat message, as the `lala.card` attribute (JSON) of the
+ * `lk.chat` text stream. Clients show it only from `bot-` identities and check the lengths.
+ */
+export interface BotCard {
+    title: string;       // at most 60 characters
+    text?: string;       // at most 120 characters
+    icon?: BotCardIcon;
+}
+export type BotCardIcon = 'bot' | 'music' | 'note' | 'star' | 'dice' | 'check';
+
+/**
  * Participant attributes. The server sets lala.server-muted and lala.voice ('1' or
  * absent); a participant sets lala.hand on itself to ask for the floor. On a bot
  * (identity `bot-…`, which can't change its own attributes) the server also sets
@@ -140,12 +186,17 @@ export type ParticipantAttribute = 'lala.server-muted' | 'lala.voice' | 'lala.ha
 /** Data topic of moderation events. Only the server publishes on it. */
 export type ModerationTopic = 'lala.moderation';
 
-/** Sent by the server to everyone in the room after a moderation action succeeds. */
+/**
+ * Sent by the server to everyone in the room after a moderation action succeeds, and when
+ * someone adds a bot (`added`), removes one (`removed`) or a bot leaves for good (`left`,
+ * where `byName` is the bot's own name). Clients ignore actions they don't know.
+ */
 export interface ModerationEvent {
-    action: 'kicked' | 'banned' | 'muted' | 'unmuted' | 'voiced' | 'unvoiced';
+    action: 'kicked' | 'banned' | 'muted' | 'unmuted' | 'voiced' | 'unvoiced' | 'added' | 'removed' | 'left';
     target: string;     // identity
     targetName: string;
     byName: string;
+    listens?: boolean;  // on `added`: the bot will hear and see the call
 }
 
 /** Response from GET /api/access. POST /api/access takes `{ password }` or `{ invite }` and sets the session cookie. */
@@ -168,6 +219,8 @@ export interface InviteResponse {
 export type ApiErrorCode =
     | 'access_required'
     | 'banned'
+    | 'bot_not_found'
+    | 'bot_offline'
     | 'forbidden'
     | 'invalid_bot_credential'
     | 'invalid_input'
@@ -178,6 +231,7 @@ export type ApiErrorCode =
     | 'not_allowed'
     | 'not_found'
     | 'password_required'
+    | 'password_room'
     | 'payload_too_large'
     | 'rate_limited'
     | 'room_full'

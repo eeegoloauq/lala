@@ -5,6 +5,7 @@ import { config } from './config';
 import { getRoomService, isNotFound } from './livekit';
 import { attributesFor, can, permissionFor } from './rights';
 import { flagsOf, getRoom } from './rooms';
+import { dropStaleInvitations } from './botInvites';
 
 const ignoreNotFound = (err: unknown) => { if (!isNotFound(err)) throw err; };
 
@@ -17,13 +18,13 @@ export async function applyBotConfig(roomId: string, participant: Pick<Participa
     const bot = botOf(participant.identity);
     const room = await getRoom(roomId);
     const service = getRoomService();
-    if (!bot || !room || !can(bot.identity, room, 'join')) {
+    const flags = await flagsOf(roomId, participant.identity);
+    if (!bot || !room || !can(bot.identity, room, 'join', flags.invited)) {
         const revokeTokenTs = BigInt(Math.floor(Date.now() / 1000) + 1);
         await service.removeParticipant(roomId, participant.identity, { revokeTokenTs }).catch(ignoreNotFound);
         console.log(`[bots] removed ${participant.identity} from ${roomId}: not allowed there by the config`);
         return;
     }
-    const flags = await flagsOf(roomId, bot.identity);
     await service.updateParticipant(roomId, bot.identity, {
         permission: permissionFor(bot.identity, room, flags),
         attributes: attributesFor(flags),
@@ -35,6 +36,7 @@ export async function applyBotConfig(roomId: string, participant: Pick<Participa
 /** At startup: the config may have dropped a bot or changed what it may do since it joined. */
 export async function syncBots(): Promise<void> {
     await dropProfilesExcept(new Set(config().bots.keys()));
+    await dropStaleInvitations();
     const service = getRoomService();
     for (const room of await service.listRooms()) {
         const participants = await service.listParticipants(room.name).catch((err) => {

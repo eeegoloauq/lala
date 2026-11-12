@@ -9,7 +9,9 @@ import type { ModerationEvent, ModerationTopic } from '../../../lib/types';
 import type { AppSettings } from '../../settings/types';
 
 const MODERATION_TOPIC: ModerationTopic = 'lala.moderation';
-const ACTIONS: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'muted', 'unmuted', 'voiced', 'unvoiced']);
+const ACTIONS: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'muted', 'unmuted', 'voiced', 'unvoiced', 'added', 'removed', 'left']);
+// After these the participant's disconnect needs no line of its own.
+const GONE: ReadonlySet<string> = new Set<ModerationEvent['action']>(['kicked', 'banned', 'removed', 'left']);
 
 function parseModerationEvent(payload: Uint8Array): ModerationEvent | null {
     try {
@@ -31,6 +33,8 @@ export function useRoomAnnouncements(room: Room, settings: AppSettings, addSyste
     // Identities just kicked or banned: their disconnect is already announced. Used up by
     // that disconnect, or dropped when they join again.
     const kickedRef = useRef(new Set<string>());
+    // Bots just added: "X added Y" says it, so their join gets no line. Used up by the join.
+    const addedRef = useRef(new Set<string>());
 
     const announce = useCallback((text: string, id: string) => {
         addSystem(text, `${id}-${Date.now()}`);
@@ -77,6 +81,7 @@ export function useRoomAnnouncements(room: Room, settings: AppSettings, addSyste
         const onJoin = (p: RemoteParticipant) => {
             kickedRef.current.delete(p.identity);
             if (settings.soundJoinLeave) playJoinSound();
+            if (addedRef.current.delete(p.identity)) return;
             announce(t('system.joined', { name: p.name || p.identity }), `join-${p.identity}`);
         };
         const onLeave = (p: RemoteParticipant) => {
@@ -102,8 +107,11 @@ export function useRoomAnnouncements(room: Room, settings: AppSettings, addSyste
             if (topic !== MODERATION_TOPIC || participant) return;
             const event = parseModerationEvent(payload);
             if (!event) return;
-            if (event.action === 'kicked' || event.action === 'banned') kickedRef.current.add(event.target);
-            announce(t(`admin.${event.action}`, { by: event.byName, target: event.targetName }), `admin-${event.action}-${event.target}`);
+            if (GONE.has(event.action)) kickedRef.current.add(event.target);
+            if (event.action === 'added') addedRef.current.add(event.target);
+            const key = event.action === 'left' ? 'system.left'
+                : event.action === 'added' && event.listens === true ? 'admin.addedListens' : `admin.${event.action}`;
+            announce(t(key, { by: event.byName, target: event.targetName, name: event.targetName }), `admin-${event.action}-${event.target}`);
         };
 
         room.on(RoomEvent.ParticipantConnected, onJoin)

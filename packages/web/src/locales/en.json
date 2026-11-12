@@ -106,7 +106,10 @@
     "muted": "{{by}} muted {{target}}",
     "unmuted": "{{by}} unmuted {{target}}",
     "voiced": "{{by}} let {{target}} speak",
-    "unvoiced": "{{by}} took the floor back from {{target}}"
+    "unvoiced": "{{by}} took the floor back from {{target}}",
+    "added": "{{by}} added {{target}}",
+    "addedListens": "{{by}} added {{target}}, which can hear the call",
+    "removed": "{{by}} removed {{target}}"
   },
   "theme": {
     "dark": "Dark",
@@ -382,7 +385,9 @@
     "not_allowed": "The server doesn't allow this",
     "banned": "You're banned here",
     "forbidden": "You can't do that here",
-    "server_unavailable": "Can't reach the server"
+    "server_unavailable": "Can't reach the server",
+    "bot_offline": "The bot isn't connected right now",
+    "password_room": "Bots can't join password rooms yet"
   },
   "demo": {
     "lobbyNote": "Demo: everything runs in your browser and resets when you reload.",
@@ -432,6 +437,26 @@
     "listens": "Hears everyone in the call",
     "noListen": "Can't hear the call",
     "noModerate": "Can't moderate or create rooms",
-    "open": "Profile"
+    "open": "Profile",
+    "addedBy": "Added by {{name}}",
+    "joinedAt": "Joined at {{time}}",
+    "removeBot": "Remove"
+  },
+  "addBot": {
+    "row": "Add bot",
+    "title": "Add a bot",
+    "loading": "Loading…",
+    "none": "No bots for this room",
+    "offline": "offline",
+    "added": "Already added",
+    "passwordRoom": "Not in password rooms yet",
+    "confirmTitle": "Add {{name}}?",
+    "confirmListens": "It will hear and see everyone here.",
+    "cancel": "Cancel",
+    "add": "Add",
+    "joining": "{{name}} is joining",
+    "didntJoin": "{{name}} didn't join",
+    "retry": "Try again",
+    "dismiss": "Dismiss"
   }
 }

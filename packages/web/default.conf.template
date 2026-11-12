@@ -46,8 +46,9 @@ server {
         }
     }
 
-    # SSE endpoint — must NOT use Connection: upgrade; needs buffering disabled
-    location /api/events {
+    # SSE endpoints (people's room list, bots' invitations) — must NOT use
+    # Connection: upgrade; need buffering disabled
+    location ~ ^/api/(bot/)?events$ {
         limit_req          zone=api burst=20 nodelay;
         proxy_pass         http://api:3001;
         proxy_http_version 1.1;

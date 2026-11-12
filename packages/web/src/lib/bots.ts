@@ -1,5 +1,5 @@
 import type { Participant } from 'livekit-client';
-import type { BotCommand } from './types';
+import type { BotCard, BotCardIcon, BotCommand } from './types';
 
 /**
  * Bots get identities starting with `bot-` from the server, and nothing else can: device
@@ -22,6 +22,8 @@ export interface BotDetails {
     speaks: boolean;
     chats: boolean;
     listens: boolean;
+    /** When it joined the call, ms since epoch. */
+    joinedAt?: number;
 }
 
 // The server checks these before setting them; a client still reads nothing it can't show.
@@ -60,5 +62,28 @@ export function botDetailsOf(participant: Participant): BotDetails | undefined {
         speaks: !!permission?.canPublish && (permission.canPublishSources.length === 0 || permission.canPublishSources.includes(MICROPHONE)),
         chats: !!permission?.canPublishData,
         listens: permission?.canSubscribe === true,
+        joinedAt: participant.joinedAt?.getTime(),
+    };
+}
+
+const CARD_ICONS: ReadonlySet<string> = new Set<BotCardIcon>(['bot', 'music', 'note', 'star', 'dice', 'check']);
+const MAX_CARD_TITLE = 60;
+const MAX_CARD_TEXT = 120;
+
+/**
+ * The card on a bot's chat message (`lala.card`). Nobody checks it on the way, so this
+ * does: only from bots, short text, and an icon from Lala's own set, never a remote image.
+ */
+export function parseBotCard(identity: string | undefined, attributes: Record<string, string> | undefined): BotCard | undefined {
+    const raw = attributes?.['lala.card'];
+    if (!identity || !isBotIdentity(identity) || !raw || raw.length > 1000) return undefined;
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch { return undefined; }
+    const { title, text, icon } = (parsed ?? {}) as Record<string, unknown>;
+    if (typeof title !== 'string' || !title.trim()) return undefined;
+    return {
+        title: Array.from(title).slice(0, MAX_CARD_TITLE).join(''),
+        text: typeof text === 'string' && text ? Array.from(text).slice(0, MAX_CARD_TEXT).join('') : undefined,
+        icon: typeof icon === 'string' && CARD_ICONS.has(icon) ? icon as BotCardIcon : 'bot',
     };
 }

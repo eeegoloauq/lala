@@ -294,3 +294,43 @@
 .cq-bars[data-quality="poor"] .cq-bar:nth-child(1) {
     background: #ef4444;
 }
+/* ─── A bot that was added and hasn't joined yet ─── */
+.p-tile-pending .p-tile-avatar {
+    opacity: 0.45;
+}
+
+.p-tile-spinner {
+    width: 11px;
+    height: 11px;
+    flex: none;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: pTileSpin 0.8s linear infinite;
+}
+
+@keyframes pTileSpin {
+    to { transform: rotate(360deg); }
+}
+
+.p-tile-failed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    text-align: center;
+    border: 2px dashed var(--border-color);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.p-tile-pending-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.p-tile-pending-actions .btn {
+    border: 1px solid var(--border-color);
+}

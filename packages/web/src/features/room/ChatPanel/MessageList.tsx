@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { Fragment, useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 import { avatarColorForIdentity } from '../../../lib/avatarUtils';
 import type { FileTransferItem } from '../../../lib/fileTransfer';
 import { FileBubble } from './FileBubble';
-import { isBotIdentity } from '../../../lib/bots';
+import { isBotIdentity, parseBotCard } from '../../../lib/bots';
+import type { BotCard } from '../../../lib/types';
+import { BotCardView } from './BotCardView';
 import { BotBadge } from '../../../ui/BotBadge';
 import { ImageLightbox } from './ImageLightbox';
 
@@ -16,7 +18,7 @@ export type ChatEntry =
 type SystemEntry = Extract<ChatEntry, { kind: 'system' }>;
 
 type GroupChild =
-    | { kind: 'text'; id: string; text: string; timestamp: number }
+    | { kind: 'text'; id: string; text: string; timestamp: number; card?: BotCard }
     | { kind: 'file'; id: string; timestamp: number; item: FileTransferItem };
 
 interface MessageGroup {
@@ -43,7 +45,10 @@ function buildGroups(entries: ChatEntry[], localIdentity: string): Array<Message
 
         const [identity, name, child]: [string, string | undefined, GroupChild] = entry.kind === 'file'
             ? [entry.item.identity || 'Unknown', entry.item.displayName, { kind: 'file', id: entry.id, timestamp: entry.timestamp, item: entry.item }]
-            : [entry.msg.from?.identity || 'Unknown', entry.msg.from?.name, { kind: 'text', id: entry.msg.id, text: entry.msg.message, timestamp: entry.msg.timestamp }];
+            : [entry.msg.from?.identity || 'Unknown', entry.msg.from?.name, {
+                kind: 'text', id: entry.msg.id, text: entry.msg.message, timestamp: entry.msg.timestamp,
+                card: parseBotCard(entry.msg.from?.identity, entry.msg.attributes),
+            }];
 
         const last = result.at(-1);
         if (last?.kind === 'group' && last.identity === identity) {
@@ -135,7 +140,9 @@ export function MessageList({ entries, localIdentity, onCancelFile }: MessageLis
                         {item.entries.map((e) => (
                             e.kind === 'file'
                                 ? <FileBubble key={e.id} item={e.item} onCancel={onCancelFile} onOpenImage={setLightboxItem} t={t} />
-                                : <div key={e.id} className="cp-bubble">{e.text}</div>
+                                : e.card
+                                    ? <Fragment key={e.id}><div className="cp-bubble">{e.text}</div><BotCardView card={e.card} /></Fragment>
+                                    : <div key={e.id} className="cp-bubble">{e.text}</div>
                         ))}
                     </div>
                 ))}

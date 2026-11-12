@@ -4,6 +4,7 @@ import type { Participant, Room } from 'livekit-client';
 import { readDeafened } from '../lib/participantMeta';
 import { setSpeakingUsers, setMutedInRoom, setDeafenedInRoom, setLiveParticipants, setBotsInRoom } from '../../../lib/roomStatusStore';
 import { botDetailsOf, type BotDetails } from '../../../lib/bots';
+import { botsArrived } from '../../../lib/pendingBots';
 
 const MUTE_EVENTS = [
     RoomEvent.TrackMuted, RoomEvent.TrackUnmuted,
@@ -91,6 +92,7 @@ export function useRoomStatusSync({
                 if (details) bots.set(p.identity, details);
             });
             setBotsInRoom(bots);
+            botsArrived(bots.keys());
         };
         return onEvents(room, BOT_EVENTS, update);
     }, [room]);

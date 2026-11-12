@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useTracks, useParticipants, useLocalParticipant, isTrackReference } from '@livekit/components-react';
+import { useTracks, useParticipants, useLocalParticipant, useRoomContext, isTrackReference } from '@livekit/components-react';
 import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import type { Participant } from 'livekit-client';
@@ -10,6 +10,8 @@ import { useCameraFlip } from '../hooks/useCameraFlip';
 import { setScreenShareSubscribed } from '../lib/screenShare';
 import { useRoomUIContext } from '../RoomUIContext';
 import { TileGrid } from './TileGrid';
+import { PendingBotTile } from './PendingBotTile';
+import { usePendingBots } from '../../../lib/pendingBots';
 import './video-grid.css';
 import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
 
@@ -27,6 +29,9 @@ export function VideoGrid({ onFocusTile, onCamEnabled }: VideoGridProps) {
     // Filter out participants that don't have an identity yet (e.g. local participant right before full connection)
     // This prevents the flickering "?" avatar entirely.
     const participants = rawParticipants.filter(p => p.identity);
+    const roomId = useRoomContext().name;
+    const allPending = usePendingBots();
+    const pending = allPending.filter(b => b.roomId === roomId && !participants.some(p => p.identity === b.identity));
 
     const cameraTracks = useTracks(CAMERA_TRACKS);
     const { localParticipant, isCameraEnabled } = useLocalParticipant();
@@ -61,7 +66,7 @@ export function VideoGrid({ onFocusTile, onCamEnabled }: VideoGridProps) {
 
     return (
         <>
-            <TileGrid count={participants.length}>
+            <TileGrid count={participants.length + pending.length}>
                 {participants.map((p) => {
                     const trackRef = trackMap.get(p.identity);
                     const hasActiveVideo =
@@ -86,6 +91,7 @@ export function VideoGrid({ onFocusTile, onCamEnabled }: VideoGridProps) {
                         />
                     );
                 })}
+                {pending.map(b => <PendingBotTile key={b.identity} bot={b} />)}
             </TileGrid>
 
             {contextMenuProps && (

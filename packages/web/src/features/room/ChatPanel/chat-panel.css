@@ -723,3 +723,42 @@
 .cp-suggest-item:hover {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
+
+/* ─── Bot card: a reply to a command, under its text ─── */
+.cp-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--bubble-radius);
+  background: var(--bg-secondary);
+}
+
+.cp-card-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius);
+  color: white;
+  background: var(--accent-gradient);
+}
+
+.cp-card-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.cp-card-body small {
+  font-size: 12px;
+  color: var(--text-secondary);
+}

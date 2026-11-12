@@ -5,7 +5,8 @@ import { APP_NAME, MAX_NAME_LENGTH } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
 import { openProfile } from '../../lib/profileCard';
-import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon } from '../room/icons/Icons';
+import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon, PlusIcon } from '../room/icons/Icons';
+import { AddBotMenu } from './AddBotMenu';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
 import { CreateRoomModal } from './CreateRoomModal';
 import { RoomContextMenu } from './RoomContextMenu';
@@ -89,6 +90,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenuState | null>(null);
     const [bansRoomId, setBansRoomId] = useState<string | null>(null);
+    const [addBotMenu, setAddBotMenu] = useState<{ roomId: string; locked: boolean; x: number; y: number } | null>(null);
+    const closeAddBotMenu = useCallback(() => setAddBotMenu(null), []);
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -302,6 +305,18 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                         onOpenProfile={isTouchDevice ? undefined : (e) => openProfileBeside(e, p.identity, p.name)}
                                     />
                                 ))}
+                                {isActiveRoom && room.canAddBots && (
+                                    <button
+                                        className="channel-user-card channel-add-bot"
+                                        onClick={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setAddBotMenu({ roomId: room.id, locked: !!room.passwordSalt, x: rect.right + 8, y: rect.top });
+                                        }}
+                                    >
+                                        <span className="channel-add-bot-plus"><PlusIcon size={14} strokeWidth={2.2} /></span>
+                                        <span className="channel-user-name">{t('addBot.row')}</span>
+                                    </button>
+                                )}
                             </div>
                         );
                         })()}
@@ -417,6 +432,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                     onClose={closeRoomMenu}
                 />
             )}
+
+            {addBotMenu && <AddBotMenu {...addBotMenu} onClose={closeAddBotMenu} />}
 
             {bansRoomId && (
                 <BannedUsersModal

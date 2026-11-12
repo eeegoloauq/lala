@@ -5,13 +5,14 @@ import { getRoomService, isNotFound } from '../lib/livekit';
 import { callerIdentity } from '../lib/identity';
 import { config } from '../lib/config';
 import { configRoomSalt, deriveRoomAuthKey, hashRoomKey } from '../lib/passwords';
-import { can, canCreateRooms, isModerator, mayEnter } from '../lib/rights';
+import { can, canCreateRooms, isModerator, mayAddBot, mayEnter } from '../lib/rights';
+import { listAddedBots } from '../lib/botInvites';
 import { claimRoom, dropRoom, findRoomByName, generateRoomId, getRoom, listMuted, listRoomStates, putPermanentRoom, type RoomState } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
 import { isShutOut } from '../lib/bans';
 import { botOf } from '../lib/bots';
 
-type ListedRoom = Omit<RoomInfo, 'canModerate' | 'canJoin'> & { state: RoomState };
+type ListedRoom = Omit<RoomInfo, 'canModerate' | 'canJoin' | 'canAddBots'> & { state: RoomState };
 
 // GET /api/rooms is unauthenticated and fans out one LiveKit call per room, and every
 // client refetches it when anyone joins or leaves, so the list is cached briefly. The
@@ -32,12 +33,13 @@ function readDeafened(metadata: string): boolean {
 }
 
 async function describe(state: RoomState): Promise<ListedRoom> {
-    const [participants, serverMuted] = await Promise.all([
+    const [participants, serverMuted, addedBots] = await Promise.all([
         getRoomService().listParticipants(state.id).catch((err) => {
             if (isNotFound(err)) return [];   // created a moment ago, LiveKit has no room yet
             throw err;
         }),
         listMuted(state.id),
+        listAddedBots(state.id),
     ]);
     const withTrack = (source: TrackSource, muted?: boolean) => participants
         .filter((p) => p.tracks.some((t) => t.source === source && (muted === undefined || t.muted === muted)))
@@ -59,6 +61,7 @@ async function describe(state: RoomState): Promise<ListedRoom> {
         serverMutedParticipants: serverMuted,
         // From the config, so a bot can't claim it doesn't listen.
         listeningParticipants: participants.filter((p) => botOf(p.identity)?.rights.listen).map((p) => p.identity),
+        addedBots,
     };
 }
 
@@ -87,7 +90,12 @@ async function listRooms(): Promise<ListedRoom[]> {
 /** The cached part is the same for everyone; what the caller may do is not. */
 function forCaller(req: Request, { state, ...room }: ListedRoom): RoomInfo {
     const caller = callerIdentity(req);
-    return { ...room, canModerate: isModerator(caller, state), canJoin: can(caller, state, 'join') };
+    return {
+        ...room,
+        canModerate: isModerator(caller, state),
+        canJoin: can(caller, state, 'join'),
+        canAddBots: [...config().bots.values()].some((bot) => mayAddBot(caller, state, bot)),
+    };
 }
 
 function parsePassword(input: unknown): CreateRoomRequest['password'] | null {

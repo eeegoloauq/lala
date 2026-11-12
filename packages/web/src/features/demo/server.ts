@@ -4,7 +4,7 @@
  * unchanged; state lives in memory and resets on reload. Nothing here goes over the
  * network, and the regular build never includes this module (see IS_DEMO).
  */
-import type { AccessStatus, Me, RoomBan, RoomInfo, ServerBan, TokenResponse } from '../../lib/types';
+import type { AccessStatus, AddedBot, Me, RoomBan, RoomBot, RoomInfo, ServerBan, TokenResponse } from '../../lib/types';
 import { deriveRoomKeys } from '../../lib/roomKeys';
 import type { BotDetails } from '../../lib/bots';
 
@@ -26,6 +26,7 @@ interface DemoRoom {
     serverMuted: Set<string>;
     sharing: Set<string>;
     bans: RoomBan[];
+    added: AddedBot[];
 }
 
 /** The visitor: an admin, so every moderation control is there to try. */
@@ -48,6 +49,13 @@ const MINUTES = bot('minutes', {
     speaks: false, chats: true, listens: true,
 });
 
+// Bots the visitor can add to a room, as `invite:` in the config allows; Quiz is offline.
+const ADDABLE: Array<{ person: Person; online: boolean }> = [
+    { person: bot('dice', { status: 'Ready to roll', commands: [{ name: '!roll', description: 'dice such as 2d6' }, { name: '!leave', description: 'take Dice out of this room' }], speaks: false, chats: true, listens: false }), online: true },
+    { person: bot('scribe', { status: 'Taking notes', commands: [{ name: '!summary', description: 'summary so far' }], speaks: false, chats: true, listens: true }), online: true },
+    { person: bot('quiz', { status: '', commands: [], speaks: false, chats: true, listens: false }), online: false },
+];
+
 const CROWD = ['Mira', 'Theo', 'Sasha', 'Ines', 'Kofi', 'Lena', 'Ravi', 'Yuki', 'Omar', 'Elsa', 'Nika', 'Jonas'].map(person);
 
 function room(name: string, people: Person[], extra: Partial<DemoRoom> = {}): DemoRoom {
@@ -64,6 +72,7 @@ function room(name: string, people: Person[], extra: Partial<DemoRoom> = {}): De
         serverMuted: new Set(),
         sharing: new Set(),
         bans: [],
+        added: [],
         ...extra,
     };
 }
@@ -110,11 +119,12 @@ export interface CallState {
     deafened: ReadonlySet<string>;
     serverMuted: ReadonlySet<string>;
     sharing: ReadonlySet<string>;
+    added: readonly AddedBot[];
 }
 
 export function callState(roomId: string): CallState | null {
     const r = rooms.find(x => x.id === roomId);
-    return r ? { people: [...r.people], muted: new Set(r.muted), deafened: new Set(r.deafened), serverMuted: new Set(r.serverMuted), sharing: new Set(r.sharing) } : null;
+    return r ? { people: [...r.people], muted: new Set(r.muted), deafened: new Set(r.deafened), serverMuted: new Set(r.serverMuted), sharing: new Set(r.sharing), added: [...r.added] } : null;
 }
 
 /** The visitor is in the room's call; a no-op when they already are (the token request adds them). */
@@ -168,6 +178,8 @@ function describe(r: DemoRoom): RoomInfo {
         deafenedParticipants: [...r.deafened],
         serverMutedParticipants: [...r.serverMuted],
         listeningParticipants: r.people.filter(p => p.bot?.listens).map(p => p.identity),
+        canAddBots: true,
+        addedBots: r.added,
     };
 }
 
@@ -227,6 +239,9 @@ export async function handle(path: string, init: RequestInit = {}): Promise<Resp
     if (path === '/admin/bans') return json(200, { bans: serverBans });
     if (path === '/admin/ban' || path === '/admin/unban') return serverBan(path === '/admin/ban', String(body.identity ?? ''));
 
+    const b = path.match(/^\/rooms\/([^/]+)\/bots(?:\/([a-z0-9-]+))?$/);
+    if (b) return roomBots(decodeURIComponent(b[1]), b[2], method);
+
     const m = path.match(/^\/rooms\/([^/]+)(?:\/admin\/([a-z]+))?$/);
     const r = m && rooms.find(x => x.id === decodeURIComponent(m[1]));
     if (m && !r) return fail(404, 'room_not_found');
@@ -240,6 +255,43 @@ export async function handle(path: string, init: RequestInit = {}): Promise<Resp
         }
     }
     if (r && m![2]) return moderate(r, m![2], body);
+    return fail(404, 'not_found');
+}
+
+function roomBots(roomId: string, key: string | undefined, method: string): Response {
+    const r = rooms.find(x => x.id === roomId);
+    if (!r) return fail(404, 'room_not_found');
+    if (!key && method === 'GET') {
+        const bots: RoomBot[] = ADDABLE.map(({ person, online }) => ({
+            key: person.identity.slice(4), identity: person.identity, name: person.name,
+            listens: !!person.bot?.listens, online, added: r.added.some(a => a.identity === person.identity),
+        }));
+        return json(200, { bots });
+    }
+    const entry = ADDABLE.find(a => a.person.identity === `bot-${key}`);
+    if (!entry) return fail(404, 'bot_not_found');
+    const identity = entry.person.identity;
+    if (method === 'POST') {
+        if (r.salt) return fail(409, 'password_room');
+        if (!entry.online) return fail(409, 'bot_offline');
+        const created = !r.added.some(a => a.identity === identity);
+        if (created) r.added.push({ identity, addedBy: ME, addedByName: r.people.find(p => p.identity === ME)?.name ?? 'You' });
+        changed();
+        // It takes the bot a moment to come, as a real one would.
+        setTimeout(() => {
+            if (!r.added.some(a => a.identity === identity) || r.people.some(p => p.identity === identity)) return;
+            r.people.push(entry.person);
+            changed();
+        }, 1200);
+        return json(created ? 201 : 200, { ok: true });
+    }
+    if (method === 'DELETE') {
+        if (!r.added.some(a => a.identity === identity)) return fail(404, 'not_found');
+        r.added = r.added.filter(a => a.identity !== identity);
+        removePerson(r, identity);
+        changed();
+        return ok();
+    }
     return fail(404, 'not_found');
 }
 

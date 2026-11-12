@@ -1,4 +1,4 @@
-import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse } from './types';
+import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
 import { IS_DEMO } from './env';
@@ -115,3 +115,16 @@ export const unbanFromServer = (identity: string) => request<void>('/admin/unban
 export async function getServerBans(): Promise<ServerBan[]> {
     return (await request<ServerBansResponse>('/admin/bans')).bans;
 }
+
+const roomBots = (roomId: string, key = '') => `/rooms/${encodeURIComponent(roomId)}/bots${key && `/${encodeURIComponent(key)}`}`;
+
+/** Bots the caller may add to the room, whether each is online and already added. */
+export async function getRoomBots(roomId: string): Promise<RoomBot[]> {
+    return (await request<RoomBotsResponse>(roomBots(roomId))).bots;
+}
+
+/** Adds the bot, or asks it again to join when it was added but didn't come. */
+export const addBot = (roomId: string, key: string) => request<void>(roomBots(roomId, key), { method: 'POST' });
+
+/** For whoever added the bot and the room's moderators. */
+export const removeBot = (roomId: string, key: string) => request<void>(roomBots(roomId, key), { method: 'DELETE' });

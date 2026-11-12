@@ -56,3 +56,13 @@ export const api = (page: Page, device: string, method: string, path: string, bo
         });
         return { status: res.status, body: await res.json() };
     }, { device, method, path, body });
+
+/** Creates a room from the sidebar and waits until the page is in it. */
+export async function createRoom(page: Page, name: string, options: { stage?: boolean; password?: string } = {}) {
+    await page.getByRole('button', { name: 'Create channel' }).click();
+    await page.getByPlaceholder('e.g. "General"').fill(name);
+    if (options.password) await page.getByPlaceholder('No password — open channel').fill(options.password);
+    if (options.stage) await page.getByLabel('Only I speak').check();
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
+    await page.waitForURL(/\/room\//);
+}

@@ -39,6 +39,13 @@ export interface BotConfig {
     /** IDs of the configured rooms the bot may join. */
     rooms: Set<string>;
     rights: Record<BotRight, boolean>;
+    /** Who may add the bot to any room without a password; unset, only its own rooms. */
+    invite?: Level;
+    /**
+     * Base64 X25519 public key. Not used yet: it is for password rooms, where the inviter's
+     * client will encrypt the room key to it. Taken now so adding that needs no config change.
+     */
+    publicKey?: string;
 }
 
 export interface Config {
@@ -183,8 +190,10 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
     for (const [key, value] of Object.entries(object(top.bots ?? {}, 'bots'))) {
         const path = `bots.${key}`;
         if (!BOT_KEY.test(key)) fail(path, 'expected a name of lowercase letters, digits and dashes, at most 32 characters');
+        // DELETE /api/rooms/:id/bots/me is a bot leaving a room.
+        if (key === 'me') fail(path, '"me" is reserved; pick another name');
         const bot = object(value, path);
-        known(bot, path, ['name', 'avatar', 'secret', 'rooms', 'rights']);
+        known(bot, path, ['name', 'avatar', 'secret', 'rooms', 'rights', 'invite', 'publicKey']);
 
         const name = bot.name === undefined ? key : typeof bot.name === 'string' ? bot.name.trim() : '';
         if (!name || name.length > 50) fail(`${path}.name`, 'expected a name of 1 to 50 characters');
@@ -211,9 +220,14 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
             if (avatar.length > MAX_AVATAR_LENGTH) fail(`${path}.avatar`, 'expected an image under 24 KB, such as a 128x128 JPEG');
         }
 
-        if (!Array.isArray(bot.rooms) || bot.rooms.length === 0) fail(`${path}.rooms`, 'expected a list of room names from rooms');
+        const invite = bot.invite === undefined ? undefined : oneOf(bot.invite, `${path}.invite`, LEVELS);
+        // A bot people can add needs no rooms of its own.
+        const roomList = bot.rooms ?? (invite ? [] : undefined);
+        if (!Array.isArray(roomList) || (roomList.length === 0 && !invite)) {
+            fail(`${path}.rooms`, 'expected a list of room names from rooms, or invite to let people add it');
+        }
         const roomIds = new Set<string>();
-        for (const roomName of bot.rooms as unknown[]) {
+        for (const roomName of roomList as unknown[]) {
             const room = typeof roomName === 'string' ? rooms.find((r) => r.id === configRoomId(roomName)) : undefined;
             if (!room) fail(`${path}.rooms`, `"${String(roomName)}" is not a room listed under rooms`);
             roomIds.add(room!.id);
@@ -223,8 +237,15 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         const listed = ((bot.rights ?? []) as unknown[]).map((r) => oneOf(r, `${path}.rights`, BOT_RIGHTS));
         const rights = Object.fromEntries(BOT_RIGHTS.map((r) => [r, listed.includes(r)])) as Record<BotRight, boolean>;
 
+        let publicKey: string | undefined;
+        if (bot.publicKey !== undefined) {
+            const valid = typeof bot.publicKey === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(bot.publicKey);
+            if (!valid) fail(`${path}.publicKey`, 'expected a base64 X25519 public key (32 bytes)');
+            publicKey = bot.publicKey as string;
+        }
+
         const identity = BOT_PREFIX + key;
-        bots.set(identity, { key, identity, name, avatar, secret, rooms: roomIds, rights });
+        bots.set(identity, { key, identity, name, avatar, secret, rooms: roomIds, rights, invite, publicKey });
     }
 
     return { name: serverName, theme, users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots };

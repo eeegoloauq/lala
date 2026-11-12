@@ -10,6 +10,7 @@ import { createAccessRouter, requireAccess } from './routes/access';
 import { createMeRouter } from './routes/me';
 import { createServerAdminRouter } from './routes/server-admin';
 import { createBotRouter } from './routes/bot';
+import { createRoomBotsRouter } from './routes/roomBots';
 import { botAuth } from './lib/bots';
 import { syncBots } from './lib/botSync';
 import { loadConfig } from './lib/config';
@@ -28,6 +29,8 @@ import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
  * - GET/POST /api/access       — Optional instance password (LALA_ACCESS_PASSWORD)
  * - POST /api/access/invite     — Expiring invite that stands in for that password
  * - GET /api/bot, POST /api/bot/profile — A bot's account, status line and commands
+ * - GET /api/bot/events       — SSE for a bot: rooms it is added to and removed from
+ * - /api/rooms/:id/bots       — People add bots to a room and remove them
  */
 const app = express();
 app.set('trust proxy', 1);
@@ -76,6 +79,7 @@ app.use('/api/token', limiter(25), createTokenRouter());   // ~100/min (password
 // fall through to the rooms(30) limiter below — avoiding double-counting a single
 // admin action against both rate-limit windows.
 app.use('/api/rooms/:id/admin', limiter(20), createAdminRouter()); // 80/min — headroom for mute toggling
+app.use('/api/rooms/:id/bots', limiter(20), createRoomBotsRouter());
 // Every client refetches the room list when anyone joins or leaves, so list reads get
 // their own budget: otherwise a busy room behind one IP locks it out of creating and
 // deleting rooms. The list is served from a 2s cache.

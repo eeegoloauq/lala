@@ -5,6 +5,13 @@ import { callerIdentity } from '../lib/identity';
 import { attributesFor, isModerator, permissionFor } from '../lib/rights';
 import { addBan, flagsOf, getRoom, listBans, removeBan, setMuted, setVoice, type RoomState } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
+import { isBotIdentity } from '../lib/bots';
+import { removeBot } from '../lib/botInvites';
+
+/** Kicking or banning a bot someone added also ends the invitation, so it isn't asked back. */
+async function endInvitation(ctx: Context): Promise<void> {
+    if (isBotIdentity(ctx.target) && await removeBot(ctx.room.id, ctx.target)) invalidateRoomsCache();
+}
 
 type ModerationRequest = Request<{ id: string }>;
 interface Context { room: RoomState; caller: string; target: string }
@@ -66,6 +73,7 @@ export function createAdminRouter(): Router {
     router.post('/kick', async (_req, res: Response) => {
         const ctx = res.locals.ctx as Context;
         const targetName = await nameOf(ctx.room.id, ctx.target);
+        await endInvitation(ctx);
         await getRoomService().removeParticipant(ctx.room.id, ctx.target).catch(ignoreNotFound);
         await announce(ctx, 'kicked', targetName);
         res.json({ ok: true });
@@ -75,6 +83,7 @@ export function createAdminRouter(): Router {
         const ctx = res.locals.ctx as Context;
         const targetName = await nameOf(ctx.room.id, ctx.target);
         await addBan(ctx.room.id, ctx.target, targetName);
+        await endInvitation(ctx);
         // Revoking tokens issued up to now keeps the banned client from reconnecting
         // with the one it already holds.
         const revokeTokenTs = BigInt(Math.floor(Date.now() / 1000) + 1);

@@ -9,7 +9,8 @@ import { TrackSource } from 'livekit-server-sdk';
 process.env.LALA_ACCESS_PASSWORD = 'unit-test-server-password';
 process.env.LIVEKIT_API_SECRET = 'unit-test-secret';
 
-const { configRoomId, parseConfig, setConfig } = await import('../src/lib/config');
+const { configRoomId, parseConfig, setConfig, config: currentConfig } = await import('../src/lib/config');
+const configBot = (identity: string) => currentConfig().bots.get(identity)!;
 const { generateSecret, hashSecret, parseSecretHash, verifySecret } = await import('../src/lib/secrets');
 const { authenticateBot, botAuth } = await import('../src/lib/bots');
 const { requireAccess } = await import('../src/routes/access');
@@ -70,6 +71,8 @@ describe('bot config', () => {
         ['an avatar path outside the directory', (b) => { b.radio.avatar = '../secret.png'; }, /image file in the config directory/],
         ['an avatar that is not an image', (b) => { b.radio.avatar = 'missing.png'; }, /can't read/],
         ['no rooms', (b) => { b.radio.rooms = []; }, /expected a list of room names/],
+        ['an invite level that does not exist', (b) => { b.radio.invite = 'friends'; }, /expected one of everyone, members, admins/],
+        ['a public key that is not one', (b) => { b.radio.publicKey = 'not-a-key'; }, /X25519 public key/],
     ];
     for (const [what, change, message] of broken) {
         test(`refuses ${what}`, async () => {
@@ -78,6 +81,22 @@ describe('bot config', () => {
             assert.throws(() => parseConfig(config, files), message);
         });
     }
+
+    test('a bot people can add needs no rooms and may carry a public key', async () => {
+        const config = await raw();
+        const key = Buffer.alloc(32, 7).toString('base64');
+        (config.bots as Record<string, unknown>).dice = { secret: config.bots.radio.secret, invite: 'members', publicKey: key };
+        const dice = parseConfig(config, files).bots.get('bot-dice')!;
+        assert.equal(dice.invite, 'members');
+        assert.equal(dice.publicKey, key);
+        assert.equal(dice.rooms.size, 0);
+    });
+
+    test('refuses the reserved key "me"', async () => {
+        const config = await raw();
+        (config.bots as Record<string, unknown>).me = config.bots.radio;
+        assert.throws(() => parseConfig(config, files), /reserved/);
+    });
 
     test('refuses a key that is not a plain name', async () => {
         const config = await raw();
@@ -233,6 +252,54 @@ describe('bot rights', () => {
         assert.equal(person.canUpdateOwnMetadata, true);
         assert.equal(person.canSubscribe, true);
         assert.deepEqual(person.canPublishSources, [TrackSource.MICROPHONE, TrackSource.CAMERA, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO]);
+    });
+});
+
+describe('adding bots to rooms', () => {
+    const admin = 'a'.repeat(36);
+    const member = 'c'.repeat(36);
+    const guest = 'd'.repeat(36);
+    let restore: ReturnType<typeof parseConfig>;
+    before(async () => {
+        const config = await raw();
+        Object.assign(config, { guests: true, users: { ...config.users, pal: { role: 'member', ids: [member] } } });
+        const bots = config.bots as Record<string, unknown>;
+        bots.dice = { name: 'Dice', secret: config.bots.radio.secret, invite: 'everyone', rights: ['chat'] };
+        bots.notes = { name: 'Notes', secret: config.bots.radio.secret, invite: 'members', rights: ['chat', 'listen'] };
+        restore = parseConfig(await raw(), files);
+        setConfig(parseConfig(config, files));
+    });
+    after(() => setConfig(restore));
+
+    const general = room('General');
+    const mine = room('Mine', { id: 'mine', creator: guest });
+    const membersOnly = room('Members', { id: 'members', rights: { join: 'members', speak: 'everyone', video: 'everyone', screen: 'everyone', chat: 'everyone' } });
+
+    test('the invite level decides who may add a bot; a creator ranks as an admin in their room', () => {
+        const dice = configBot('bot-dice');
+        const notes = configBot('bot-notes');
+        assert.equal(rights.mayAddBot(guest, general, dice), true);
+        assert.equal(rights.mayAddBot(guest, general, notes), false);
+        assert.equal(rights.mayAddBot(member, general, notes), true);
+        assert.equal(rights.mayAddBot(guest, mine, notes), true);
+        assert.equal(rights.mayAddBot(admin, general, notes), true);
+    });
+
+    test('nobody adds a bot without invite, to a room they may not join, or as a bot', () => {
+        assert.equal(rights.mayAddBot(admin, general, configBot('bot-radio')), false);
+        assert.equal(rights.mayAddBot(guest, membersOnly, configBot('bot-dice')), false);
+        assert.equal(rights.mayAddBot('bot-radio', general, configBot('bot-dice')), false);
+    });
+
+    test('an added bot joins the room it was added to, with its own rights only', () => {
+        assert.equal(rights.can('bot-dice', mine, 'join'), false);
+        assert.equal(rights.can('bot-dice', mine, 'join', true), true);
+        const permission = rights.permissionFor('bot-dice', mine, { ...noFlags, invited: true });
+        assert.deepEqual(permission.canPublishSources, []);
+        assert.equal(permission.canPublishData, true);
+        assert.equal(permission.canSubscribe, false);
+        // A bot without invite isn't let in by a stale invitation.
+        assert.equal(rights.can('bot-radio', mine, 'join', true), false);
     });
 });
 

@@ -95,7 +95,12 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
             const after = new Map(next.people.map(p => [p.identity, p.name]));
             for (const [id, n] of after) if (!before.has(id) && id !== MY_IDENTITY) {
                 if (now.soundJoinLeave) playJoinSound();
-                addSystem(tl('system.joined', { name: n }));
+                // A bot the visitor added arrives as "X added Y", as the server announces it.
+                const added = next.added.find(a => a.identity === id);
+                const listens = next.people.find(p => p.identity === id)?.bot?.listens;
+                addSystem(added
+                    ? tl(listens ? 'admin.addedListens' : 'admin.added', { by: added.addedByName, target: n })
+                    : tl('system.joined', { name: n }));
             }
             for (const [id, n] of before) if (!after.has(id) && id !== MY_IDENTITY) {
                 if (now.soundJoinLeave) playLeaveSound();

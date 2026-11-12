@@ -118,3 +118,35 @@
 .profile-right-yes svg { color: var(--color-success); }
 .profile-right-warn svg { color: var(--color-warning); }
 .profile-right-no { color: var(--text-muted); }
+
+/* Taking out a bot someone added: for them and the room's moderators. */
+.profile-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-danger);
+    background: none;
+    border: 1px solid color-mix(in srgb, var(--color-danger) 45%, transparent);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.profile-remove:hover {
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.profile-remove:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.profile-error {
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-danger);
+}

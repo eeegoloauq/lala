@@ -8,7 +8,9 @@ import { openProfile, useOpenProfile } from '../../lib/profileCard';
 import { requestChatDraft, useAvatarForIdentity, useBotDetails } from '../../lib/roomStatusStore';
 import { BotBadge, ListensMark } from '../../ui/BotBadge';
 import { Avatar } from '../room/VideoGrid/Avatar';
-import { CheckIcon, CrossIcon, EarIcon } from '../room/icons/Icons';
+import { CheckIcon, CrossIcon, EarIcon, OutIcon } from '../room/icons/Icons';
+import { removeBot } from '../../lib/api';
+import { errorMessage } from '../../lib/errorMessage';
 import type { RoomInfo } from '../../lib/types';
 import './profile-card.css';
 
@@ -25,10 +27,14 @@ export function ProfileCardHost({ rooms }: { rooms: RoomInfo[] }) {
     if (!open) return null;
     // The room's creator moderates it; shown here rather than as a mark on every row.
     const room = rooms.find(r => r.participants.some(p => p.identity === open.identity));
-    return <ProfileCard key={open.identity} {...open} roomAdmin={!!room && room.adminIdentity === open.identity} />;
+    return <ProfileCard key={open.identity} {...open} room={room} roomAdmin={!!room && room.adminIdentity === open.identity} />;
 }
 
-function ProfileCard({ identity, name, x, y, roomAdmin }: { identity: string; name: string; x: number; y: number; roomAdmin: boolean }) {
+const formatTime = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+interface ProfileCardProps { identity: string; name: string; x: number; y: number; room?: RoomInfo; roomAdmin: boolean }
+
+function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const me = useMeContext();
@@ -38,6 +44,11 @@ function ProfileCard({ identity, name, x, y, roomAdmin }: { identity: string; na
     const isSelf = me?.identity === identity;
     const color = avatarColorForIdentity(identity);
     const [position, setPosition] = useState({ left: x, top: y });
+    const [removing, setRemoving] = useState(false);
+    const [removeError, setRemoveError] = useState<string | null>(null);
+    // A bot someone added: they and the room's moderators can take it out again.
+    const added = isBot ? room?.addedBots?.find(b => b.identity === identity) : undefined;
+    const mayRemove = !!room && !!added && (added.addedBy === me?.identity || room.canModerate);
 
     const close = () => openProfile(null);
     useDismiss(ref, close);
@@ -49,7 +60,20 @@ function ProfileCard({ identity, name, x, y, roomAdmin }: { identity: string; na
             left: Math.max(MARGIN, Math.min(x, window.innerWidth - WIDTH - MARGIN)),
             top: Math.max(MARGIN, Math.min(y, window.innerHeight - height - MARGIN)),
         });
-    }, [x, y, bot]);
+    }, [x, y, bot, mayRemove]);
+
+    const remove = async () => {
+        if (!room) return;
+        setRemoving(true);
+        setRemoveError(null);
+        try {
+            await removeBot(room.id, identity.slice('bot-'.length));
+            close();
+        } catch (err) {
+            setRemoveError(errorMessage(t, err));
+            setRemoving(false);
+        }
+    };
 
     const pickCommand = (command: string) => {
         requestChatDraft(`${command} `);
@@ -83,6 +107,11 @@ function ProfileCard({ identity, name, x, y, roomAdmin }: { identity: string; na
                         {[isSelf && t('profile.thisIsYou'), roomAdmin && t('profile.roomAdmin')].filter(Boolean).join(' ')}
                     </p>
                 )}
+                {(added || bot?.joinedAt) && (
+                    <p className="profile-about">
+                        {[added && t('profile.addedBy', { name: added.addedByName }), bot?.joinedAt && t('profile.joinedAt', { time: formatTime(bot.joinedAt) })].filter(Boolean).join(' · ')}
+                    </p>
+                )}
                 {bot?.status && <p className="profile-status">{bot.status}</p>}
                 {bot && bot.commands.length > 0 && (
                     <div>
@@ -107,6 +136,13 @@ function ProfileCard({ identity, name, x, y, roomAdmin }: { identity: string; na
                         ))}
                     </div>
                 )}
+                {mayRemove && (
+                    <button className="profile-remove" onClick={remove} disabled={removing}>
+                        <OutIcon size={15} strokeWidth={2} />
+                        {t('profile.removeBot')}
+                    </button>
+                )}
+                {removeError && <p className="profile-error">{removeError}</p>}
             </div>
         </div>
     );

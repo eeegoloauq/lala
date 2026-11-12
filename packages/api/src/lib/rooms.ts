@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import { redis } from './redis';
+import { notifyRemoved } from './botEvents';
 import type { Rights } from './config';
 
 /**
@@ -26,6 +27,8 @@ const roomKey = (id: string) => `lala:room-state:${id}`;
 const bansKey = (id: string) => `lala:room-bans:${id}`;
 const mutedKey = (id: string) => `lala:room-muted:${id}`;
 const voiceKey = (id: string) => `lala:room-voice:${id}`;
+/** Bots people added to the room: hash identity -> JSON `Invitation`. */
+export const botsKey = (id: string) => `lala:room-bots:${id}`;
 const NAME_PREFIX = 'lala:room-name:';
 
 /** Live room names are unique regardless of case and surrounding spaces. */
@@ -51,7 +54,7 @@ return false
 // Drops a room and releases its name, unless a newer room already took the name over.
 const DROP = `
 if redis.call('GET', KEYS[5]) == ARGV[1] then redis.call('DEL', KEYS[5]) end
-redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[6])
+redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[6], KEYS[7])
 redis.call('SREM', KEYS[4], ARGV[1])
 `;
 
@@ -90,7 +93,10 @@ export async function listRoomStates(): Promise<RoomState[]> {
 export async function dropRoom(id: string): Promise<void> {
     const room = await getRoom(id);
     const name = room ? nameKey(room.name) : NAME_PREFIX;
-    await redis().eval(DROP, 6, roomKey(id), bansKey(id), mutedKey(id), ROOMS, name, voiceKey(id), id);
+    const added = await redis().hkeys(botsKey(id));
+    await redis().eval(DROP, 7, roomKey(id), bansKey(id), mutedKey(id), ROOMS, name, voiceKey(id), botsKey(id), id);
+    // Bots added to the room learn that it is gone.
+    notifyRemoved(id, added);
 }
 
 /** Banned identities with the name each had when banned, so moderators can tell them apart. */
@@ -109,10 +115,19 @@ export const setMuted = (id: string, identity: string, muted: boolean) =>
 export const setVoice = (id: string, identity: string, voiced: boolean) =>
     voiced ? redis().sadd(voiceKey(id), identity) : redis().srem(voiceKey(id), identity);
 
-/** What moderators have set for someone in a room. */
+/** What moderators have set for someone in a room, and whether someone added them (bots). */
 export async function flagsOf(id: string, identity: string): Promise<Flags> {
-    const [muted, voiced] = await Promise.all([redis().sismember(mutedKey(id), identity), redis().sismember(voiceKey(id), identity)]);
-    return { muted: muted === 1, voiced: voiced === 1 };
+    const [muted, voiced, invited] = await Promise.all([
+        redis().sismember(mutedKey(id), identity),
+        redis().sismember(voiceKey(id), identity),
+        redis().hexists(botsKey(id), identity),
+    ]);
+    return { muted: muted === 1, voiced: voiced === 1, invited: invited === 1 };
 }
 
-export interface Flags { muted: boolean; voiced: boolean }
+export interface Flags {
+    muted: boolean;
+    voiced: boolean;
+    /** A bot someone added to the room; see botInvites.ts. */
+    invited?: boolean;
+}

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { BotDetails } from './bots';
 import { createStore } from './store';
+import { clearPendingBots } from './pendingBots';
 
 /**
  * External store for volatile, high-frequency room status: speaking, muted and deafened
@@ -88,6 +89,7 @@ export function resetRoomSession(): void {
     avatarCacheStore.set(new Map());
     botsStore.set(new Map());
     chatDraftStore.set(null);
+    clearPendingBots();
 }
 
 // ---- Reader hooks ----

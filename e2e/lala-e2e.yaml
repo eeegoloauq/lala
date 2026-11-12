@@ -29,6 +29,17 @@ bots:
     secret: "scrypt$16384$8$1$opl/ysRCdq3cpPsg9yvA1w==$AJZr0e6awiGiFmEJSxPsEFwVsq7Uk7Ycrjsncc+TTyM="
     rooms: [Bots]
     rights: [chat, listen]
+  # People add these two to rooms; both run examples/bots/dice.mjs (tests/add-bot.spec.ts).
+  dice:
+    name: Dice
+    secret: "scrypt$16384$8$1$f5df5umNj2wabujwZQ7kMw==$ARDyIKtQmSfWTALf6mBM899s/xLOVipuqAKVREswgy0="
+    invite: everyone
+    rights: [chat]
+  scribe:
+    name: Scribe
+    secret: "scrypt$16384$8$1$oV4TCZ5H9yiEzu62O2LyXQ==$6fEauwfnoFlVjkaT/b3FG0v7q4Z5HGrCTdb2OHYrMDk="
+    invite: members
+    rights: [chat, listen]
 
 # The default theme for anyone who hasn't picked one (tests/appearance.spec.ts).
 theme:

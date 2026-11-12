@@ -226,3 +226,69 @@ export function ProfileIcon(props: IconProps) {
         </Svg>
     );
 }
+
+export function PlusIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M12 5v14M5 12h14" />
+        </Svg>
+    );
+}
+
+/** Taking someone out of the room. */
+export function OutIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />
+        </Svg>
+    );
+}
+
+export function BotIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="4" y="8" width="16" height="12" rx="3" />
+            <path d="M12 4v4M9 13.5v1M15 13.5v1" />
+            <circle cx="12" cy="3.5" r="1" />
+        </Svg>
+    );
+}
+
+export function MusicIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M9 18V5l11-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="17" cy="16" r="3" />
+        </Svg>
+    );
+}
+
+export function NoteIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M6 3h9l4 4v14H6z" />
+            <path d="M9 12h7M9 16h5" />
+        </Svg>
+    );
+}
+
+export function StarIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
+        </Svg>
+    );
+}
+
+export function DiceIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="4" y="4" width="16" height="16" rx="3" />
+            <circle cx="9" cy="9" r="1" />
+            <circle cx="15" cy="15" r="1" />
+            <circle cx="15" cy="9" r="1" />
+            <circle cx="9" cy="15" r="1" />
+        </Svg>
+    );
+}

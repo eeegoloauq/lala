@@ -48,7 +48,8 @@ export function createTokenRouter(): Router {
             res.status(404).json({ error: 'room_not_found' });
             return;
         }
-        if (!can(identity, room, 'join')) {
+        const flags = await flagsOf(room.id, identity);
+        if (!can(identity, room, 'join', flags.invited)) {
             res.status(403).json({ error: 'not_allowed' });
             return;
         }
@@ -82,7 +83,6 @@ export function createTokenRouter(): Router {
         }
 
         await recordIp(identity, req.ip ?? '');
-        const flags = await flagsOf(room.id, identity);
         // A bot is named by the config; its avatar, status and commands follow once it
         // joins (see the webhook), since an image would make the token too long for a URL.
         const bot = botOf(identity);

@@ -1,0 +1,122 @@
+/* "Add bot": the picker and the confirmation for a bot that will hear the call. */
+.add-bot-menu {
+    width: 260px;
+}
+
+.add-bot-item:disabled {
+    cursor: default;
+    color: var(--text-muted);
+}
+
+.add-bot-item:disabled:hover {
+    background: none;
+}
+
+/* The shared avatar fills its parent (a tile); here it keeps its own size. */
+.add-bot-menu .p-avatar {
+    width: auto;
+    height: auto;
+    flex: none;
+}
+
+.add-bot-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.add-bot-state {
+    display: inline-flex;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.add-bot-locked {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.add-bot-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+}
+
+.add-bot-confirm-who {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.add-bot-warn {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--color-warning);
+}
+
+.add-bot-warn svg {
+    flex: none;
+    margin-top: 1px;
+}
+
+.add-bot-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.add-bot-actions .btn {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.add-bot-actions .btn-primary {
+    width: auto;
+}
+
+/* The row under the room's people that opens the picker. */
+.channel-add-bot {
+    width: 100%;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.channel-add-bot:hover {
+    color: var(--text-primary);
+}
+
+.channel-add-bot-plus {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--avatar-radius);
+}
+
+/* Phones: a bottom sheet across the screen, like the other menus. */
+@media (max-width: 640px) {
+    .add-bot-menu {
+        width: auto;
+    }
+}

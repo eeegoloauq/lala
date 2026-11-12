@@ -35,6 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: |
             e2e/package-lock.json
+            examples/bots/package-lock.json
             packages/api/package-lock.json
             packages/web/package-lock.json
       # The scripts fetch LiveKit and build Redis from source; their versions live in the scripts.
