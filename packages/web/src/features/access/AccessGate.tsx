@@ -79,7 +79,7 @@ export function AccessGate({ invite, children }: { invite: string | null; childr
     return (
         <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
             <form className="home-card" onSubmit={handleSubmit}>
-                <div className="sidebar-header" style={{ border: 'none', justifyContent: 'center', marginBottom: '16px' }}>
+                <div className="sidebar-header panel-header" style={{ border: 'none', justifyContent: 'center', marginBottom: '16px' }}>
                     <span className="logo" style={{ fontSize: '32px' }}>lala</span>
                 </div>
                 <p>{t('access.prompt')}</p>

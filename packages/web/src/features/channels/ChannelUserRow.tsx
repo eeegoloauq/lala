@@ -68,7 +68,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
 
     return (
         <div
-            className="channel-user-card"
+            className="channel-user-card person-row"
             data-participant-identity={identity}
             data-participant-name={name}
             data-participant-room={roomId}
@@ -79,7 +79,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
             onDragEnd={onDragEnd}
         >
             <div
-                className={`channel-user-avatar${speaking && !isBot ? ' speaking' : ''}`}
+                className={`person-avatar${speaking && !isBot ? ' speaking' : ''}`}
                 style={{ background: avatarUrl ? 'transparent' : avatarColorForIdentity(identity) }}
             >
                 {avatarUrl ? (
@@ -88,10 +88,10 @@ export const ChannelUserRow = memo(function ChannelUserRow({
                     name[0]?.toUpperCase() ?? '?'
                 )}
             </div>
-            <span className="channel-user-name">{name}</span>
+            <span className="person-name">{name}</span>
             {isBot && <BotBadge />}
             {isSelf && (
-                <span className="channel-user-you">{t('sidebar.you')}</span>
+                <span className="person-you">{t('sidebar.you')}</span>
             )}
             <span className="channel-user-indicators">
                 {listens && <ListensMark size={11} />}

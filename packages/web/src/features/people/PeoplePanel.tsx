@@ -10,6 +10,7 @@ import { useMeContext } from '../../lib/meContext';
 import { BotBadge } from '../../ui/BotBadge';
 import { WithStatus } from '../../ui/StatusDot';
 import { SpeakerIcon } from '../room/icons/Icons';
+import '../../ui/panel.css';
 import './people-panel.css';
 
 interface Person {
@@ -68,10 +69,10 @@ export const PeoplePanel = memo(function PeoplePanel({ rooms, displayName, onClo
 
     return (
         <aside className={`people-panel${onClose ? ' people-overlay' : ''}`} aria-label={t('people.title')}>
-            <div className="people-header">
+            <div className="panel-header people-header">
                 <span className="people-title">{t('people.title')}</span>
                 {onClose && (
-                    <button className="people-close" onClick={onClose} title={t('sidebar.close')} aria-label={t('sidebar.close')}>✕</button>
+                    <button className="panel-close people-close" onClick={onClose} title={t('sidebar.close')} aria-label={t('sidebar.close')}>✕</button>
                 )}
             </div>
             <div className="people-list">
@@ -87,7 +88,7 @@ function Group({ title, people, myIdentity }: { title: string; people: Person[];
     if (people.length === 0) return null;
     return (
         <section className="people-group" aria-label={title}>
-            <h2 className="people-group-title">{title} — {people.length}</h2>
+            <h2 className="section-title people-group-title">{title} — {people.length}</h2>
             {people.map(p => <PersonRow key={p.identity} person={p} isSelf={p.identity === myIdentity} />)}
         </section>
     );
@@ -104,9 +105,9 @@ const PersonRow = memo(function PersonRow({ person, isSelf }: { person: Person; 
         openProfile({ identity: person.identity, name: person.name, x: rect.left - 296, y: rect.top });
     };
     return (
-        <button className={`people-row${offline ? ' people-row-offline' : ''}`} onClick={open} data-person={person.identity}>
+        <button className={`person-row people-row${offline ? ' people-row-offline' : ''}`} onClick={open} data-person={person.identity}>
             <WithStatus status={isBot ? undefined : person.status}>
-                <span className="people-avatar" style={{ background: avatar ? 'transparent' : avatarColorForIdentity(person.identity) }}>
+                <span className="person-avatar" style={{ background: avatar ? 'transparent' : avatarColorForIdentity(person.identity) }}>
                     {avatar
                         ? <img src={avatar} alt="" draggable={false} />
                         : person.name[0]?.toUpperCase() ?? '?'}
@@ -114,9 +115,9 @@ const PersonRow = memo(function PersonRow({ person, isSelf }: { person: Person; 
             </WithStatus>
             <span className="people-row-text">
                 <span className="people-row-name">
-                    <span className="people-name-text">{person.name}</span>
+                    <span className="person-name">{person.name}</span>
                     {isBot && <BotBadge />}
-                    {isSelf && <span className="people-you">{t('sidebar.you')}</span>}
+                    {isSelf && <span className="person-you">{t('sidebar.you')}</span>}
                 </span>
                 {person.room && (
                     <span className="people-row-room"><SpeakerIcon size={11} />{person.room}</span>

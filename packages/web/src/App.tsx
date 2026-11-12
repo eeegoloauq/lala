@@ -199,7 +199,7 @@ export default function App() {
                         if (nameDraft.trim()) setDisplayName(nameDraft.trim());
                     }}
                 >
-                    <div className="sidebar-header" style={{ border: 'none', justifyContent: 'center', marginBottom: '16px' }}>
+                    <div className="sidebar-header panel-header" style={{ border: 'none', justifyContent: 'center', marginBottom: '16px' }}>
                         <span className="logo" style={{ fontSize: '32px' }}>lala</span>
                     </div>
                     <p>{t('welcome.enterName')}</p>

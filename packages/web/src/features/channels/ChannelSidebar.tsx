@@ -26,6 +26,7 @@ import { countOnline, useMyStatus, usePresence } from '../../lib/presence';
 import { WithStatus } from '../../ui/StatusDot';
 import { StatusMenu } from '../people/StatusMenu';
 import '../settings/settings.css';
+import '../../ui/panel.css';
 import './channel-sidebar.css';
 import { IS_TOUCH as isTouchDevice } from '../../lib/env';
 
@@ -241,7 +242,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     return (
         <div className="sidebar">
             {/* Header */}
-            <div className="sidebar-header">
+            <div className="sidebar-header panel-header">
                 <div className="sidebar-server">
                     <span className="logo">{me?.serverName ?? APP_NAME}</span>
                     <span className="sidebar-online">{t('sidebar.online', { count: onlineCount })}</span>
@@ -252,7 +253,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                     </button>
                 )}
                 {onClose && (
-                    <button className="sidebar-close-btn" onClick={onClose} title={t('sidebar.close')}>✕</button>
+                    <button className="sidebar-close-btn panel-close" onClick={onClose} title={t('sidebar.close')}>✕</button>
                 )}
             </div>
 
@@ -264,7 +265,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 onClick={handleUserCardClick}
             >
                 <div className="sidebar-section-header">
-                    <span className="sidebar-section-title">{t('sidebar.rooms')}</span>
+                    <span className="sidebar-section-title section-title">{t('sidebar.rooms')}</span>
                     {canCreateRooms && (
                         <button
                             className="sidebar-add-btn"
@@ -366,14 +367,14 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                 ))}
                                 {isActiveRoom && room.canAddBots && (
                                     <button
-                                        className="channel-user-card channel-add-bot"
+                                        className="channel-user-card person-row channel-add-bot"
                                         onClick={(e) => {
                                             const rect = e.currentTarget.getBoundingClientRect();
                                             setAddBotMenu({ roomId: room.id, locked: !!room.passwordSalt, x: rect.right + 8, y: rect.top });
                                         }}
                                     >
                                         <span className="channel-add-bot-plus"><PlusIcon size={14} strokeWidth={2.2} /></span>
-                                        <span className="channel-user-name">{t('addBot.row')}</span>
+                                        <span className="person-name">{t('addBot.row')}</span>
                                     </button>
                                 )}
                             </div>
@@ -385,7 +386,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 {visibleTemplates.length > 0 && (
                     <div className="channel-templates">
                         <div className="sidebar-section-header">
-                            <span className="sidebar-section-title">{t('sidebar.saved')}</span>
+                            <span className="sidebar-section-title section-title">{t('sidebar.saved')}</span>
                         </div>
                         {visibleTemplates.map(template => (
                             <div

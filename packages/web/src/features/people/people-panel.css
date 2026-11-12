@@ -9,19 +9,10 @@
     overflow: hidden;
 }
 
-/* As tall as the room header beside it, in the room list header's look. */
+/* As tall as the room header beside it. */
 .people-header {
     min-height: 56px;
     box-sizing: border-box;
-    padding: 10px 16px;
-    padding-top: calc(10px + env(safe-area-inset-top, 0px));
-    color: var(--panel-header-color);
-    background: var(--panel-header-bg);
-    text-shadow: var(--panel-header-text-shadow);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .people-title {
@@ -33,23 +24,6 @@
 
 .people-close {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    margin: -8px -12px -8px auto;
-    padding: 0;
-    background: none;
-    border: none;
-    border-radius: 6px;
-    color: var(--text-muted);
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-}
-
-.people-close:hover {
-    color: var(--text-primary);
 }
 
 .people-list {
@@ -58,76 +32,36 @@
     padding: 4px 8px 12px;
 }
 
-/* The same look as the room list's section titles. */
 .people-group-title {
+    display: block;
     margin: 0;
     padding: 14px 8px 6px;
-    font-size: 11px;
-    font-weight: 650;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-muted);
 }
 
-/* Rows like the room list's participant rows, a little taller for the room line. */
+/* A little taller than the room list's rows, for the room line under the name. */
 .people-row {
     width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
     min-height: 42px;
-    padding: 4px 8px;
-    border-radius: 6px;
+    padding-block: 4px;
     background: none;
     border: none;
     font: inherit;
     text-align: left;
     color: inherit;
     cursor: pointer;
-    transition: background var(--transition-fast);
 }
 
-.people-row:hover {
-    --status-ring: var(--bg-hover);
-    background: var(--bg-hover);
-}
-
-.people-avatar {
+.people-row .person-avatar {
     width: 32px;
     height: 32px;
-    border-radius: var(--avatar-radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    overflow: hidden;
     font-size: 13px;
-    font-weight: 700;
-    color: white;
 }
 
-.people-avatar img {
+.people-row .person-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: inherit;
-}
-
-.people-name-text {
-    min-width: 0;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-.people-you {
-    flex-shrink: 0;
-    font-size: 10.5px;
-    color: var(--text-muted);
 }
 
 .people-row-offline {

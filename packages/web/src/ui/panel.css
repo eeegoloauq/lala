@@ -1,0 +1,97 @@
+/* The room list and the people list: one header, section title and person row for both.
+   Each list keeps its own class beside these (.sidebar-header, .channel-user-card,
+   .people-row) for what only it has. */
+
+.panel-header {
+    padding: 10px 16px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    color: var(--panel-header-color);
+    background: var(--panel-header-bg);
+    text-shadow: var(--panel-header-text-shadow);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title {
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+}
+
+.person-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: 0 8px;
+    border-radius: 6px;
+    transition: background var(--transition-fast);
+    cursor: default;
+}
+
+.person-row:hover {
+    --status-ring: var(--bg-hover);
+    background: var(--bg-hover);
+}
+
+.person-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--avatar-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    transition: box-shadow 0.15s ease;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.person-avatar.speaking {
+    box-shadow: 0 0 0 2px #22c55e, 0 0 0 4px rgba(34, 197, 94, 0.2);
+}
+
+.person-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.person-you {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* ✕ in a panel's header; the room list shows its own only on phones. */
+.panel-close {
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: -8px -12px -8px auto;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.panel-close:hover {
+    color: var(--text-primary);
+}
