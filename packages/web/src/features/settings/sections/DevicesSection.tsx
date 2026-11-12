@@ -18,6 +18,8 @@ export function DevicesSection({ headerRef, settings, onUpdate, micMonitor, setM
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   useEffect(() => {
+    // Missing outside a secure context (plain http to an address other than localhost).
+    if (!navigator.mediaDevices) return;
     let cancelled = false;
     const show = (list: MediaDeviceInfo[]) => { if (!cancelled) setDevices(list); };
     const list = async () => {
