@@ -39,7 +39,7 @@ git clone https://github.com/eeegoloauq/lala.git && cd lala
 docker compose up -d
 ```
 
-[Step-by-step guide](docs/self-hosting.md): domains, reverse proxy, admins, private server, ports.
+[Guide](docs/self-hosting.md): HTTPS, firewall, updates, admins and bots.
 
 ## Development
 
