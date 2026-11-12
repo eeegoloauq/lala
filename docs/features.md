@@ -1,8 +1,8 @@
 # Features
 
-Self-hosted voice and video chat inspired by Mumble and Discord, built on
-[LiveKit](https://livekit.io/). No database: rooms are ephemeral, a call's chat goes over data channels, and
-state lives in LiveKit and Redis (text chat history too, for a set time).
+Self-hosted voice, video and text chat inspired by Mumble and Discord, built on
+[LiveKit](https://livekit.io/). No accounts and no database server to run: rooms are ephemeral, a
+call's chat goes over data channels, and room state and text chat history live in Redis.
 
 - Voice and video with configurable audio quality (speech / music / high-quality stereo)
 - End-to-end encryption for password-protected rooms in browsers that support it (AES-GCM)

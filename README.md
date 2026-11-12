@@ -1,7 +1,7 @@
 # Lala
 
-Self-hosted voice and video chat for small groups, in the browser and as a desktop app for Windows
-and Linux.
+Self-hosted voice, video and text chat for small groups, in the browser and as a desktop app for
+Windows and Linux.
 
 [![Release](https://img.shields.io/github/v/release/eeegoloauq/lala?label=release)](https://github.com/eeegoloauq/lala/releases/latest)
 [![Images](https://github.com/eeegoloauq/lala/actions/workflows/images.yml/badge.svg?branch=main)](https://github.com/eeegoloauq/lala/actions/workflows/images.yml)
@@ -10,11 +10,12 @@ and Linux.
 
 ![Screen sharing in Lala](screenshots/stream.png)
 
-- End-to-end encryption for password-protected rooms
-- Screen sharing with system audio in the desktop app
-- RNNoise noise suppression
-- No database, no accounts
-- Five themes, including AMOLED and Windows XP
+- Voice rooms and text chats, like a small Discord
+- Screen sharing up to 4K at 60 fps
+- No accounts: people join with a name and a link
+- Password rooms are end-to-end encrypted
+- Bots join calls through a small API
+- Set up with one script and Docker Compose
 
 [Try the demo](https://eeegoloauq.github.io/lala/) in your browser with simulated people · [All features](docs/features.md)
 
