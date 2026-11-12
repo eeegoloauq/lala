@@ -2,6 +2,10 @@ import { useState, useRef, useCallback, useId } from 'react';
 import { useDismiss } from '../hooks/useDismiss';
 import './select.css';
 
+const GAP = 4;
+/** Same as max-height in select.css. */
+const MAX_LIST_HEIGHT = 220;
+
 export interface SelectOption {
     value: string;
     label: string;
@@ -39,11 +43,17 @@ export function Select({ value, onChange, options, label, className = '', disabl
     const openDropdown = useCallback(() => {
         if (!triggerRef.current) return;
         const rect = triggerRef.current.getBoundingClientRect();
+        // Below the field, or above it when the window has more room there; never taller
+        // than the room it has, so every option can be scrolled to.
+        const below = window.innerHeight - rect.bottom - GAP * 2;
+        const above = rect.top - GAP * 2;
+        const up = below < MAX_LIST_HEIGHT && above > below;
         setDropStyle({
             position: 'fixed',
-            top: rect.bottom + 4,
+            ...(up ? { bottom: window.innerHeight - rect.top + GAP } : { top: rect.bottom + GAP }),
             left: rect.left,
             width: rect.width,
+            maxHeight: Math.min(MAX_LIST_HEIGHT, up ? above : below),
             zIndex: 9999,
         });
         setActive(selectedIndex);
