@@ -72,6 +72,21 @@ test('two people talk in a password room', async ({ browser }) => {
     expect(bob.errors).toEqual([]);
 });
 
+test('on a phone, a tap beside the open sidebar closes it', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    await alice.page.setViewportSize({ width: 390, height: 844 });
+    await createRoom(alice.page, 'Phone room');
+
+    const drawer = alice.page.locator('.sidebar-wrapper');
+    await alice.page.getByRole('button', { name: 'Open sidebar' }).click();
+    await expect(drawer).toHaveClass(/sidebar-mobile-open/);
+    // The call stays visible at the right edge, beside the drawer.
+    await alice.page.mouse.click(380, 422);
+    await expect(drawer).not.toHaveClass(/sidebar-mobile-open/);
+
+    expect(alice.errors).toEqual([]);
+});
+
 test('a viewer receives a screen share', async ({ browser }) => {
     const alice = await enter(browser, 'Alice');
     await alice.page.getByRole('button', { name: 'Create channel' }).click();

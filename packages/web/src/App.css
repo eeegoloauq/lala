@@ -68,10 +68,8 @@
         box-shadow: var(--shadow-lg);
     }
 
-    .sidebar-wrapper.sidebar-mobile-open {
-        pointer-events: auto;
-    }
-
+    /* The wrapper covers the screen but stays transparent to taps even when open, so a tap
+       beside the drawer reaches the backdrop below it, which closes the drawer. */
     .sidebar-wrapper.sidebar-mobile-open .sidebar {
         transform: translateX(0);
     }
