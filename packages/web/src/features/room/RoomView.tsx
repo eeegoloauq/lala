@@ -1,5 +1,5 @@
 import { LiveKitRoom } from '@livekit/components-react';
-import { ExternalE2EEKeyProvider, isE2EESupported, Room, createLocalAudioTrack, Track } from 'livekit-client';
+import { DisconnectReason, ExternalE2EEKeyProvider, isE2EESupported, Room, createLocalAudioTrack, Track } from 'livekit-client';
 import type { AudioCaptureOptions, LocalAudioTrack } from 'livekit-client';
 import E2EEWorker from 'livekit-client/e2ee-worker?worker';
 import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
@@ -42,12 +42,59 @@ const ERROR_SCREENS: Record<string, { title: string; desc: string }> = {
     not_allowed: { title: 'room.notAllowed', desc: 'room.notAllowedDesc' },
     e2ee_unsupported: { title: 'room.e2eeUnsupported', desc: 'room.e2eeUnsupportedDesc' },
     e2ee_failed: { title: 'room.e2eeFailed', desc: 'room.e2eeFailedDesc' },
+    connection_lost: { title: 'room.connectionLost', desc: 'room.connectionLostDesc' },
 };
+
+/**
+ * Drops worth getting back from: the server restarting (every deploy), the network, a join
+ * that failed. Not leaving, a kick or ban, a deleted room, or this device joining elsewhere.
+ */
+const REJOIN_REASONS = new Set<DisconnectReason | undefined>([
+    undefined, DisconnectReason.UNKNOWN_REASON, DisconnectReason.SERVER_SHUTDOWN, DisconnectReason.STATE_MISMATCH,
+    DisconnectReason.JOIN_FAILURE, DisconnectReason.MIGRATION, DisconnectReason.SIGNAL_CLOSE,
+]);
+/** Waits before each try, then every 30 s, for up to five minutes. */
+const REJOIN_DELAYS_MS = [1000, 2000, 4000, 8000, 15_000, 30_000];
+const REJOIN_GIVE_UP_MS = 5 * 60_000;
+/** While the API restarts too, getting a token fails like this; it is worth another try. */
+const REJOIN_RETRYABLE = new Set(['server_unavailable', 'server_error']);
+
+/** Getting back into a call after a drop, and what to restore once in. */
+interface Rejoin { since: number; attempt: number; micMuted: boolean; deafened: boolean }
 
 export function RoomView({ roomName, name, hashPassword, settings, onUpdateSettings, onLeave, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
     const [connection, setConnection] = useState<{ token: string; url: string; canModerate: boolean } | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
+    const rejoinRef = useRef<Rejoin | null>(null);
+    const rejoinTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const [rejoining, setRejoining] = useState(false);
+    // The deafened state to come back with; RoomShell takes it when it mounts.
+    const [startDeafened, setStartDeafened] = useState(false);
+    useEffect(() => {
+        // Another room, or leaving: whatever drop came before is over.
+        rejoinRef.current = null;
+        setRejoining(false);
+        setStartDeafened(false);
+        return () => clearTimeout(rejoinTimerRef.current);
+    }, [roomName]);
+
+    const scheduleRejoin = () => {
+        const rejoin = rejoinRef.current;
+        if (!rejoin) return;
+        if (Date.now() - rejoin.since > REJOIN_GIVE_UP_MS) {
+            rejoinRef.current = null;
+            setRejoining(false);
+            setErrorCode('connection_lost');
+            return;
+        }
+        const delay = REJOIN_DELAYS_MS[Math.min(rejoin.attempt, REJOIN_DELAYS_MS.length - 1)];
+        rejoin.attempt++;
+        setRejoining(true);
+        clearTimeout(rejoinTimerRef.current);
+        // The same path as joining: a new token, the saved password, a new encrypted Room.
+        rejoinTimerRef.current = setTimeout(() => setRetryKey(k => k + 1), delay);
+    };
     const [countdown, setCountdown] = useState(0);
     const countdownInitRef = useRef(0);
     const [retryKey, setRetryKey] = useState(0);
@@ -189,6 +236,10 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
 
         // Fatal (non-password) error — rate limit gets its own countdown UI.
         const handleFatalError = (err: unknown) => {
+            if (rejoinRef.current && err instanceof ApiError && REJOIN_RETRYABLE.has(err.code)) {
+                scheduleRejoin();
+                return;
+            }
             if (err instanceof ApiError && err.code === 'rate_limited') {
                 const secs = err.retryAfter ?? 60;
                 countdownInitRef.current = secs;
@@ -228,7 +279,11 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
                         if (!isPasswordError(err)) throw err;
                     }
                 }
-                if (mounted()) setNeedsPassword(true);
+                if (!mounted()) return;
+                // The password changed while we were away: this is a new join now.
+                rejoinRef.current = null;
+                setRejoining(false);
+                setNeedsPassword(true);
             } catch (err) {
                 if (mounted()) handleFatalError(err);
             }
@@ -291,6 +346,11 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
         // settings gets a microphone of its own below.
         const preAcquired = micTrackRef.current;
         micTrackRef.current = null;
+        // Back in after a drop: a muted microphone stays muted.
+        const rejoin = rejoinRef.current;
+        rejoinRef.current = null;
+        setRejoining(false);
+        const startMuted = settingsRef.current.pushToTalk || !!rejoin?.micMuted || !!rejoin?.deafened;
 
         // A listener on a stage may not publish a microphone; asking would only be refused.
         if (!canPublishSource(participant.permissions, MICROPHONE)) {
@@ -298,11 +358,13 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
             return;
         }
         if (preAcquired) {
-            participant.publishTrack(preAcquired, { source: Track.Source.Microphone })
+            // Muted before it is published, so not a moment of sound goes out.
+            (startMuted ? preAcquired.mute() : Promise.resolve(preAcquired))
+                .then(() => participant.publishTrack(preAcquired, { source: Track.Source.Microphone }))
                 .then(() => {
                     // Push-to-talk starts muted: usePushToTalk's mount-time mute may have
                     // run before this publish existed, so enforce it here too.
-                    if (settingsRef.current.pushToTalk) preAcquired.mute().catch(() => {});
+                    if (startMuted) preAcquired.mute().catch(() => {});
                 })
                 .catch(err => {
                     console.warn('[RoomView] Failed to publish pre-acquired microphone track:', err instanceof Error ? err.message : err);
@@ -311,13 +373,27 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
                 });
             return;
         }
+        // Unmuting publishes it.
+        if (startMuted) return;
         participant.setMicrophoneEnabled(true, audioOptions).catch(err => {
             console.warn('[RoomView] Microphone publish failed:', err instanceof Error ? err.message : err);
         });
     }, [room, audioOptions]);
 
-    // Every way out of a call ends here: the leave button, a kick or ban, the room's end.
-    const handleDisconnected = () => {
+    // Every way out of a call ends here: the leave button, a kick or ban, the room's end,
+    // and a drop, which tries to get back in instead.
+    const handleDisconnected = (reason?: DisconnectReason) => {
+        if (REJOIN_REASONS.has(reason)) {
+            if (!rejoinRef.current) {
+                const participant = room.localParticipant;
+                let deafened = false;
+                try { deafened = JSON.parse(participant.metadata || '{}').deafened === true; } catch { /* not ours */ }
+                rejoinRef.current = { since: Date.now(), attempt: 0, micMuted: !participant.isMicrophoneEnabled, deafened };
+                setStartDeafened(deafened);
+            }
+            scheduleRejoin();
+            return;
+        }
         if (settingsRef.current.soundJoinLeave) playLeaveSound();
         onLeave();
     };
@@ -433,6 +509,16 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
         );
     }
 
+    // Until the next token: then <LiveKitRoom> has to be there to connect.
+    if (rejoining && !needsPassword && !connection) {
+        return (
+            <div className="empty-state" role="status">
+                <p style={{ color: 'var(--text-muted)' }}>{t('room.reconnecting')}</p>
+                <button className="empty-state-cta" onClick={onLeave}>{t('controls.leave')}</button>
+            </div>
+        );
+    }
+
     if (!connection || (e2eeSetup && encryptedRoom !== room)) {
         return <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>{t('room.connecting')}</p></div>;
     }
@@ -464,7 +550,7 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
                 onDisconnected={handleDisconnected}
                 style={{ height: '100%' }}
             >
-                <RoomShell canModerate={connection.canModerate} name={name} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
+                <RoomShell canModerate={connection.canModerate} name={name} startDeafened={startDeafened} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
             </LiveKitRoom>
         </div>
     );

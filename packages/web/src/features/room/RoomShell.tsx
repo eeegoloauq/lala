@@ -3,7 +3,7 @@ import type { TransitionEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTracks, RoomAudioRenderer, useLocalParticipant, useLocalParticipantPermissions, useRoomContext, useParticipants, useConnectionState } from '@livekit/components-react';
 import { isTrackReference } from '@livekit/components-react';
-import { Track } from 'livekit-client';
+import { ConnectionState, Track } from 'livekit-client';
 import { VideoGrid } from './VideoGrid/VideoGrid';
 import { FocusLayout } from './FocusLayout/FocusLayout';
 import { ControlBar } from './ControlBar/ControlBar';
@@ -44,6 +44,8 @@ const SCREEN_SHARE_TRACKS = [Track.Source.ScreenShare];
 interface RoomShellProps {
     canModerate: boolean;
     name: string;  // display name — used to call setName on join/change
+    /** Back in after a dropped connection that was deafened: stays deafened. */
+    startDeafened?: boolean;
     onOpenSettings?: () => void;
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
@@ -51,10 +53,10 @@ interface RoomShellProps {
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomShell({ canModerate, name, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
+export function RoomShell({ canModerate, name, startDeafened = false, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
-    const [audioMuted, setAudioMuted] = useState(false);
+    const [audioMuted, setAudioMuted] = useState(startDeafened);
     const [screenShareModalOpen, setScreenShareModalOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState<string | null>(null);
     const [screenShareError, showScreenShareError, clearScreenShareError] = useTimedValue<ScreenShareFailure>(8000);
@@ -87,6 +89,14 @@ export function RoomShell({ canModerate, name, onOpenSettings, settings, onUpdat
     const participants = useParticipants();
     const room = useRoomContext();
     const connectionState = useConnectionState();
+    // Others see deafened through the metadata, which the new connection doesn't carry yet.
+    useEffect(() => {
+        if (startDeafened && connectionState === ConnectionState.Connected) {
+            localParticipant.setMetadata(JSON.stringify({ deafened: true })).catch(console.warn);
+        }
+        // Once per connection; a later toggle sets the metadata itself.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [connectionState]);
 
     // Keep LiveKit display name in sync with app display name
     useEffect(() => {

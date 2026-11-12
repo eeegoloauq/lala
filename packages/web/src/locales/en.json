@@ -88,7 +88,9 @@
     "e2eeUnsupported": "This browser can't encrypt calls",
     "e2eeUnsupportedDesc": "Password rooms are end-to-end encrypted, and this browser doesn't support it. Use a current Chrome, Edge, Firefox or Safari, or the desktop app.",
     "e2eeFailed": "Encryption could not be turned on",
-    "e2eeFailedDesc": "The call was not joined, so nothing was sent unencrypted. Try again."
+    "e2eeFailedDesc": "The call was not joined, so nothing was sent unencrypted. Try again.",
+    "connectionLost": "The connection was lost",
+    "connectionLostDesc": "Lala tried to get back into the call for five minutes. Check your connection and join again."
   },
   "ctx": {
     "unmute": "Unmute",

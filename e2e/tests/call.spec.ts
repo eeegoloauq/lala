@@ -131,6 +131,29 @@ test('on a phone, a tap beside the open sidebar closes it', async ({ browser }) 
     expect(alice.errors).toEqual([]);
 });
 
+test('a dropped connection gets back into the call, still muted', async ({ browser }) => {
+    test.setTimeout(150_000);
+    const alice = await enter(browser, 'Alice');
+    await createRoom(alice.page, 'Rejoin room');
+    const bob = await enter(browser, 'Bob');
+    await bob.page.goto(alice.page.url());
+    const bobTile = alice.page.locator('.p-tile', { hasText: 'Bob' });
+    await expect(bobTile).toBeVisible({ timeout: 20_000 });
+    await bob.page.getByRole('button', { name: 'Mute microphone' }).click();
+    await expect(bobTile.getByTitle('Microphone off')).toBeVisible({ timeout: 10_000 });
+
+    // Offline until LiveKit gives up on its own reconnect, then the app keeps trying.
+    await bob.page.context().setOffline(true);
+    await expect(bob.page.getByRole('status')).toHaveText(/Reconnecting/, { timeout: 90_000 });
+    await bob.page.context().setOffline(false);
+
+    // Back in the call, not on the home screen, and the microphone is still off.
+    await expect(bob.page.getByRole('button', { name: 'Unmute microphone' })).toBeVisible({ timeout: 45_000 });
+    expect(new URL(bob.page.url()).pathname).toBe(new URL(alice.page.url()).pathname);
+    await expect(bobTile.getByTitle('Microphone off')).toBeVisible({ timeout: 20_000 });
+    expect(alice.errors).toEqual([]);
+});
+
 test('a viewer receives a screen share', async ({ browser }) => {
     const alice = await enter(browser, 'Alice');
     await alice.page.getByRole('button', { name: 'Create channel' }).click();
