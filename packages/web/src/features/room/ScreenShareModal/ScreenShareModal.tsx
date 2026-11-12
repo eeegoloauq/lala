@@ -8,7 +8,7 @@ import { Select } from '../../../ui/Select';
 import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS, screenShareBitrateLabel } from '../../../lib/constants';
 import { SpeakerIcon } from '../icons/Icons';
 import './screen-share-modal.css';
-import { IS_ELECTRON as isElectron, IS_LINUX } from '../../../lib/env';
+import { IS_ELECTRON as isElectron, IS_LINUX, SCREEN_AUDIO_SUPPORTED } from '../../../lib/env';
 
 interface ScreenShareModalProps {
     settings: AppSettings;
@@ -228,10 +228,14 @@ export function ScreenShareModal({ settings, onUpdateSettings, onConfirm, onCanc
                                     options={FPS_OPTIONS}
                                 />
                             </div>
-                            <div className="ss-browser-row">
-                                <label className="ss-browser-label">{t('screenShare.audio')}</label>
-                                {audioToggle}
-                            </div>
+                            {SCREEN_AUDIO_SUPPORTED ? (
+                                <div className="ss-browser-row">
+                                    <label className="ss-browser-label">{t('screenShare.audio')}</label>
+                                    {audioToggle}
+                                </div>
+                            ) : (
+                                <div className="ss-browser-hint">{t('screenShare.noAudio')}</div>
+                            )}
                         </div>
                         <div className="ss-bottom-bar">
                             <label className="ss-skip">

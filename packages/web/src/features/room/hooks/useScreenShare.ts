@@ -3,7 +3,7 @@ import { useLocalParticipant, useTracks, isTrackReference } from '@livekit/compo
 import { Track, AudioPresets } from 'livekit-client';
 import type { AudioCaptureOptions, VideoEncoding, VideoResolution } from 'livekit-client';
 import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS } from '../../../lib/constants';
-import { IS_ELECTRON as isElectron } from '../../../lib/env';
+import { IS_ELECTRON as isElectron, IS_LINUX, SCREEN_AUDIO_SUPPORTED } from '../../../lib/env';
 
 /**
  * Audio constraints for screen share — disable all voice processing
@@ -40,6 +40,21 @@ export function getScreenShareQuality(fpsIdx: number, brIdx: number): ScreenShar
     return { encoding: { maxBitrate: mbps * 1_000_000, maxFramerate: fps }, resolution };
 }
 
+/** What a failed start means for the person sharing; null when they cancelled the picker. */
+export type ScreenShareFailure = 'systemDenied' | 'capture' | 'captureLinux' | 'publish';
+
+export function screenShareFailure(err: unknown): ScreenShareFailure | null {
+    const name = err instanceof Error ? err.name : '';
+    // Cancelling the picker and the browser's own refusal are the same NotAllowedError; only
+    // the operating system's refusal (macOS screen recording permission) says so.
+    if (name === 'NotAllowedError') return /system/i.test((err as Error).message) ? 'systemDenied' : null;
+    if (['AbortError', 'NotReadableError', 'NotFoundError', 'NotSupportedError', 'DeviceUnsupportedError', 'TrackInvalidError'].includes(name)) {
+        return IS_LINUX ? 'captureLinux' : 'capture';
+    }
+    // The capture worked but publishing it did not: the connection to the server.
+    return 'publish';
+}
+
 export function useScreenShare() {
     const { localParticipant } = useLocalParticipant();
     const screenTracks = useTracks([Track.Source.ScreenShare]);
@@ -55,14 +70,9 @@ export function useScreenShare() {
     const start = async (quality: ScreenShareQuality, sourceId?: string, audio = true) => {
         setPending(true);
         try {
-            if (isElectron && sourceId) {
-                console.log('[Lala] Screen share: setting source via IPC:', sourceId);
-                await window.electronAPI!.setScreenShareSource(sourceId);
-            } else if (isElectron && !sourceId) {
-                // No sourceId is expected on Wayland — the XDG portal handles source selection
-                // natively without setDisplayMediaRequestHandler.
-                console.log('[Lala] Screen share: Electron without sourceId (expected on Wayland)');
-            }
+            // Without a sourceId (Wayland) the XDG portal picks the source itself.
+            if (isElectron && sourceId) await window.electronAPI!.setScreenShareSource(sourceId);
+            audio &&= SCREEN_AUDIO_SUPPORTED;
             await localParticipant.setScreenShareEnabled(
                 true,
                 {

@@ -14,6 +14,13 @@ export const IS_TOUCH = typeof window !== 'undefined' && navigator.maxTouchPoint
 export const IS_LINUX = typeof navigator !== 'undefined' && /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);
 
 /**
+ * The screen share can carry sound: the desktop app, and Chromium browsers on a desktop OS.
+ * Safari (which every iOS browser is) and Firefox return no audio track from the capture.
+ */
+export const SCREEN_AUDIO_SUPPORTED = IS_ELECTRON || (typeof navigator !== 'undefined'
+    && /Chrome\//.test(navigator.userAgent) && !/Android|iPhone|iPad|Mobile/.test(navigator.userAgent));
+
+/**
  * The static demo build (`vite build --mode demo`): the API is answered in the page by
  * features/demo/server.ts and calls are not placed. A build-time constant, so the
  * regular build drops every demo branch and never bundles the demo code.

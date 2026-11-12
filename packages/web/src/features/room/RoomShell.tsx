@@ -19,8 +19,8 @@ import { useCameraProcessor } from './hooks/useCameraProcessor';
 import { usePersistedVolumes } from '../../hooks/usePersistedVolumes';
 import { useRoomKeyboard } from '../../hooks/useRoomKeyboard';
 import { useLocalControls } from './hooks/useLocalControls';
-import { useScreenShare, getScreenShareQuality } from './hooks/useScreenShare';
-import type { ScreenShareQuality } from './hooks/useScreenShare';
+import { useScreenShare, getScreenShareQuality, screenShareFailure } from './hooks/useScreenShare';
+import type { ScreenShareQuality, ScreenShareFailure } from './hooks/useScreenShare';
 import { useAvatarCache } from './hooks/useAvatarCache';
 import { useRoomStatusSync } from './hooks/useRoomStatusSync';
 import { useChatEntries } from './hooks/useChatEntries';
@@ -58,7 +58,12 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     const [audioMuted, setAudioMuted] = useState(false);
     const [screenShareModalOpen, setScreenShareModalOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState<string | null>(null);
-    const [screenShareError, showScreenShareError, clearScreenShareError] = useTimedValue<true>(8000);
+    const [screenShareError, showScreenShareError, clearScreenShareError] = useTimedValue<ScreenShareFailure>(8000);
+    const onScreenShareError = useCallback((err: unknown) => {
+        const failure = screenShareFailure(err);
+        if (failure) showScreenShareError(failure);
+        else clearScreenShareError();
+    }, [showScreenShareError, clearScreenShareError]);
     const micWasEnabledRef = useRef(false);
 
     // Desktop: chat docks as a reflowing column (animated width). Mobile/narrow: existing overlay.
@@ -157,19 +162,17 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
         if (screenEnabled) {
             stopScreen();
         } else if (settings.screenShareSkipDialog && (!isElectron || isWayland)) {
-            console.log('[Lala] Screen share: skip dialog');
-            startScreen(getScreenShareQuality(settings.screenShareFpsIdx, settings.screenShareBrIdx)).catch(() => showScreenShareError(true));
+            startScreen(getScreenShareQuality(settings.screenShareFpsIdx, settings.screenShareBrIdx), undefined, settings.screenShareAudio).catch(onScreenShareError);
         } else {
-            console.log('[Lala] Screen share: opening modal (isElectron:', isElectron, ', isWayland:', isWayland, ')');
             setScreenShareModalOpen(true);
         }
         // isElectron is a module-level constant — intentionally not a dependency
-    }, [screenEnabled, startScreen, stopScreen, isWayland, settings.screenShareSkipDialog, settings.screenShareFpsIdx, settings.screenShareBrIdx, showScreenShareError]);
+    }, [screenEnabled, startScreen, stopScreen, isWayland, settings.screenShareSkipDialog, settings.screenShareFpsIdx, settings.screenShareBrIdx, settings.screenShareAudio, onScreenShareError]);
 
     const handleScreenShareModalConfirm = useCallback((quality: ScreenShareQuality, sourceId?: string, audio?: boolean) => {
         setScreenShareModalOpen(false);
-        startScreen(quality, sourceId, audio).catch(() => showScreenShareError(true));
-    }, [startScreen, showScreenShareError]);
+        startScreen(quality, sourceId, audio).catch(onScreenShareError);
+    }, [startScreen, onScreenShareError]);
 
     // Single owner of the deafen mute/unmute sound: when deafening also toggles
     // the mic, useMicSound already plays a sound for that mic state transition —
@@ -306,7 +309,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
 
             {screenShareError && (
                 <div className="screen-share-error-toast" role="alert">
-                    <span>{t('room.screenShareFailed')}</span>
+                    <span>{t(`room.screenShareFailed.${screenShareError}`)}</span>
                     <button
                         className="screen-share-error-toast-close"
                         onClick={clearScreenShareError}

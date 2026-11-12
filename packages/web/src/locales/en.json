@@ -15,6 +15,7 @@
     "quality": "Quality",
     "frameRate": "Frame rate",
     "audio": "Audio",
+    "noAudio": "This browser shares the screen without sound.",
     "dontAsk": "Don't ask again"
   },
   "createRoom": {
@@ -75,7 +76,12 @@
     "errorCode": "Error: {{code}}",
     "connecting": "Connecting...",
     "reconnecting": "Reconnecting...",
-    "screenShareFailed": "Screen share failed or was cancelled. On Linux/Wayland make sure xdg-desktop-portal and PipeWire are installed.",
+    "screenShareFailed": {
+      "systemDenied": "Your system is blocking screen capture. Allow it for the browser in the privacy settings, then try again.",
+      "capture": "The screen could not be captured. Try another window or screen.",
+      "captureLinux": "The screen could not be captured. On Linux, make sure xdg-desktop-portal and PipeWire are installed.",
+      "publish": "The screen share could not be sent. Check your connection and try again."
+    },
     "dismiss": "Dismiss",
     "notAllowed": "Members only",
     "notAllowedDesc": "The server admin has opened this room to members only."
