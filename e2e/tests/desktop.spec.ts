@@ -77,3 +77,39 @@ test('desktop returns to the connection page when the server fails to load', asy
         server.close();
     }
 });
+
+test('desktop reloads after a renderer crash and falls back to the connection page in a crash loop', async () => {
+    const app = await launch();
+    // Playwright drops a page whose renderer crashed, so the checks run in the main process.
+    const crash = () => app.evaluate(({ BrowserWindow }) => {
+        const contents = BrowserWindow.getAllWindows()[0].webContents;
+        return new Promise<void>(resolve => {
+            contents.once('render-process-gone', () => resolve());
+            contents.forcefullyCrashRenderer();
+        });
+    });
+    const page = () => app.evaluate(async ({ BrowserWindow }) => {
+        const contents = BrowserWindow.getAllWindows()[0].webContents;
+        if (contents.isCrashed() || contents.isLoading()) return null;
+        return contents.executeJavaScript(
+            "document.getElementById('connectBtn') ? document.getElementById('errorMsg').textContent : null",
+        ).catch(() => null);
+    });
+    try {
+        await app.firstWindow();
+        await expect.poll(page, { timeout: 20_000 }).toBe('');
+
+        // The first two crashes in a burst reload the page.
+        for (let i = 0; i < 2; i++) {
+            await crash();
+            await expect.poll(page, { timeout: 20_000 }).toBe('');
+        }
+
+        // The third falls back to the connection page with a notice.
+        await crash();
+        await expect.poll(page, { timeout: 20_000 }).toMatch(/crashed several times/);
+        // A fourth would close the app behind a native error box, which the test cannot dismiss.
+    } finally {
+        await app.close();
+    }
+});

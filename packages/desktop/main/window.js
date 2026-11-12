@@ -1,6 +1,6 @@
 'use strict';
 
-const { BrowserWindow, app, screen, session, shell, powerSaveBlocker } = require('electron');
+const { BrowserWindow, Notification, app, dialog, screen, session, shell, powerSaveBlocker } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { IS_MAC, HAS_SYSTEM_TRAY, USER_DATA } = require('./constants');
@@ -101,6 +101,66 @@ function navigateToConnectionPage(query) {
     win.loadFile('index.html', query ? { query } : undefined);
 }
 
+// ─── Renderer Crash Recovery ─────────────────────────────────────────────────
+// A crashed renderer leaves the window black until a page loads again (seen on Linux when
+// the NVIDIA driver failed to map GPU memory). The first crashes in a burst reload the page,
+// the next one falls back to the connection page, and one more closes the app, so a crash
+// loop stops.
+
+const CRASH_BURST_MS = 5 * 60_000;
+const RELOADS_PER_BURST = 2;
+let recentCrashes = [];
+
+const CRASH_TEXT = {
+    en: {
+        reloadedTitle: 'Lala reloaded after a crash',
+        reloadedBody: 'If you were in a call, join it again.',
+        fallback: 'The page crashed several times. Connect again to retry.',
+        quitTitle: 'Lala has to close',
+        quitBody: 'The window keeps crashing. Crash logs: %s',
+    },
+    ru: {
+        reloadedTitle: 'Lala перезагрузилась после сбоя',
+        reloadedBody: 'Если вы были в звонке, зайдите в него снова.',
+        fallback: 'Страница несколько раз завершилась со сбоем. Подключитесь снова.',
+        quitTitle: 'Lala нужно закрыть',
+        quitBody: 'Окно продолжает завершаться со сбоем. Журналы сбоев: %s',
+    },
+};
+
+function crashText(key) {
+    const lang = app.getLocale().startsWith('ru') ? 'ru' : 'en';
+    return CRASH_TEXT[lang][key];
+}
+
+function recoverFromRendererCrash(win, reason) {
+    // clean-exit is a renderer that closed normally; anything else leaves a dead page behind.
+    if (reason === 'clean-exit' || win.isDestroyed()) return;
+
+    // The call ended with the page, so the display may sleep again.
+    if (state.powerSaveBlockerId !== null) {
+        powerSaveBlocker.stop(state.powerSaveBlockerId);
+        state.powerSaveBlockerId = null;
+    }
+
+    const now = Date.now();
+    recentCrashes = recentCrashes.filter(time => now - time < CRASH_BURST_MS);
+    recentCrashes.push(now);
+
+    if (recentCrashes.length <= RELOADS_PER_BURST) {
+        win.webContents.reload();
+        if (Notification.isSupported()) {
+            new Notification({ title: crashText('reloadedTitle'), body: crashText('reloadedBody') }).show();
+        }
+    } else if (recentCrashes.length === RELOADS_PER_BURST + 1) {
+        navigateToConnectionPage({ error: crashText('fallback') });
+        showWindow();
+    } else {
+        dialog.showErrorBox(crashText('quitTitle'), crashText('quitBody').replace('%s', path.join(USER_DATA, 'crash-logs')));
+        app.exit(1);
+    }
+}
+
 // ─── Window Creation ─────────────────────────────────────────────────────────
 
 function createWindow() {
@@ -147,6 +207,10 @@ function createWindow() {
         if (!app.isPackaged && input.key === 'F12' && input.type === 'keyDown') {
             mainWindow.webContents.toggleDevTools();
         }
+    });
+
+    mainWindow.webContents.on('render-process-gone', (_event, details) => {
+        recoverFromRendererCrash(mainWindow, details.reason);
     });
 
     // The server could not be reached at all (DNS, refused, timeout, certificate).

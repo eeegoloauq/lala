@@ -5,9 +5,6 @@
 Internal work that shouldn't be done in passing. Remove an item when it ships.
 
 - **Connection translations.** Consolidate duplicated locale text in `packages/desktop/connection.js` and `packages/web/src/locales/`.
-- **Desktop renderer crash.** After `render-process-gone` the window stays black until the app
-  is restarted (seen on Linux with an NVIDIA driver mapping failure). Reload the window and
-  show a notice, with a limit so a crash loop stops.
 
 ## Bots
 
