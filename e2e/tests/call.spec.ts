@@ -190,7 +190,9 @@ test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
     await expect(alice.page.locator('.p-tile', { hasText: 'Bob' }).getByTitle('Muted by admin')).toBeVisible({ timeout: 20_000 });
     await expect.poll(async () => (await media(alice.page)).audio, { timeout: 10_000 }).toBe(0);
     // The sidebar shows the same mute, and lifts it from its own menu.
-    const sidebarBob = alice.page.locator('.channel-user-card', { hasText: 'Bob' });
+    // Earlier tests' people can still be listed for a moment: only this room's Bob.
+    const roomId = new URL(alice.page.url()).pathname.split('/').pop();
+    const sidebarBob = alice.page.locator(`.channel-user-card[data-participant-room="${roomId}"]`, { hasText: 'Bob' });
     await expect(sidebarBob.getByTitle('Muted by admin')).toBeVisible({ timeout: 10_000 });
     await sidebarBob.click({ button: 'right' });
     await alice.page.locator('.ctx-menu').getByRole('button', { name: 'Allow microphone' }).click();
