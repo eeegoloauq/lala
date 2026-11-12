@@ -1,10 +1,5 @@
 # Roadmap
 
-## Now
-
-- **Text chats** with rules, mentions, replies, reactions, pins and files
-  ([design](docs/design.md#text-chats))
-
 ## Next
 
 In this order; each builds on the one before.

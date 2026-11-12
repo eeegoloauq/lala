@@ -142,6 +142,36 @@ someone without a heartbeat for 2.5 minutes drops out, and a closed stream takes
 status `offline` when they aren't; a member with several devices is one row. Someone invisible
 is left out, or listed as offline when they are a member, except in their own list.
 
+## Text chats
+
+Present when `GET /api/me` has `textChats: true`. Bots can't use them. Types are in
+[`packages/shared`](../packages/shared/index.d.ts).
+
+| Request | Body | Result |
+|---|---|---|
+| `GET /api/chats` | | `ChannelsResponse`: the chats, the rules and the caller's latest 50 mentions |
+| `POST /api/rules/accept` | `{ version }` | `204`; `409` when the rules changed meanwhile |
+| `GET /api/chats/:id/messages?before=&limit=` | | `MessagesResponse`, oldest first, at most 100 |
+| `POST /api/chats/:id/messages` | `SendMessageRequest` | `201` with the `ChatMessage` |
+| `DELETE /api/chats/:id/messages/:mid` | | `204`; one's own message, any for admins |
+| `PUT`/`DELETE /api/chats/:id/messages/:mid/reactions/:emoji` | | `204`; one emoji, at most 20 different per message (`409`) |
+| `GET /api/chats/:id/pins` | | `PinsResponse`, newest pin first |
+| `PUT`/`DELETE /api/chats/:id/pins/:mid` | | `204`; admins, at most 50 per chat (`409`) |
+| `POST /api/chats/:id/files` | the file | `201` with `UploadResponse`; name in `X-File-Name` (URI-encoded); `413` over the server's limit |
+| `GET /api/files/:fid` | | The file; pictures, audio and MP4/WebM video inline, the rest as a download |
+
+Message IDs are Redis stream IDs (`<ms>-<seq>`) and sort in time order. Text is at most 4,000
+characters; a mention is `<@identity>`. Upload files first and name them in the message within
+an hour; an upload belongs to its uploader and its chat. The server detects a file's type from
+its content. A file removed to make space stays in its message without a `url`.
+
+While the rules are `required` and the caller hasn't agreed to the current version, rooms,
+tokens, presence and chats answer `403 rules_required`; `GET /api/chats` answers with the rules
+and no chats. Changes arrive on the event stream as `chat_message`, `chat_deleted`,
+`chat_reactions` and `chat_pinned`, each with a `ChatEvent` as data. Only a stream opened with
+a presence ticket gets them, and only while its person may read the chats. Reload after a
+reconnect.
+
 ## Joining a call
 
 `POST /api/token` with `{ room, name?, passwordKey? }` returns `{ token, url, identity,
@@ -187,4 +217,5 @@ for the room's creator and server admins. Bodies are `ModerationRequest`, `MuteR
 ## Errors and limits
 
 Errors are `{ error: <code> }` with a code from `ApiErrorCode`. Rate limits return `429`
-with `RateLimit-*` headers and no body code. Request bodies are limited to 16 KB.
+with `RateLimit-*` headers and no body code. Request bodies are limited to 16 KB, except
+chat file uploads.

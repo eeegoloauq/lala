@@ -54,6 +54,21 @@ and keep rooms that always exist, copy [`config/lala.example.yaml`](../config/la
 to `config/lala.yaml` and restart the `api` container. People are listed by the ID shown in
 Settings → Profile; calls keep going through the restart.
 
+## Text chats
+
+`chats:` in `config/lala.yaml` adds text chats above the rooms, and `rules:` the server's
+rules (see the example file). Redis keeps the newest 10,000 messages of each chat, however
+old; `chatHistory.messages: 0` keeps all of them and `chatHistory.days` also removes old ones.
+Redis holds history in memory, so watch its use when you keep everything. Files sent in chats go to the `chat_files`
+volume, 1 GB in total by default (`chatFiles.space`); `chatFiles.maxFile` optionally limits one
+file. When the space runs out the oldest files are removed and their messages show that. Pictures
+lose their GPS location when uploaded.
+
+The web container accepts uploads of any size and the API refuses one bigger than the space
+(or `maxFile`). A reverse proxy in front usually has its own limit: raise it (Caddy has none by
+default; nginx needs `client_max_body_size`). Taking a chat out of the config hides it and keeps
+its history, so putting it back brings the history back.
+
 ## Look
 
 `name:` in `config/lala.yaml` names the server at the top of the room list. `theme:` sets the

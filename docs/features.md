@@ -1,13 +1,14 @@
 # Features
 
 Self-hosted voice and video chat inspired by Mumble and Discord, built on
-[LiveKit](https://livekit.io/). No database: rooms are ephemeral, chat goes over data channels, and
-state lives in LiveKit and Redis.
+[LiveKit](https://livekit.io/). No database: rooms are ephemeral, a call's chat goes over data channels, and
+state lives in LiveKit and Redis (text chat history too, for a set time).
 
 - Voice and video with configurable audio quality (speech / music / high-quality stereo)
 - End-to-end encryption for password-protected rooms in browsers that support it (AES-GCM)
 - Screen sharing with quality/FPS controls; the desktop app also shares system audio
 - Chat over data channels with emoji picker and TTS
+- Text chats with server rules, mentions, replies, reactions, pins and files
 - Room admin: kick, ban, mute; passwords hashed with scrypt
 - People list: who is in a call, online or offline, with Online, Idle, Do Not Disturb and Invisible
 - 5 themes: dark, light, AMOLED, Discord, Windows XP

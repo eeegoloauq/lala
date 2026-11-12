@@ -38,9 +38,9 @@ changing either, run web lint and build, desktop packaging and the call tests.
 
 ## Text chats
 
-The web client and the demo are built; the API side is not yet. Wire types are in
-`packages/shared` (`TextChannel`, `ServerRules`, `ChatMessage`, `ChatEvent`, …); the demo's
-`features/demo/chat.ts` answers the same routes and is the reference for their behaviour.
+Wire types are in `packages/shared` (`TextChannel`, `ServerRules`, `ChatMessage`, `ChatEvent`,
+…); the API is `packages/api/src/routes/chats.ts`, and the demo's `features/demo/chat.ts`
+answers the same routes inside the page.
 
 - **A server with chats says so**: `Me.textChats`. Only then does the client ask for them, so
   an older API stays quiet.
@@ -53,8 +53,9 @@ The web client and the demo are built; the API side is not yet. Wire types are i
   chats) and `POST /api/rules/accept {version}` records the agreement per identity in Redis.
   The client shows only the rules until then and sends no presence.
 - **History is a Redis stream per chat.** Stream IDs (`<ms>-<seq>`) are the message IDs and
-  the paging cursor. Trimmed by age and count from the config (defaults 30 days, 10,000
-  messages); 4,000 characters per message. `GET /api/chats/:id/messages?before=<id>&limit=50`
+  the paging cursor. Trimmed by count from the config (default 10,000 messages per chat,
+  0 for none) and optionally by age (`days`, none by default); text is small, but Redis keeps
+  it in memory. 4,000 characters per message. `GET /api/chats/:id/messages?before=<id>&limit=50`
   pages back, oldest first, with `more`. Pinned messages are copied out of the stream, so
   they outlive its trimming (at most 50 per chat, `GET /api/chats/:id/pins`).
 - **Mentions are `<@identity>` in the text.** The composer shows `@Name` and swaps in the
@@ -70,12 +71,20 @@ The web client and the demo are built; the API side is not yet. Wire types are i
   for admins.
 - **Events** ride the existing stream: `chat_message`, `chat_deleted`, `chat_reactions`,
   `chat_pinned`, each with the `ChatEvent` as its data. A reconnect makes the client reload.
+  The stream is open to anyone past the server password, so events that carry messages go
+  only to streams opened with a presence ticket whose person may read the chats right now
+  (allowed in, not banned, agreed to required rules); room and presence events still go to all.
 - **Files** upload first (`POST /api/chats/:id/files`, the file as the body, its name in
   `X-File-Name`), then the message names them with a spoiler flag each. Kept on disk, not in
   Redis: one size limit for the whole server (default 1 GB), the oldest removed first, a file
-  removed with its message. The server detects the type from the content: PNG, JPEG, GIF,
+  removed with its message. An upload no message names
+  within an hour goes. The API reads the body as a stream to disk; a refused upload is read
+  to its end before the answer, or a proxy turns the answer into a 502. Files are served by a
+  random 128-bit ID without the device header (an `<img>` can't send it), with
+  `Content-Security-Policy: default-src 'none'; sandbox`. The server detects the type from the content: PNG, JPEG, GIF,
   WebP, AVIF, common audio and MP4/WebM video are served inline, everything else as a
-  download; photos lose their location metadata. A removed file leaves its entry without a
+  download; photos lose their location metadata (the EXIF GPS directory and XMP coordinates,
+  overwritten in place) and MP4 videos their ISO 6709 location. A removed file leaves its entry without a
   `url` ("removed to make space").
 - **Notifications** are the client's: per chat (`lala_chat_notify`) all messages, only
   mentions and replies (default) or nothing; Do Not Disturb silences them.
