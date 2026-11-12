@@ -44,7 +44,7 @@ docker compose up -d
 
 ## Development
 
-[Contributing and local setup](CONTRIBUTING.md) · [Architecture and security](docs/architecture.md) · [Client API](docs/api.md) · [Roadmap](ROADMAP.md) · [Security policy](SECURITY.md)
+[Contributing and local setup](CONTRIBUTING.md) · [Translations](CONTRIBUTING.md#translations) · [Theming](docs/theming.md) · [Architecture and security](docs/architecture.md) · [Client API](docs/api.md) · [Roadmap](ROADMAP.md) · [Security policy](SECURITY.md)
 
 ## License
 
