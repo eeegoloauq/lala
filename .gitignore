@@ -10,6 +10,9 @@ livekit.yaml
 node_modules/
 **/node_modules/
 
+# Text chat files from a local API (LALA_FILES_DIR defaults here)
+packages/api/data/
+
 # Build output
 dist/
 **/dist/

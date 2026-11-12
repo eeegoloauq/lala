@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import type { PresenceChoice, PresencePerson, PresenceStatus } from '@lala/shared';
 import { redis } from './redis';
 import { broadcastSse } from './sse';
+import { config } from './config';
 
 /**
  * Who has the app open. Each open app holds the event stream with a ticket that names its
@@ -124,6 +125,12 @@ export function streamClosed(identity: string): void {
 }
 
 /** Drops people whose heartbeats stopped; runs on a timer. */
+/** The name someone last showed (their presence heartbeat), else their name in the config. */
+export async function nameOf(identity: string): Promise<string> {
+    const name = await redis().hget(stateKey(identity), 'name');
+    return name || config().users.get(identity)?.name || 'Someone';
+}
+
 export async function sweepPresence(): Promise<void> {
     const removed = await redis().zremrangebyscore(ONLINE, '-inf', Date.now());
     if (removed > 0) announce();

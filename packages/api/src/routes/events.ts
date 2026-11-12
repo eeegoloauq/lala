@@ -59,7 +59,7 @@ export function createEventsRouter(): Router {
         // Confirm connection to client
         res.write('event: connected\ndata: {}\n\n');
 
-        addSseClient(res);
+        addSseClient(res, identity ?? undefined, ip);
         if (identity) streamOpened(identity).catch((err) => console.error('[presence] marking a stream online failed:', err));
 
         // Keep-alive ping every 30s to prevent proxy/load-balancer timeouts

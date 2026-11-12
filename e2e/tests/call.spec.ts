@@ -334,9 +334,9 @@ test('configured rooms: always listed, members only, admins speak, password from
     const guest = await enter(browser, 'Guest');
     const room = (page: Page, name: string) => page.locator('.channel-item', { hasText: new RegExp(`^${name}`) });
 
-    // Listed while empty, first and in config order.
-    await expect(guest.page.locator('.channel-item').nth(0)).toContainText('Lobby');
-    await expect(guest.page.locator('.channel-item').nth(1)).toContainText('Stage');
+    // Listed while empty, first and in config order (the text chats come before the rooms).
+    await expect(guest.page.locator('.channel-item:not(.text-item)').nth(0)).toContainText('Lobby');
+    await expect(guest.page.locator('.channel-item:not(.text-item)').nth(1)).toContainText('Stage');
 
     // Members only: locked for the guest, and the server refuses a token too.
     await expect(room(guest.page, 'Members')).toHaveClass(/channel-item-locked/);

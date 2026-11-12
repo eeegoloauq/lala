@@ -23,6 +23,9 @@ RUN npm ci --omit=dev
 
 COPY --from=build /app/packages/api/dist ./dist
 
+# Text chat files; the volume mounted here takes this owner when it is first created.
+RUN mkdir -p /data/files && chown node:node /data/files
+
 EXPOSE 3001
 
 USER node

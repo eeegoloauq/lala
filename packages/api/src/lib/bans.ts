@@ -52,3 +52,15 @@ export async function listServerBans(): Promise<Array<{ identity: string; name: 
         return { identity, name, ipBannedUntil: ttl > 0 ? Date.now() + ttl * 1000 : undefined };
     }));
 }
+
+/** Of these people, those banned from the server by identity or by the address they use. */
+export async function shutOutAmong(people: Array<{ identity: string; ip?: string }>): Promise<Set<string>> {
+    const banned = await serverBannedIdentities();
+    const ips = [...new Set(people.map((p) => p.ip).filter((ip): ip is string => !!ip))];
+    if (ips.length) {
+        const results = (await redis().pipeline(ips.map((ip) => ['exists', ipBanKey(ip)])).exec()) ?? [];
+        const bannedIps = new Set(ips.filter((_, i) => results[i]?.[1] === 1));
+        for (const p of people) if (p.ip && bannedIps.has(p.ip)) banned.add(p.identity);
+    }
+    return banned;
+}

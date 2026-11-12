@@ -50,6 +50,34 @@ rooms:
   #   join: members
   #   password: change-me
 
+# Text chats, listed above the rooms. Each takes name and, optionally, id (its history is
+# kept under it; by default the name in lowercase with dashes), topic (a line under the
+# name) and post: who may write (everyone, members, admins; everyone reads). Admins delete
+# any message and pin messages; everyone deletes their own.
+chats:
+  # - name: general
+  #   topic: Anything goes
+  # - name: announcements
+  #   post: admins
+
+# Rules shown above the chats. With required: true, people must agree before they can
+# use the server; editing the text asks everyone to agree again.
+# rules:
+#   required: true
+#   text: |
+#     # Welcome
+#     1. Be kind.
+#     2. No spam or ads.
+
+# How long chat history is kept; pinned messages stay. Defaults below.
+# chatHistory:
+#   days: 30
+#   messages: 10000       # per chat
+# Files sent in chats, kept in the chat_files volume. When space runs out the oldest go first.
+# chatFiles:
+#   space: 1GB
+#   maxFile: 100MB        # one file; also raise your reverse proxy's upload limit to this
+
 # Programs that join calls (see docs/api.md). Make a credential with
 # `docker compose exec api node dist/bot-secret.js <key>`: the bot gets the credential, this
 # file gets only the hash. A bot never moderates or creates rooms. Its identity is bot-<key>

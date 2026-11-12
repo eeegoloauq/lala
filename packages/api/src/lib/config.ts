@@ -49,6 +49,25 @@ export interface BotConfig {
     publicKey?: string;
 }
 
+/** A text chat from `chats:`. */
+export interface ConfigChat {
+    /** Part of every message's key in Redis: renaming a chat keeps its history while this stays. */
+    id: string;
+    name: string;
+    topic?: string;
+    /** The lowest rank that may post; everyone allowed on the server reads. */
+    post: Level;
+}
+
+export interface ConfigRules {
+    /** Markdown, shown like a chat that nobody writes in. */
+    text: string;
+    /** A hash of the text: an edit asks everyone to agree again. */
+    version: string;
+    /** Whether people must agree before they may do anything else. */
+    required: boolean;
+}
+
 export interface Config {
     /** Shown at the top of the room list. */
     name: string;
@@ -62,6 +81,12 @@ export interface Config {
     rooms: ConfigRoom[];
     /** Keyed by identity (`bot-<key>`). */
     bots: Map<string, BotConfig>;
+    chats: ConfigChat[];
+    rules?: ConfigRules;
+    /** How long and how much text chat history Redis keeps; pinned messages stay. */
+    chatHistory: { days: number; messages: number };
+    /** Bytes: all chat files together (the oldest go first) and one file. */
+    chatFiles: { space: number; maxFile: number };
 }
 
 const RIGHTS: Right[] = ['join', 'speak', 'video', 'screen', 'chat'];
@@ -76,6 +101,9 @@ const COLOR = /^#[0-9a-fA-F]{6}$/;
 // Whole or half pixels up to 32; an avatar may also be rounded in percent (50% is a circle).
 const SIZE = /^(?:[12]?[0-9]|3[0-2])(?:\.5)?px$/;
 const PERCENT = /^(?:[0-4]?[0-9]|50)%$/;
+const CHAT_ID = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
+const BYTES = /^(\d+(?:\.\d+)?)\s*(KB|MB|GB|TB)$/i;
+const UNIT: Record<string, number> = { KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3, TB: 1024 ** 4 };
 const BOT_KEY = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
 /** Same cap as the clients put on avatars. */
 const MAX_AVATAR_LENGTH = 32 * 1024;
@@ -89,7 +117,16 @@ const OPEN: Config = {
     defaults: { join: 'everyone', speak: 'everyone', video: 'everyone', screen: 'everyone', chat: 'everyone' },
     rooms: [],
     bots: new Map(),
+    chats: [],
+    chatHistory: { days: 30, messages: 10_000 },
+    chatFiles: { space: 1024 ** 3, maxFile: 100 * 1024 ** 2 },
 };
+
+/** A chat's ID when the config gives none: its name in lowercase, other characters as dashes. */
+export const chatIdFromName = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32).replace(/-+$/, '');
+
+export const rulesVersion = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 
 /** Stable across restarts and config edits, so links to a configured room keep working. */
 export const configRoomId = (name: string) =>
@@ -114,7 +151,7 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         Object.fromEntries(RIGHTS.map((r) => [r, value[r] === undefined ? base[r] : oneOf(value[r], `${path}.${r}`, LEVELS)])) as Rights;
 
     const top = object(raw ?? {}, 'config');
-    known(top, 'config', ['name', 'theme', 'users', 'guests', 'defaults', 'rooms', 'bots']);
+    known(top, 'config', ['name', 'theme', 'users', 'guests', 'defaults', 'rooms', 'bots', 'chats', 'rules', 'chatHistory', 'chatFiles']);
     const serverName = top.name === undefined ? OPEN.name : typeof top.name === 'string' ? top.name.trim() : '';
     if (!serverName || serverName.length > 50) fail('name', 'expected a name of 1 to 50 characters');
 
@@ -241,7 +278,63 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         bots.set(identity, { key, identity, name, avatar, secret, rooms: roomIds, rights, invite, publicKey });
     }
 
-    return { name: serverName, theme, users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots };
+    if (top.chats != null && !Array.isArray(top.chats)) fail('chats', 'expected a list');
+    const chats: ConfigChat[] = [];
+    for (const [i, value] of ((top.chats ?? []) as unknown[]).entries()) {
+        const path = `chats[${i}]`;
+        const chat = object(value, path);
+        known(chat, path, ['id', 'name', 'topic', 'post']);
+        const name = typeof chat.name === 'string' ? chat.name.trim() : '';
+        if (!name || name.length > 50) fail(`${path}.name`, 'expected a name of 1 to 50 characters');
+        const id = chat.id === undefined ? chatIdFromName(name) : chat.id;
+        if (typeof id !== 'string' || !CHAT_ID.test(id)) {
+            fail(`${path}.id`, chat.id === undefined
+                ? 'the name has no letters or digits to make an ID from; add id: (lowercase letters, digits and dashes)'
+                : 'expected lowercase letters, digits and dashes, at most 32 characters');
+        }
+        if (chats.some((c) => c.id === id)) fail(`${path}.id`, `"${String(id)}" is used twice; give one of them its own id:`);
+        if (chat.topic !== undefined && (typeof chat.topic !== 'string' || chat.topic.trim().length > 200)) fail(`${path}.topic`, 'expected text of at most 200 characters');
+        const topic = typeof chat.topic === 'string' && chat.topic.trim() ? chat.topic.trim() : undefined;
+        const post = chat.post === undefined ? 'everyone' : oneOf(chat.post, `${path}.post`, LEVELS);
+        chats.push({ id: id as string, name, topic, post });
+    }
+
+    let rules: ConfigRules | undefined;
+    if (top.rules !== undefined) {
+        const raw = object(top.rules, 'rules');
+        known(raw, 'rules', ['text', 'required']);
+        const text = typeof raw.text === 'string' ? raw.text.trim() : '';
+        if (!text || text.length > 20_000) fail('rules.text', 'expected text of 1 to 20,000 characters');
+        if (raw.required !== undefined && typeof raw.required !== 'boolean') fail('rules.required', 'expected true or false');
+        rules = { text, version: rulesVersion(text), required: raw.required === true };
+    }
+
+    const historyRaw = object(top.chatHistory ?? {}, 'chatHistory');
+    known(historyRaw, 'chatHistory', ['days', 'messages']);
+    const whole = (value: unknown, path: string, fallback: number, max: number): number => {
+        if (value === undefined) return fallback;
+        return Number.isInteger(value) && (value as number) >= 1 && (value as number) <= max ? value as number : fail(path, `expected a whole number from 1 to ${max}`);
+    };
+    const chatHistory = {
+        days: whole(historyRaw.days, 'chatHistory.days', OPEN.chatHistory.days, 3650),
+        messages: whole(historyRaw.messages, 'chatHistory.messages', OPEN.chatHistory.messages, 1_000_000),
+    };
+
+    const filesRaw = object(top.chatFiles ?? {}, 'chatFiles');
+    known(filesRaw, 'chatFiles', ['space', 'maxFile']);
+    const bytes = (value: unknown, path: string, fallback: number): number => {
+        if (value === undefined) return fallback;
+        const match = typeof value === 'string' ? BYTES.exec(value.trim()) : null;
+        const result = match ? Math.floor(Number(match[1]) * UNIT[match[2].toUpperCase()]) : 0;
+        return result >= 1024 * 1024 ? result : fail(path, 'expected a size such as 500MB or 2GB, at least 1MB');
+    };
+    const space = bytes(filesRaw.space, 'chatFiles.space', OPEN.chatFiles.space);
+    const maxFile = Math.min(bytes(filesRaw.maxFile, 'chatFiles.maxFile', OPEN.chatFiles.maxFile), space);
+
+    return {
+        name: serverName, theme, users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots,
+        chats, rules, chatHistory, chatFiles: { space, maxFile },
+    };
 }
 
 let loaded: Config = OPEN;
@@ -266,7 +359,7 @@ export function loadConfig(): void {
     } catch (err) {
         throw new Error(`${path}: ${(err as Error).message}`);
     }
-    console.log(`[config] ${loaded.users.size} IDs, ${loaded.rooms.length} rooms, ${loaded.bots.size} bots, guests ${loaded.guests ? 'allowed' : 'not allowed'}`);
+    console.log(`[config] ${loaded.users.size} IDs, ${loaded.rooms.length} rooms, ${loaded.chats.length} chats${loaded.rules ? ', rules' : ''}, ${loaded.bots.size} bots, guests ${loaded.guests ? 'allowed' : 'not allowed'}`);
 }
 
 export const config = (): Config => loaded;

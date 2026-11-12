@@ -86,9 +86,12 @@ services:
       - LALA_MAX_EVENT_STREAMS_PER_IP=${LALA_MAX_EVENT_STREAMS_PER_IP:-}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@lala-redis:6379
       - LALA_CONFIG=/config/lala.yaml
+      - LALA_FILES_DIR=/data/files
     # A directory, not the file: without config/lala.yaml the API runs as an open server.
+    # Files sent in text chats live in chat_files, up to chatFiles.space in the config.
     volumes:
       - ./config:/config:ro
+      - chat_files:/data/files
     security_opt:
       - no-new-privileges:true
     mem_limit: 512m
@@ -129,3 +132,4 @@ networks:
 
 volumes:
   redis_data:
+  chat_files:

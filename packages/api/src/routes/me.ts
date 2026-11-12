@@ -36,6 +36,7 @@ export function createMeRouter(): Router {
             serverName: config().name,
             theme: config().theme,
             avatar: await touchAvatar(identity),
+            textChats: config().chats.length > 0 || config().rules !== undefined || undefined,
         };
         res.json(me);
     });

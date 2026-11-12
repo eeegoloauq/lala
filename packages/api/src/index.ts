@@ -13,6 +13,10 @@ import { createServerAdminRouter } from './routes/server-admin';
 import { createBotRouter } from './routes/bot';
 import { createRoomBotsRouter } from './routes/roomBots';
 import { createPresenceRouter } from './routes/presence';
+import { createChatsRouter } from './routes/chats';
+import { loadRules, requireRules } from './lib/rules';
+import { initFiles, sweepFiles } from './lib/chatFiles';
+import { messageExists, sweepChats } from './lib/chats';
 import { sweepPresence } from './lib/presence';
 import { botAuth } from './lib/bots';
 import { syncBots } from './lib/botSync';
@@ -35,6 +39,7 @@ import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
  * - GET /api/bot/events       — SSE for a bot: rooms it is added to and removed from
  * - /api/rooms/:id/bots       — People add bots to a room and remove them
  * - /api/presence             — Who is online, the caller's status, tickets for the event stream
+ * - /api/chats, /api/rules/accept, /api/files — Text chats from the config, its rules, files sent in chats
  */
 const app = express();
 app.set('trust proxy', 1);
@@ -57,8 +62,11 @@ const limiter = (max: number, skip?: (req: express.Request) => boolean) => rateL
 // Webhook MUST be registered before express.json() to preserve raw body for signature verification
 app.use('/api/webhook', express.raw({ type: '*/*' }), createWebhookRouter());
 
-// JSON parsing for all other routes
-app.use(express.json({ limit: '16kb' }));
+// JSON parsing for all other routes. A chat file upload is read as a stream by its route,
+// whatever type the file claims (a .json file would otherwise be parsed here).
+const CHAT_UPLOAD = /^\/api\/chats\/[^/]+\/files\/?$/;
+const json = express.json({ limit: '16kb' });
+app.use((req, res, next) => CHAT_UPLOAD.test(req.path) ? next() : json(req, res, next));
 
 // Health check
 // Room state lives in Redis, so the API is not healthy without it.
@@ -74,6 +82,10 @@ app.use('/api', botAuth);
 // health, webhook and the access endpoint itself stay open.
 app.use('/api/access', limiter(30), createAccessRouter());
 app.use('/api', requireAccess);
+
+// Rules the config requires come first: until someone agrees, rooms, tokens, presence and
+// chats refuse them (GET /api/chats still shows the rules).
+app.use(['/api/token', '/api/rooms', '/api/presence'], requireRules);
 
 // Routes — limits per 15s window (≈ same requests/min as before)
 app.use('/api/token', limiter(25), createTokenRouter());   // ~100/min (password pool can send up to 20 in burst)
@@ -103,6 +115,12 @@ app.use('/api/me', limiter(30), createMeRouter());
 app.use('/api/avatars', limiter(150), createAvatarsRouter());
 app.use('/api/admin', limiter(20), createServerAdminRouter());
 app.use('/api/bot', limiter(20), createBotRouter());
+// Opening a chat loads a page of messages and its pictures; sending, reacting and
+// uploading get their own smaller budgets.
+app.use('/api/files', limiter(300));
+app.use('/api/chats/:chat/files', limiter(20, req => req.method !== 'POST'));
+app.use(['/api/chats', '/api/rules'], limiter(60, req => req.method === 'GET'), limiter(120, req => req.method !== 'GET'));
+app.use('/api', createChatsRouter());
 
 // 404 handler — don't leak Express default page
 app.use((_req, res) => {
@@ -140,10 +158,17 @@ process.on('uncaughtException', (err) => {
     loadConfig();
     await connectRedis();
     await syncPermanentRooms();
+    await loadRules();
+    await initFiles();
     await syncBots().catch((err) => console.error('[bots] syncing connected bots with the config failed:', err));
     const dropStale = () => dropStaleRooms().catch((err) => console.error('[rooms] dropping stale rooms failed:', err));
     await dropStale();
     setInterval(dropStale, 5 * 60 * 1000);
+    const sweepChatHistory = () => sweepChats()
+        .then(() => sweepFiles(messageExists))
+        .catch((err) => console.error('[chats] sweeping history and files failed:', err));
+    await sweepChatHistory();
+    setInterval(sweepChatHistory, 5 * 60 * 1000);
     setInterval(() => sweepPresence().catch((err) => console.error('[presence] sweep failed:', err)), 15 * 1000);
     app.listen(port, '0.0.0.0', () => {
         console.log(`[lala-api] listening on port ${port}`);

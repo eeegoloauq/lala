@@ -96,7 +96,7 @@ export function useRooms() {
             es.addEventListener('connected', () => presenceChanged());
 
             // Text chats: each event's data is the ChatEvent itself; a reconnect reloads.
-            for (const type of ['chat_message', 'chat_deleted', 'chat_reactions'] as const) {
+            for (const type of ['chat_message', 'chat_deleted', 'chat_reactions', 'chat_pinned'] as const) {
                 es.addEventListener(type, (e) => {
                     try { applyChatEvent(JSON.parse((e as MessageEvent<string>).data) as ChatEvent); } catch { /* malformed: ignored */ }
                 });

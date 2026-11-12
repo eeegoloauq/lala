@@ -1,5 +1,5 @@
 import { TrackSource, type ParticipantPermission, type VideoGrant } from 'livekit-server-sdk';
-import { config, type BotConfig, type Level, type Right, type Role } from './config';
+import { config, type BotConfig, type ConfigChat, type Level, type Right, type Role } from './config';
 import { botOf, isBotIdentity } from './bots';
 import type { Flags, RoomState } from './rooms';
 
@@ -49,6 +49,12 @@ export function mayAddBot(identity: string | undefined, room: RoomState, bot: Bo
     return bot.invite !== undefined && !isBotIdentity(identity) && can(identity, room, 'join')
         && rank(identity, room) >= RANK[bot.invite];
 }
+
+/** Text chats are for people: admins (from the config) moderate them, `post` says who writes. */
+export const isServerAdmin = (identity: string | undefined) => !isBotIdentity(identity) && roleOf(identity) === 'admin';
+
+export const mayPost = (identity: string | undefined, chat: ConfigChat) =>
+    mayEnter(identity) && !isBotIdentity(identity) && rank(identity) >= RANK[chat.post];
 
 export function canCreateRooms(identity: string | undefined): boolean {
     const level = config().createRooms;
