@@ -139,7 +139,7 @@ function recoverFromRendererCrash(win, reason) {
         navigateToConnectionPage({ error: crashText('fallback') });
         showWindow();
     } else {
-        dialog.showErrorBox(crashText('quitTitle'), crashText('quitBody').replace('%s', path.join(USER_DATA, 'crash-logs')));
+        dialog.showErrorBox(crashText('quitTitle'), crashText('quitBody').replace('{{path}}', path.join(USER_DATA, 'crash-logs')));
         app.exit(1);
     }
 }

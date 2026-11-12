@@ -31,8 +31,8 @@ call in a password room.
 ## Translations
 
 Copy [`packages/web/src/locales/en.json`](packages/web/src/locales/en.json) to your language code
-and translate the values. Do the same in [`packages/desktop/locales/`](packages/desktop/locales).
-`npm run lint` in `packages/web` checks the keys.
+and translate the values. The file holds all of Lala's text; its `desktop` section is the desktop
+app's own. `npm run lint` in `packages/web` checks the keys.
 
 ## Pull requests
 

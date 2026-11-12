@@ -458,5 +458,39 @@
     "didntJoin": "{{name}} didn't join",
     "retry": "Try again",
     "dismiss": "Dismiss"
+  },
+  "desktop": {
+    "connect": {
+      "subtitle": "Connect to server",
+      "connect": "Connect",
+      "savedServers": "Saved servers",
+      "addNewServer": "Add new server",
+      "noAutoConnect": "Don't auto-connect",
+      "connecting": "Connecting...",
+      "remove": "Remove",
+      "editLabel": "Edit label",
+      "connectionFailed": "Server is unavailable",
+      "connectingTo": "Connecting to {{host}}...",
+      "cancel": "Cancel"
+    },
+    "tray": {
+      "changeServer": "Change server",
+      "quit": "Quit"
+    },
+    "menu": {
+      "undo": "Undo",
+      "redo": "Redo",
+      "cut": "Cut",
+      "copy": "Copy",
+      "paste": "Paste",
+      "selectAll": "Select all"
+    },
+    "crash": {
+      "reloadedTitle": "Lala reloaded after a crash",
+      "reloadedBody": "If you were in a call, join it again.",
+      "fallback": "The page crashed several times. Connect again to retry.",
+      "quitTitle": "Lala has to close",
+      "quitBody": "The window keeps crashing. Crash logs: {{path}}"
+    }
   }
 }

@@ -11,7 +11,10 @@ files:
   - index.html
   - connection.js
   - strings.js
-  - locales/**/*
+  # All of Lala's text lives in the web app's locale files; the app reads their desktop section.
+  - from: ../web/src/locales
+    to: locales
+    filter: ["*.json"]
   - build/**/*
 
 afterPack: ./scripts/afterPack.js

@@ -296,7 +296,8 @@ function renderConnectingTo(host) {
     const el = document.getElementById('splashStatus');
     el.textContent = '';
     const template = t('connectingTo');
-    const idx = template.indexOf('%s');
+    const PLACEHOLDER = '{{host}}';
+    const idx = template.indexOf(PLACEHOLDER);
     if (idx === -1) {
         el.textContent = template;
         return;
@@ -306,7 +307,7 @@ function renderConnectingTo(host) {
     strong.style.color = 'var(--text)';
     strong.textContent = host;
     el.appendChild(strong);
-    el.appendChild(document.createTextNode(template.slice(idx + 2)));
+    el.appendChild(document.createTextNode(template.slice(idx + PLACEHOLDER.length)));
 }
 
 async function showAutoConnect(url) {

@@ -35,4 +35,3 @@ jobs:
           cd packages/desktop
           npm ci
           for f in main.js preload.js connection.js strings.js main/*.js; do node --check "$f" || exit 1; done
-          node ../web/scripts/check-locales.mjs locales
