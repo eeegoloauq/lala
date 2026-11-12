@@ -4,6 +4,7 @@ const { app, Tray, Menu } = require('electron');
 const { IS_MAC, IS_LINUX } = require('./constants');
 const { state } = require('./state');
 const { getTrayIcon } = require('./icons');
+const { translate } = require('../strings');
 const { navigateToConnectionPage } = require('./window');
 
 function createTray() {
@@ -18,11 +19,10 @@ function createTray() {
     tray.setToolTip('Lala');
 
     const locale = app.getLocale();
-    const isRu = locale.startsWith('ru');
 
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: isRu ? 'Сменить сервер' : 'Change server',
+            label: translate(locale, 'tray.changeServer'),
             click: () => {
                 const win = state.mainWindow;
                 if (!win || win.isDestroyed()) return;
@@ -32,7 +32,7 @@ function createTray() {
         },
         { type: 'separator' },
         {
-            label: isRu ? 'Выход' : 'Quit',
+            label: translate(locale, 'tray.quit'),
             click: () => {
                 state.isQuitting = true;
                 app.quit();

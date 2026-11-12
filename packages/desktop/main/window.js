@@ -8,6 +8,7 @@ const { state } = require('./state');
 const { isUrlAllowed, isIndexHtmlUrl } = require('./trust');
 const { getInitialWindowIcon } = require('./icons');
 const { setupContextMenu } = require('./context-menu');
+const { translate } = require('../strings');
 
 const WINDOW_MIN_WIDTH = 800;
 const WINDOW_MIN_HEIGHT = 600;
@@ -111,26 +112,8 @@ const CRASH_BURST_MS = 5 * 60_000;
 const RELOADS_PER_BURST = 2;
 let recentCrashes = [];
 
-const CRASH_TEXT = {
-    en: {
-        reloadedTitle: 'Lala reloaded after a crash',
-        reloadedBody: 'If you were in a call, join it again.',
-        fallback: 'The page crashed several times. Connect again to retry.',
-        quitTitle: 'Lala has to close',
-        quitBody: 'The window keeps crashing. Crash logs: %s',
-    },
-    ru: {
-        reloadedTitle: 'Lala перезагрузилась после сбоя',
-        reloadedBody: 'Если вы были в звонке, зайдите в него снова.',
-        fallback: 'Страница несколько раз завершилась со сбоем. Подключитесь снова.',
-        quitTitle: 'Lala нужно закрыть',
-        quitBody: 'Окно продолжает завершаться со сбоем. Журналы сбоев: %s',
-    },
-};
-
 function crashText(key) {
-    const lang = app.getLocale().startsWith('ru') ? 'ru' : 'en';
-    return CRASH_TEXT[lang][key];
+    return translate(app.getLocale(), `crash.${key}`);
 }
 
 function recoverFromRendererCrash(win, reason) {

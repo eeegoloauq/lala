@@ -10,6 +10,7 @@ files:
   - preload.js
   - index.html
   - connection.js
+  - strings.js
   - build/**/*
 
 afterPack: ./scripts/afterPack.js

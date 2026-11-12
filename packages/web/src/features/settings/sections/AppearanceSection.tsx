@@ -1,17 +1,14 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18next from 'i18next';
 import type { AppSettings } from '../types';
 import { useTheme } from '../ThemeProvider';
 import { THEME_LABELS, THEMES } from '../../../themes';
 import type { ThemeChoice } from '../ThemeProvider';
 import { Select } from '../../../ui/Select';
 import type { SelectOption } from '../../../ui/Select';
+import { LANGUAGES, languageName } from '../../../lib/i18n';
 
-const LANGUAGE_OPTIONS: SelectOption[] = [
-  { value: 'en', label: 'English' },
-  { value: 'ru', label: 'Русский' },
-];
+const LANGUAGE_OPTIONS: SelectOption[] = LANGUAGES.map(code => ({ value: code, label: languageName(code) }));
 
 interface AppearanceSectionProps {
   headerRef: (el: HTMLElement | null) => void;
@@ -20,7 +17,7 @@ interface AppearanceSectionProps {
 }
 
 export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceSectionProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme, choice, setChoice, serverTheme, userCss, setUserCss } = useTheme();
 
   // The server's theme comes first when it has one, and is what follows when nothing is picked.
@@ -42,7 +39,7 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
         </div>
         <div className="settings-row">
           <div><div className="settings-row-label">{t('settings.language')}</div></div>
-          <Select label={t('settings.language')} value={i18next.language?.startsWith('ru') ? 'ru' : 'en'} onChange={(v) => i18next.changeLanguage(v)} options={LANGUAGE_OPTIONS} className="lala-select-wide" />
+          <Select label={t('settings.language')} value={i18n.resolvedLanguage ?? 'en'} onChange={(v) => i18n.changeLanguage(v)} options={LANGUAGE_OPTIONS} className="lala-select-wide" />
         </div>
       </div>
 

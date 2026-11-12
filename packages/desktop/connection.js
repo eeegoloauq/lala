@@ -5,45 +5,13 @@
 // via <script src="connection.js"> from the same origin (file://), so
 // contextIsolation/sandbox on the BrowserWindow still applies normally.
 
-const TRANSLATIONS = {
-    en: {
-        subtitle: 'Connect to server',
-        connect: 'Connect',
-        savedServers: 'Saved servers',
-        addNewServer: 'Add new server',
-        noAutoConnect: "Don't auto-connect",
-        connecting: 'Connecting...',
-        remove: 'Remove',
-        editLabel: 'Edit label',
-        connectionFailed: 'Server is unavailable',
-        connectingTo: 'Connecting to %s...',
-        cancel: 'Cancel',
-    },
-    ru: {
-        subtitle: 'Подключиться к серверу',
-        connect: 'Подключиться',
-        savedServers: 'Сохранённые серверы',
-        addNewServer: 'Новый сервер',
-        noAutoConnect: 'Не подключаться автоматически',
-        connecting: 'Подключение...',
-        remove: 'Удалить',
-        editLabel: 'Изменить название',
-        connectionFailed: 'Сервер недоступен',
-        connectingTo: 'Подключение к %s...',
-        cancel: 'Отмена',
-    }
-};
-
+// Strings come from strings.js, loaded by index.html just before this file.
 function detectLanguage() {
-    const saved = localStorage.getItem('lala_language');
-    if (saved) return saved;
-    const nav = navigator.language || 'en';
-    return nav.startsWith('ru') ? 'ru' : 'en';
+    return localStorage.getItem('lala_language') || navigator.language || 'en';
 }
 
 function t(key) {
-    const lang = detectLanguage();
-    return (TRANSLATIONS[lang] || TRANSLATIONS.en)[key] || TRANSLATIONS.en[key] || key;
+    return window.LalaStrings.translate(detectLanguage(), `connect.${key}`);
 }
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -375,7 +343,7 @@ async function showAutoConnect(url) {
 
 // ─── Apply translations ──────────────────────────────────────
 function applyTranslations() {
-    document.documentElement.lang = detectLanguage();
+    document.documentElement.lang = window.LalaStrings.languageFor(detectLanguage());
     document.getElementById('subtitleText').textContent = t('subtitle');
     connectBtn.textContent = t('connect');
     document.getElementById('serversHeader').textContent = t('savedServers');
