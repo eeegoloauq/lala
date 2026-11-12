@@ -212,6 +212,7 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         if (rooms.some((r) => r.id === id)) fail(`${path}.name`, `"${name}" is listed twice`);
         const max = room.maxParticipants ?? 0;
         if (!Number.isInteger(max) || (max as number) < 0 || (max as number) > 100) fail(`${path}.maxParticipants`, 'expected 0 to 100');
+        if (typeof room.password === 'number') fail(`${path}.password`, `expected text; put it in quotes: password: "${room.password}"`);
         if (room.password !== undefined && (typeof room.password !== 'string' || !room.password)) fail(`${path}.password`, 'expected text');
         rooms.push({ id, name, rights: rightsOf(room, path, defaults), maxParticipants: max as number, password: room.password as string | undefined });
     }
@@ -338,6 +339,9 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
 
 let loaded: Config = OPEN;
 
+/** A mistake in the config file: the message names the file and the place, a stack adds nothing. */
+export class ConfigError extends Error {}
+
 /** Reads LALA_CONFIG once at startup; a file that is there but wrong stops the API. */
 export function loadConfig(): void {
     const path = process.env.LALA_CONFIG;
@@ -356,7 +360,7 @@ export function loadConfig(): void {
         // Only a plain file name reaches here (parseConfig checks), so it stays in the directory.
         loaded = parseConfig(parse(text), (name) => readFileSync(join(dirname(path), name)));
     } catch (err) {
-        throw new Error(`${path}: ${(err as Error).message}`);
+        throw new ConfigError(`${path}: ${(err as Error).message}`);
     }
     console.log(`[config] ${loaded.users.size} IDs, ${loaded.rooms.length} rooms, ${loaded.chats.length} chats${loaded.rules ? ', rules' : ''}, ${loaded.bots.size} bots, guests ${loaded.guests ? 'allowed' : 'not allowed'}`);
 }

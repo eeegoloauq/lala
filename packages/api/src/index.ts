@@ -22,7 +22,7 @@ import { messageExists, sweepChats } from './lib/chats';
 import { sweepPresence } from './lib/presence';
 import { botAuth } from './lib/bots';
 import { syncBots } from './lib/botSync';
-import { loadConfig } from './lib/config';
+import { ConfigError, loadConfig } from './lib/config';
 import { connectRedis, redisReady } from './lib/redis';
 import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
 
@@ -179,6 +179,7 @@ process.on('uncaughtException', (err) => {
         console.log(`[lala-api] LiveKit: ${process.env.LIVEKIT_URL}`);
     });
 })().catch(err => {
-    console.error('[Lala] Fatal startup error:', err);
+    if (err instanceof ConfigError) console.error(`[Lala] The server config has a mistake, fix it and restart the API.\n${err.message}`);
+    else console.error('[Lala] Fatal startup error:', err);
     process.exit(1);
 });
