@@ -3,10 +3,8 @@ import { RemoteParticipant, Track } from 'livekit-client';
 import type { Participant, RemoteTrackPublication } from 'livekit-client';
 import type { ParticipantContextMenuProps } from '../VideoGrid/ParticipantContextMenu';
 import { useRoomUIContext } from '../RoomUIContext';
-import { canSpeak, hasAttribute } from '../lib/permissions';
-import { isServerMutedInRoom } from '../../../lib/roomStatusStore';
+import { floorActionInRoom, isServerMutedInRoom } from '../../../lib/roomStatusStore';
 import { setScreenShareSubscribed } from '../lib/screenShare';
-import { isBotIdentity } from '../../../lib/bots';
 import { openProfile } from '../../../lib/profileCard';
 
 /**
@@ -28,8 +26,7 @@ interface ContextMenuState {
     hasScreenAudio: boolean;
     screenSharePub?: RemoteTrackPublication;
     serverMuted: boolean;
-    voiced: boolean;
-    canBeVoiced: boolean;
+    floor: 'give' | 'take' | undefined;
     x: number;
     y: number;
 }
@@ -52,10 +49,7 @@ export function useParticipantContextMenu() {
                 ? participant.getTrackPublication(Track.Source.ScreenShare)
                 : undefined,
             serverMuted: isServerMutedInRoom(participant.identity),
-            voiced: hasAttribute(participant, 'lala.voice'),
-            // Someone who may not speak by right, and hasn't been muted, can be given the floor.
-            // Not a bot: the server config decides whether it speaks.
-            canBeVoiced: !isBotIdentity(participant.identity) && !canSpeak(participant) && !isServerMutedInRoom(participant.identity),
+            floor: floorActionInRoom(participant.identity),
             x,
             y,
         });
@@ -85,8 +79,8 @@ export function useParticipantContextMenu() {
                 onBan: () => admin.onBan(identity),
                 onToggleMute: () => admin.onToggleMute(identity, contextMenu.serverMuted),
                 onServerBan: admin.onServerBan && (() => admin.onServerBan!(identity)),
-                voice: contextMenu.voiced ? 'take' : contextMenu.canBeVoiced ? 'give' : undefined,
-                onToggleVoice: () => admin.onToggleVoice(identity, contextMenu.voiced),
+                voice: contextMenu.floor,
+                onToggleVoice: () => admin.onToggleVoice(identity, contextMenu.floor === 'take'),
             } : undefined,
             screenShareHidden: !!screenSharePub && !screenSharePub.isSubscribed,
             onToggleScreenShare: screenSharePub && (() => setScreenShareSubscribed(participant, !screenSharePub.isSubscribed)),

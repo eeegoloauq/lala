@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react';
 import type { BotDetails } from './bots';
 import { createStore } from './store';
 import { clearPendingBots } from './pendingBots';
+import { floorAction } from './floor';
+import type { RoomInfo } from './types';
 
 /**
  * External store for volatile, high-frequency room status: speaking, muted and deafened
@@ -25,6 +27,9 @@ const avatarStore = createStore<Map<string, string>>(new Map());
 // for the sidebar, the tiles and the menus alike. A participant can rewrite its own
 // attributes, so the `lala.server-muted` attribute is not trusted for this.
 const serverMutedStore = createStore<Set<string>>(new Set());
+// Who has the floor, and who may not speak by right, in the active room; from the same list.
+const voicedStore = createStore<Set<string>>(new Set());
+const cannotSpeakStore = createStore<Set<string>>(new Set());
 // Bots in the active room, by identity.
 const botsStore = createStore<Map<string, BotDetails>>(new Map());
 // Text a profile card asks the chat composer to take (a bot command); the composer clears it.
@@ -48,13 +53,28 @@ export function setLiveParticipants(participants: Map<string, string>): void {
     liveParticipantsStore.set(participants);
 }
 
-export function setServerMutedInRoom(ids: string[]): void {
-    const current = serverMutedStore.get();
+/** Replaces a set unless it already holds exactly these ids, so nothing re-renders for nothing. */
+function setIds(store: typeof serverMutedStore, ids: string[]): void {
+    const current = store.get();
     if (current.size === ids.length && ids.every((id) => current.has(id))) return;
-    serverMutedStore.set(new Set(ids));
+    store.set(new Set(ids));
+}
+
+/** The active room's moderation state, from the server's room list (App). */
+export function setModerationInRoom(room: Pick<RoomInfo, 'serverMutedParticipants' | 'voicedParticipants' | 'cannotSpeakParticipants'> | undefined): void {
+    setIds(serverMutedStore, room?.serverMutedParticipants ?? []);
+    setIds(voicedStore, room?.voicedParticipants ?? []);
+    setIds(cannotSpeakStore, room?.cannotSpeakParticipants ?? []);
 }
 
 export const isServerMutedInRoom = (identity: string) => serverMutedStore.get().has(identity);
+
+/** What a moderator's menu offers for the floor in the active room. */
+export const floorActionInRoom = (identity: string) => floorAction(identity, {
+    serverMutedParticipants: [...serverMutedStore.get()],
+    voicedParticipants: [...voicedStore.get()],
+    cannotSpeakParticipants: [...cannotSpeakStore.get()],
+});
 
 export function setBotsInRoom(bots: Map<string, BotDetails>): void {
     botsStore.set(bots);

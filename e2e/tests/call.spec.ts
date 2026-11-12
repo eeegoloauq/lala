@@ -420,6 +420,12 @@ test('on a stage only the creator speaks until giving someone the floor', async 
     await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);
     expect((await media(alice.page)).audio).toBe(0);
 
+    // The sidebar menu knows from the room list that Bob may not speak.
+    const sidebarBob = alice.page.locator('.channel-user-card', { hasText: 'Bob' });
+    await sidebarBob.click({ button: 'right' });
+    await expect(alice.page.getByRole('button', { name: 'Let speak' })).toBeVisible();
+    await alice.page.keyboard.press('Escape');
+
     // Bob asks for the floor and Alice gives it; his own mic button comes back.
     await bob.page.getByRole('button', { name: 'Raise hand' }).click();
     await expect(bobTile.getByTitle('Wants to speak')).toBeVisible();
@@ -428,6 +434,10 @@ test('on a stage only the creator speaks until giving someone the floor', async 
     await bob.page.getByRole('button', { name: 'Unmute microphone' }).click();
     await expect.poll(async () => (await media(alice.page)).audio, { timeout: 20_000 }).toBe(1);
     await expect(bobTile.getByTitle('Wants to speak')).toBeHidden();
+    // The sidebar now offers to take it back.
+    await sidebarBob.click({ button: 'right' });
+    await expect(alice.page.getByRole('button', { name: 'Take the floor back' })).toBeVisible();
+    await alice.page.keyboard.press('Escape');
 
     // And takes it back.
     await bobTile.click({ button: 'right' });

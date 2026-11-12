@@ -129,6 +129,9 @@ export function createAdminRouter(): Router {
         }
         await setVoice(ctx.room.id, ctx.target, allowed);
         await applyFlags(ctx, { 'lala.hand': '' });
+        // The room list carries who has the floor; as with mutes, no webhook says it changed.
+        invalidateRoomsCache();
+        broadcastSse('rooms_updated', { trigger: 'voice' });
         await announce(ctx, allowed ? 'voiced' : 'unvoiced', await nameOf(ctx.room.id, ctx.target));
         res.json({ ok: true });
     });

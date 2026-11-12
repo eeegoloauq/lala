@@ -7,10 +7,10 @@ import { config } from '../lib/config';
 import { configRoomSalt, deriveRoomAuthKey, hashRoomKey } from '../lib/passwords';
 import { can, canCreateRooms, isModerator, mayAddBot, mayEnter } from '../lib/rights';
 import { listAddedBots } from '../lib/botInvites';
-import { claimRoom, dropRoom, findRoomByName, generateRoomId, getRoom, listMuted, listRoomStates, putPermanentRoom, type RoomState } from '../lib/rooms';
+import { claimRoom, dropRoom, findRoomByName, generateRoomId, getRoom, listMuted, listRoomStates, listVoiced, putPermanentRoom, type RoomState } from '../lib/rooms';
 import { sanitizeDisplayText } from '../lib/sanitize';
 import { isShutOut } from '../lib/bans';
-import { botOf } from '../lib/bots';
+import { botOf, isBotIdentity } from '../lib/bots';
 import { avatarVersions } from '../lib/avatars';
 
 type ListedRoom = Omit<RoomInfo, 'canModerate' | 'canJoin' | 'canAddBots'> & { state: RoomState };
@@ -34,12 +34,13 @@ function readDeafened(metadata: string): boolean {
 }
 
 async function describe(state: RoomState): Promise<ListedRoom> {
-    const [participants, serverMuted, addedBots] = await Promise.all([
+    const [participants, serverMuted, voiced, addedBots] = await Promise.all([
         getRoomService().listParticipants(state.id).catch((err) => {
             if (isNotFound(err)) return [];   // created a moment ago, LiveKit has no room yet
             throw err;
         }),
         listMuted(state.id),
+        listVoiced(state.id),
         listAddedBots(state.id),
     ]);
     const avatars = await avatarVersions(participants.map((p) => p.identity));
@@ -61,6 +62,11 @@ async function describe(state: RoomState): Promise<ListedRoom> {
         mutedParticipants: withTrack(TrackSource.MICROPHONE, true),
         deafenedParticipants: participants.filter((p) => readDeafened(p.metadata)).map((p) => p.identity),
         serverMutedParticipants: serverMuted,
+        voicedParticipants: voiced,
+        // Bots speak or not by their config entry; the floor doesn't apply to them.
+        cannotSpeakParticipants: participants
+            .filter((p) => !isBotIdentity(p.identity) && !can(p.identity, state, 'speak'))
+            .map((p) => p.identity),
         // From the config, so a bot can't claim it doesn't listen.
         listeningParticipants: participants.filter((p) => botOf(p.identity)?.rights.listen).map((p) => p.identity),
         addedBots,

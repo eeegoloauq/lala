@@ -25,6 +25,8 @@ export interface RoomInfo {
     mutedParticipants: string[];         // mic muted by the participant
     deafenedParticipants: string[];      // from participant metadata
     serverMutedParticipants: string[];   // muted by a moderator
+    voicedParticipants: string[];        // given the floor by a moderator
+    cannotSpeakParticipants: string[];   // people (not bots) the room's rights don't let speak; a moderator can give them the floor
     listeningParticipants: string[];     // bots in the room that receive its audio and video
     canAddBots: boolean;                 // whether the caller may add a bot here (see GET /api/rooms/:id/bots)
     addedBots: AddedBot[];               // bots people added to this room, joined or not

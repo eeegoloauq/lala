@@ -24,6 +24,7 @@ interface DemoRoom {
     muted: Set<string>;
     deafened: Set<string>;
     serverMuted: Set<string>;
+    voiced: Set<string>;
     sharing: Set<string>;
     bans: RoomBan[];
     added: AddedBot[];
@@ -70,6 +71,7 @@ function room(name: string, people: Person[], extra: Partial<DemoRoom> = {}): De
         muted: new Set(),
         deafened: new Set(),
         serverMuted: new Set(),
+        voiced: new Set(),
         sharing: new Set(),
         bans: [],
         added: [],
@@ -157,7 +159,7 @@ export function leaveRoom(roomId: string): void {
 
 function removePerson(r: DemoRoom, identity: string) {
     r.people = r.people.filter(p => p.identity !== identity);
-    for (const set of [r.muted, r.deafened, r.serverMuted, r.sharing]) set.delete(identity);
+    for (const set of [r.muted, r.deafened, r.serverMuted, r.voiced, r.sharing]) set.delete(identity);
 }
 
 function describe(r: DemoRoom): RoomInfo {
@@ -177,6 +179,9 @@ function describe(r: DemoRoom): RoomInfo {
         mutedParticipants: [...r.muted],
         deafenedParticipants: [...r.deafened],
         serverMutedParticipants: [...r.serverMuted],
+        voicedParticipants: [...r.voiced],
+        // Every demo room lets everyone speak.
+        cannotSpeakParticipants: [],
         listeningParticipants: r.people.filter(p => p.bot?.listens).map(p => p.identity),
         canAddBots: true,
         addedBots: r.added,
@@ -351,6 +356,7 @@ function moderate(r: DemoRoom, action: string, body: Body): Response {
             break;
         case 'voice':
             if (typeof body.allowed !== 'boolean') return fail(400, 'invalid_input');
+            if (body.allowed) r.voiced.add(target); else r.voiced.delete(target);
             break;
         default: return fail(404, 'not_found');
     }

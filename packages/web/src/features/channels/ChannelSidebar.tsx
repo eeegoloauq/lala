@@ -8,6 +8,7 @@ import { openProfile } from '../../lib/profileCard';
 import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon, PlusIcon } from '../room/icons/Icons';
 import { AddBotMenu } from './AddBotMenu';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
+import { floorAction } from '../../lib/floor';
 import { CreateRoomModal } from './CreateRoomModal';
 import { RoomContextMenu } from './RoomContextMenu';
 import { BannedUsersModal } from './BannedUsersModal';
@@ -190,6 +191,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         const room = rooms.find(r => r.id === roomId);
         if (!room?.canModerate) return undefined;
         const serverMuted = room.serverMutedParticipants.includes(participantIdentity);
+        const voice = floorAction(participantIdentity, room);
         const actions = buildAdminActions(roomId, me?.role === 'admin');
         return {
             roomId,
@@ -197,7 +199,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
             onKick: () => actions.onKick(participantIdentity),
             onBan: () => actions.onBan(participantIdentity),
             onToggleMute: () => actions.onToggleMute(participantIdentity, serverMuted),
-            onToggleVoice: () => actions.onToggleVoice(participantIdentity, false),
+            voice,
+            onToggleVoice: () => actions.onToggleVoice(participantIdentity, voice === 'take'),
             onServerBan: actions.onServerBan && (() => actions.onServerBan!(participantIdentity)),
         };
     }, [rooms, me?.role]);

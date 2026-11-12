@@ -17,5 +17,3 @@ export function canPublishSource(permission: Permission, source: number): boolea
 
 /** Server markers and the raised hand, set as participant attributes ('1' or absent). */
 export const hasAttribute = (participant: Participant, name: ParticipantAttribute) => participant.attributes[name] === '1';
-
-export const canSpeak = (participant: Participant) => canPublishSource(participant.permissions, MICROPHONE);

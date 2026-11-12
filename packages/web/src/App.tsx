@@ -22,7 +22,7 @@ import { deleteAvatar, uploadAvatar } from './lib/api';
 import { usePublishAvatars } from './hooks/usePublishAvatars';
 import { saveRoomPassword, getRoomPassword } from './lib/passwords';
 import { getTemplates, saveTemplate } from './lib/roomTemplates';
-import { resetRoomSession, setServerMutedInRoom } from './lib/roomStatusStore';
+import { resetRoomSession, setModerationInRoom } from './lib/roomStatusStore';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
@@ -72,9 +72,9 @@ export default function App() {
         if (local && !me.avatar) uploadAvatar(local).catch(err => console.warn('[App] Uploading the avatar failed:', err));
     }, [me]);
     usePublishAvatars(rooms, me?.identity, myAvatar);
-    // The call's tiles and menus read server mutes from the same list as the sidebar.
+    // The call's tiles and menus read server mutes and the floor from the same list as the sidebar.
     useEffect(() => {
-        setServerMutedInRoom(rooms.find(r => r.id === route.roomId)?.serverMutedParticipants ?? []);
+        setModerationInRoom(rooms.find(r => r.id === route.roomId));
     }, [rooms, route.roomId]);
 
 

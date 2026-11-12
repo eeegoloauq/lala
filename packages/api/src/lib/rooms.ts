@@ -135,6 +135,8 @@ export const listMuted = (id: string) => redis().smembers(mutedKey(id));
 export const setMuted = (id: string, identity: string, muted: boolean) =>
     muted ? redis().sadd(mutedKey(id), identity) : redis().srem(mutedKey(id), identity);
 
+export const listVoiced = (id: string) => redis().smembers(voiceKey(id));
+
 /** Given the floor by a moderator in a room where they otherwise may not speak. */
 export const setVoice = (id: string, identity: string, voiced: boolean) =>
     voiced ? redis().sadd(voiceKey(id), identity) : redis().srem(voiceKey(id), identity);
