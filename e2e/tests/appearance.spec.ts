@@ -37,7 +37,7 @@ test('the server theme is the default until someone picks their own', async ({ b
     await page.reload();
     await expect.poll(() => look(page)).toEqual({ theme: 'dark', accent: '', radius: '' });
 
-    // The list works from the keyboard too: End goes to the last theme, Enter picks it.
+    // The list works from the keyboard too: End goes to the last theme (light), Enter picks it.
     await openAppearance(page);
     const select = page.getByRole('combobox', { name: 'Theme' });
     await select.focus();
@@ -45,7 +45,7 @@ test('the server theme is the default until someone picks their own', async ({ b
     await expect(select).toHaveAttribute('aria-expanded', 'true');
     await select.press('End');
     await select.press('Enter');
-    await expect.poll(() => look(page)).toMatchObject({ theme: 'winxp' });
+    await expect.poll(() => look(page)).toMatchObject({ theme: 'light' });
     await expect(select).toHaveAttribute('aria-expanded', 'false');
     expect(errors).toEqual([]);
 });

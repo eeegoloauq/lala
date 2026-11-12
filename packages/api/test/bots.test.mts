@@ -126,7 +126,7 @@ describe('server theme', () => {
         ['a color that is not hex', { colors: { accent: 'red; display: none' } }, /expected a color/],
         ['a size out of range', { sizes: { radius: '200px' } }, /0px to 32px/],
         ['a percent radius on boxes', { sizes: { radius: '50%' } }, /0px to 32px/],
-        ['an unknown base', { base: 'retro' }, /expected one of dark/],
+        ['an unknown base', { base: 'retro' }, /expected one of discord/],
     ];
     for (const [what, theme, message] of broken) {
         test(`refuses ${what}`, () => assert.throws(() => parseConfig({ theme }), message));

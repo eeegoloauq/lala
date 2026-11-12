@@ -69,7 +69,7 @@ const LEVELS: Level[] = ['everyone', 'members', 'admins'];
 const ROLES: Role[] = ['admin', 'member'];
 const IDENTITY = /^[0-9a-f]{36}$/;
 const BOT_RIGHTS: BotRight[] = ['speak', 'chat', 'listen'];
-const THEME_IDS: ThemeId[] = ['dark', 'light', 'amoled', 'discord', 'winxp'];
+const THEME_IDS: ThemeId[] = ['discord', 'winxp', 'dark', 'amoled', 'light'];
 const THEME_COLORS: ThemeColor[] = ['accent', 'background', 'surface', 'sidebar', 'text', 'textSecondary', 'textMuted', 'border'];
 const THEME_SIZES: ThemeSize[] = ['radius', 'radiusLarge', 'avatarRadius'];
 const COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -122,7 +122,7 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
     if (top.theme !== undefined) {
         const raw = object(top.theme, 'theme');
         known(raw, 'theme', ['base', 'colors', 'sizes']);
-        const base = raw.base === undefined ? 'dark' : oneOf(raw.base, 'theme.base', THEME_IDS);
+        const base = raw.base === undefined ? 'discord' : oneOf(raw.base, 'theme.base', THEME_IDS);
         const colorsRaw = object(raw.colors ?? {}, 'theme.colors');
         known(colorsRaw, 'theme.colors', THEME_COLORS);
         const colors: ServerTheme['colors'] = {};

@@ -33,7 +33,7 @@
     background: var(--bg-secondary);
     border-radius: var(--tile-radius);
     overflow: hidden;
-    border: 2px solid transparent;
+    border: 2px solid var(--tile-border);
     transition: border-color var(--transition-normal);
     width: 100%;
     aspect-ratio: 16 / 10;

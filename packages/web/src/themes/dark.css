@@ -101,6 +101,8 @@
 
   /* Video tile */
   --tile-radius: var(--border-radius-lg);
+  /* A tile's edge; the speaking ring replaces it. */
+  --tile-border: transparent;
 
   /* Overlays (name badge, muted icon, flip btn overlaid on tiles) */
   --overlay-bg:       rgba(0, 0, 0, 0.55);

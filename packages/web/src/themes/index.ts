@@ -12,13 +12,19 @@ import './winxp.css';
 
 export type Theme = ThemeId;
 
-/** Label keys; a Record, so a theme added to ThemeId can't be left out here. */
+/**
+ * Label keys, in the order the theme list and the sidebar's theme button offer them; a
+ * Record, so a theme added to ThemeId can't be left out here.
+ */
 export const THEME_LABELS: Record<Theme, string> = {
-    dark: 'settings.themeDark',
-    light: 'settings.themeLight',
-    amoled: 'settings.themeAmoled',
     discord: 'settings.themeDiscord',
     winxp: 'settings.themeWinXP',
+    dark: 'settings.themeDark',
+    amoled: 'settings.themeAmoled',
+    light: 'settings.themeLight',
 };
+
+/** The look for someone who hasn't picked one, on a server that sets none (index.html matches it). */
+export const DEFAULT_THEME: Theme = 'discord';
 
 export const THEMES = Object.keys(THEME_LABELS) as Theme[];

@@ -6,11 +6,11 @@
 # Shown at the top of the room list.
 name: Lala
 
-# The default look for people who haven't picked a theme: a built-in theme (dark, light,
-# amoled, discord, winxp) with some colors and sizes changed. Colors as "#rrggbb", sizes
+# The default look for people who haven't picked a theme: a built-in theme (discord, winxp,
+# dark, amoled, light; discord without this) with some colors and sizes changed. Colors as "#rrggbb", sizes
 # in px (avatarRadius also in %). People can still pick their own theme and add CSS.
 # theme:
-#   base: dark
+#   base: discord
 #   colors:
 #     accent: "#e05a6f"      # also: background, surface, sidebar, text, textSecondary, textMuted, border
 #   sizes:

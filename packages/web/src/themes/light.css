@@ -1,17 +1,19 @@
-/* Light: colors and shadows over the dark defaults. */
+/* Light: colors and shadows over the dark defaults. Layers, not one white: a grey stage
+   with white tiles and cards, sidebars a step lighter than the stage, and borders that
+   show where one surface ends. */
 /* ─── Light Theme ─── */
 [data-theme="light"] {
-  --bg-primary: #f8fafc;
+  --bg-primary: #e9ebef;
   --bg-secondary: #ffffff;
-  --bg-sidebar: #f1f5f9;
-  --bg-hover: #e2e8f0;
-  --bg-active: #cbd5e1;
-  --bg-overlay: rgba(255, 255, 255, 0.7);
+  --bg-sidebar: #f4f5f7;
+  --bg-hover: #e4e6ea;
+  --bg-active: #d8dbe1;
+  --bg-overlay: rgba(30, 33, 40, 0.45);
   --bg-control: #ffffff;
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
+  --text-primary: #1f2328;
+  --text-secondary: #4e5562;
+  --text-muted: #6b7280;
   --text-accent: #c44d60;
 
   --color-success: #16a34a;
@@ -19,12 +21,20 @@
   --color-warning: #d97706;
   --color-info: #2563eb;
 
-  --border-color: #cbd5e1;
+  --border-color: #d5d9df;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.14);
   /* --shadow-glow intentionally omitted — light doesn't override --accent-glow,
      so the root formula (0 0 20px var(--accent-glow)) already derives the glow
      from the theme's actual pink accent instead of a stale violet leftover. */
+
+  --tile-border: #d5d9df;
+
+  --cb-pill-bg: rgba(255, 255, 255, 0.92);
+  --cb-pill-border: #d5d9df;
+  --cb-pill-shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
+  --cb-btn-bg: #eef0f3;
+  --cb-btn-bg-hover: #e1e4e9;
 }

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { STORAGE_KEYS } from '../../lib/constants';
 import type { ServerTheme } from '../../lib/types';
-import { THEMES, type Theme } from '../../themes';
+import { DEFAULT_THEME, THEMES, type Theme } from '../../themes';
 import { accentTokens, serverThemeTokens, type Tokens } from '../../themes/tokens';
 
 /** A built-in theme, or the server's default theme. */
@@ -62,7 +62,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const { serverTheme, accent } = inputs;
 
     const followsServer = choice === null || choice === 'server';
-    const theme: Theme = choice !== null && choice !== 'server' ? choice : serverTheme?.base ?? 'dark';
+    const theme: Theme = choice !== null && choice !== 'server' ? choice : serverTheme?.base ?? DEFAULT_THEME;
 
     const tokens = useMemo<Tokens>(() => ({
         ...(followsServer && serverTheme ? serverThemeTokens(serverTheme) : {}),

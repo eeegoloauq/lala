@@ -1,7 +1,7 @@
 # Theming
 
-Lala has five built-in themes: dark, light, AMOLED, Discord and Windows XP. A server can set
-the default look with `theme:` in `config/lala.yaml` ([self-hosting](self-hosting.md#look)).
+Lala has five built-in themes: Discord (the default), Windows XP, dark, AMOLED and light. A
+server can set the default look with `theme:` in `config/lala.yaml` ([self-hosting](self-hosting.md#look)).
 Each person can pick a theme, an accent color and their own CSS in Settings → Appearance.
 
 ## Your own CSS
