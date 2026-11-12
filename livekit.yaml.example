@@ -22,6 +22,12 @@ rtc:
   # Enable ICE lite for better NAT traversal
   use_ice_lite: true
 
+  # Listen for media only on the container address Docker publishes the ports to
+  # (filled in at startup). Outside Docker, put this server's own address here.
+  ips:
+    includes:
+      - ${RTC_IP}/32
+
 # Built-in TURN server — needed for clients behind strict NAT (Firefox, corporate networks)
 # TURN/UDP on 3478 is sufficient; no HTTP proxy needed (NPM can't proxy TURN)
 turn:

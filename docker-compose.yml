@@ -11,7 +11,13 @@ services:
         for v in "$$LIVEKIT_API_KEY" "$$LIVEKIT_API_SECRET" "$$REDIS_PASSWORD" "$$NODE_IP" "$$LIVEKIT_DOMAIN"; do
           case "$$v" in *[\|\&\\]*) echo "LiveKit settings in .env must not contain |, & or \\" >&2; exit 1 ;; esac
         done
+        # Media goes to the container address on the network that holds the default route:
+        # Docker publishes ports there. LiveKit on two networks would otherwise listen on
+        # both and drop UDP that arrives on the address its ICE session did not register.
+        RTC_IP=$$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($$i == "src") print $$(i + 1)}')
+        [ -n "$$RTC_IP" ] || { echo "No default route in the LiveKit container" >&2; exit 1; }
         sed \
+          -e 's|$${RTC_IP}|'"$$RTC_IP"'|g' \
           -e 's|$${NODE_IP}|'"$$NODE_IP"'|g' \
           -e 's|$${LIVEKIT_DOMAIN}|'"$$LIVEKIT_DOMAIN"'|g' \
           -e 's|$${LIVEKIT_API_KEY}|'"$$LIVEKIT_API_KEY"'|g' \
