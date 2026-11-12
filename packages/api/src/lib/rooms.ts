@@ -25,6 +25,8 @@ export interface RoomState {
 const ROOMS = 'lala:rooms';
 const roomKey = (id: string) => `lala:room-state:${id}`;
 const bansKey = (id: string) => `lala:room-bans:${id}`;
+// Address -> identity banned from it: a ban outlasts a new device ID, for the room's lifetime.
+const banIpsKey = (id: string) => `lala:room-ban-ips:${id}`;
 const mutedKey = (id: string) => `lala:room-muted:${id}`;
 const voiceKey = (id: string) => `lala:room-voice:${id}`;
 /** Bots people added to the room: hash identity -> JSON `Invitation`. */
@@ -54,7 +56,7 @@ return false
 // Drops a room and releases its name, unless a newer room already took the name over.
 const DROP = `
 if redis.call('GET', KEYS[5]) == ARGV[1] then redis.call('DEL', KEYS[5]) end
-redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[6], KEYS[7])
+redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[6], KEYS[7], KEYS[8])
 redis.call('SREM', KEYS[4], ARGV[1])
 `;
 
@@ -94,7 +96,7 @@ export async function dropRoom(id: string): Promise<void> {
     const room = await getRoom(id);
     const name = room ? nameKey(room.name) : NAME_PREFIX;
     const added = await redis().hkeys(botsKey(id));
-    await redis().eval(DROP, 7, roomKey(id), bansKey(id), mutedKey(id), ROOMS, name, voiceKey(id), botsKey(id), id);
+    await redis().eval(DROP, 8, roomKey(id), bansKey(id), mutedKey(id), ROOMS, name, voiceKey(id), botsKey(id), banIpsKey(id), id);
     // Bots added to the room learn that it is gone.
     notifyRemoved(id, added);
 }
@@ -103,9 +105,31 @@ export async function dropRoom(id: string): Promise<void> {
 export async function listBans(id: string): Promise<Array<{ identity: string; name: string }>> {
     return Object.entries(await redis().hgetall(bansKey(id))).map(([identity, name]) => ({ identity, name }));
 }
-export const isBanned = async (id: string, identity: string) => (await redis().hexists(bansKey(id), identity)) === 1;
-export const addBan = (id: string, identity: string, name: string) => redis().hset(bansKey(id), identity, name);
-export const removeBan = (id: string, identity: string) => redis().hdel(bansKey(id), identity);
+/**
+ * Banned by identity, or by the address the banned person last came from. A new device ID
+ * is free to make, so the identity alone would keep no one out. `ip` is left out for callers
+ * the address must not count against (bots, which share their host's, and moderators).
+ */
+export async function isBanned(id: string, identity: string, ip?: string): Promise<boolean> {
+    const [byIdentity, byIp] = await Promise.all([
+        redis().hexists(bansKey(id), identity),
+        ip ? redis().hexists(banIpsKey(id), ip) : Promise.resolve(0),
+    ]);
+    return byIdentity === 1 || byIp === 1;
+}
+
+export async function addBan(id: string, identity: string, name: string, ip?: string | null): Promise<void> {
+    const tx = redis().multi().hset(bansKey(id), identity, name);
+    if (ip) tx.hset(banIpsKey(id), ip, identity);
+    await tx.exec();
+}
+
+export async function removeBan(id: string, identity: string): Promise<void> {
+    const ips = Object.entries(await redis().hgetall(banIpsKey(id))).filter(([, who]) => who === identity).map(([ip]) => ip);
+    const tx = redis().multi().hdel(bansKey(id), identity);
+    if (ips.length > 0) tx.hdel(banIpsKey(id), ...ips);
+    await tx.exec();
+}
 
 export const listMuted = (id: string) => redis().smembers(mutedKey(id));
 export const setMuted = (id: string, identity: string, muted: boolean) =>

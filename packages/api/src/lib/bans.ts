@@ -14,6 +14,8 @@ const IP_DAY = 24 * 60 * 60;
 
 /** Kept as long as an address ban would last, and only so that one can be made. */
 export const recordIp = (identity: string, ip: string) => redis().set(lastIpKey(identity), ip, 'EX', IP_DAY);
+/** The address an identity last asked for a token from, within the last day. */
+export const lastIpOf = (identity: string) => redis().get(lastIpKey(identity));
 
 export async function banFromServer(identity: string, name: string): Promise<void> {
     const ip = await redis().get(lastIpKey(identity));

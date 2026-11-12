@@ -8,6 +8,7 @@ import { invalidateRoomsCache } from './rooms';
 import { broadcastSse } from '../lib/sse';
 import { isBotIdentity } from '../lib/bots';
 import { removeBot } from '../lib/botInvites';
+import { lastIpOf } from '../lib/bans';
 
 /** Kicking or banning a bot someone added also ends the invitation, so it isn't asked back. */
 async function endInvitation(ctx: Context): Promise<void> {
@@ -83,7 +84,8 @@ export function createAdminRouter(): Router {
     router.post('/ban', async (_req, res: Response) => {
         const ctx = res.locals.ctx as Context;
         const targetName = await nameOf(ctx.room.id, ctx.target);
-        await addBan(ctx.room.id, ctx.target, targetName);
+        // A bot's address is its host's, which others may share.
+        await addBan(ctx.room.id, ctx.target, targetName, isBotIdentity(ctx.target) ? null : await lastIpOf(ctx.target));
         await endInvitation(ctx);
         // Revoking tokens issued up to now keeps the banned client from reconnecting
         // with the one it already holds.

@@ -3,10 +3,10 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { AccessToken } from 'livekit-server-sdk';
 import type { TokenResponse } from '@lala/shared';
 import { getRoomService } from '../lib/livekit';
-import { callerIdentity, deriveIdentity } from '../lib/identity';
+import { callerIdentity } from '../lib/identity';
 import { verifyRoomKey } from '../lib/passwords';
 import { attributesFor, can, grantFor, isModerator } from '../lib/rights';
-import { botOf } from '../lib/bots';
+import { botOf, isBotIdentity } from '../lib/bots';
 import { flagsOf, getRoom, isBanned } from '../lib/rooms';
 import { isShutOut, recordIp } from '../lib/bans';
 import { sanitizeDisplayText } from '../lib/sanitize';
@@ -41,8 +41,12 @@ export function createTokenRouter(): Router {
             return;
         }
 
-        // Without a device ID the participant gets a one-off identity.
-        const identity = callerIdentity(req) ?? deriveIdentity(undefined);
+        // A one-off identity for a request without a device ID would walk past a room ban.
+        const identity = callerIdentity(req);
+        if (!identity) {
+            res.status(400).json({ error: 'identity_required' });
+            return;
+        }
         const room = await getRoom(roomId);
         if (!room) {
             res.status(404).json({ error: 'room_not_found' });
@@ -53,7 +57,9 @@ export function createTokenRouter(): Router {
             res.status(403).json({ error: 'not_allowed' });
             return;
         }
-        if (await isShutOut(identity, req.ip) || await isBanned(room.id, identity)) {
+        // Moderators share an address with whoever they ban often enough (one router at home).
+        const banIp = isBotIdentity(identity) || isModerator(identity, room) ? undefined : req.ip;
+        if (await isShutOut(identity, req.ip) || await isBanned(room.id, identity, banIp)) {
             res.status(403).json({ error: 'banned' });
             return;
         }

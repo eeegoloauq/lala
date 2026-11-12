@@ -233,6 +233,13 @@ test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
     await bob.page.waitForURL(url => !url.pathname.startsWith('/room/'), { timeout: 10_000 });
     await bob.page.goto(roomUrl);
     await expect(bob.page.getByText('You are banned from this channel')).toBeVisible();
+    // Not with a new device ID from the same address, nor without one.
+    expect((await api(bob.page, 'a-brand-new-device', 'POST', '/token', { room: roomId })).status).toBe(403);
+    const anonymous = await bob.page.evaluate(async room => (await fetch('/api/token', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ room }),
+    })).status, roomId);
+    expect(anonymous).toBe(400);
+    bob.errors.splice(0);
 
     // Deleting the room drops Alice's own connection, which the SDK logs as data channel errors.
     expect(alice.errors).toEqual([]);
