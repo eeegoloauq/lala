@@ -414,6 +414,7 @@ test('on a stage only the creator speaks until giving someone the floor', async 
     const alice = await enter(browser, 'Alice');
     const bob = await enter(browser, 'Bob');
     await createRoom(alice.page, 'Stage room', { stage: true });
+    const roomId = new URL(alice.page.url()).pathname.split('/').pop();
     await bob.page.goto(alice.page.url());
     const bobTile = alice.page.locator('.p-tile', { hasText: 'Bob' });
     await expect(bobTile).toBeVisible({ timeout: 20_000 });
@@ -421,7 +422,7 @@ test('on a stage only the creator speaks until giving someone the floor', async 
     expect((await media(alice.page)).audio).toBe(0);
 
     // The sidebar menu knows from the room list that Bob may not speak.
-    const sidebarBob = alice.page.locator('.channel-user-card', { hasText: 'Bob' });
+    const sidebarBob = alice.page.locator(`.channel-user-card[data-participant-room="${roomId}"]`, { hasText: 'Bob' });
     await sidebarBob.click({ button: 'right' });
     await expect(alice.page.getByRole('button', { name: 'Let speak' })).toBeVisible();
     await alice.page.keyboard.press('Escape');

@@ -11,6 +11,10 @@ export default defineConfig({
     timeout: 90_000,
     // Tests share one LiveKit, Redis and API and keep apart by room name and client address.
     fullyParallel: true,
+    // Each test runs two or three browsers with fake media, so the suite is CPU-bound: on
+    // 3 cores two at a time beat three (2.5 against 2.7 min, 3.4 one by one), and CI's
+    // 4-core runners default to two as well. `--workers` overrides it.
+    workers: 2,
     // In CI, failures also become annotations on the run, readable without its log.
     reporter: process.env.CI ? [['github'], ['list']] : [['list']],
     projects: [
@@ -39,7 +43,7 @@ export default defineConfig({
             timeout: 300_000,
         },
         {
-            command: 'npm ci && npm run build && node dist/index.js',
+            command: '../../e2e/prepare.sh . && node dist/index.js',
             cwd: '../packages/api',
             url: 'http://127.0.0.1:3001/api/health',
             reuseExistingServer: false,
@@ -54,7 +58,7 @@ export default defineConfig({
             },
         },
         {
-            command: 'npm ci && npm run build && npx vite preview --config ../../e2e/preview.config.mjs',
+            command: '../../e2e/prepare.sh . && npx vite preview --config ../../e2e/preview.config.mjs',
             cwd: '../packages/web',
             url: 'http://127.0.0.1:3000',
             reuseExistingServer: false,
