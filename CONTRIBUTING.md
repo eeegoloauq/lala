@@ -60,6 +60,23 @@ password-protected room: that path uses E2EE and behaves differently.
 Both `npm run build` (web) and `npm run build` (api, `tsc`) must pass —
 the typecheck is the CI gate.
 
+## Translations
+
+The app's text is in `packages/web/src/locales/`, one JSON file per language. To add one:
+
+1. Copy `en.json` to the language code, such as `de.json` or `pt-BR.json`, and translate the
+   values. Keep the keys and every `{{placeholder}}` as they are.
+2. Plurals follow the language's own forms: English has `_one` and `_other`, Russian adds
+   `_few` and `_many` (see `ru.json`). [i18next](https://www.i18next.com/translation-function/plurals)
+   lists the forms per language.
+3. Run `npm run lint` in `packages/web`. It reports missing or unknown keys and placeholders
+   that differ from English.
+4. Add a block for the language to `packages/desktop/strings.js` for the desktop app's own
+   text: the connection page, tray and edit menu.
+
+The language appears in Settings → Appearance under its own name, with no code change.
+A key missing from a file shows in English. Right-to-left languages switch the page direction.
+
 ## Pull requests
 
 - Keep changes small and focused — one topic per PR.

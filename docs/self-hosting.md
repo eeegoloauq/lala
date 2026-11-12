@@ -59,6 +59,7 @@ default look for people who haven't picked a theme: a built-in theme with some c
 sizes changed (see the example file). It takes no CSS, so nothing the server sends can hide
 the marks that tell people a bot is in the call or can hear it. Each person can still pick a
 theme and add their own CSS in Settings → Appearance; that CSS stays on their device.
+[Theming](theming.md) lists what CSS can change and how to add a theme.
 
 ## Bots
 
