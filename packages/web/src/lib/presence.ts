@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { PresenceChoice, PresencePerson, PresenceStatus, RoomInfo } from './types';
-import { isBotIdentity } from './bots';
+import type { PresenceChoice, PresencePerson, PresenceStatus } from './types';
 import { createStore } from './store';
 
 /**
@@ -28,15 +27,4 @@ export const useMyStatus = () => useSyncExternalStore(myStatusStore.subscribe, m
 export function shownStatus(choice: PresenceChoice, idle: boolean): PresenceStatus {
     if (choice === 'invisible') return 'offline';
     return choice === 'online' && idle ? 'idle' : choice;
-}
-
-/** People with the app open, counted once: everyone in a call (not bots) and everyone else not offline. */
-export function countOnline(rooms: RoomInfo[], presence: Map<string, PresencePerson>, myIdentity: string | undefined, myStatus: PresenceStatus): number {
-    const ids = new Set<string>();
-    for (const room of rooms) for (const p of room.participants) if (!isBotIdentity(p.identity)) ids.add(p.identity);
-    for (const p of presence.values()) {
-        const status = p.identity === myIdentity ? myStatus : p.status;
-        if (status !== 'offline') ids.add(p.identity);
-    }
-    return ids.size;
 }

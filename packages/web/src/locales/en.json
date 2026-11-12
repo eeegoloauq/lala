@@ -52,8 +52,6 @@
     "you": "you",
     "anonymous": "Anonymous",
     "membersOnly": "Members only",
-    "online_one": "{{count}} online",
-    "online_other": "{{count}} online",
     "saved": "Saved",
     "hide": "Hide the room list"
   },

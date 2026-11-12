@@ -52,10 +52,6 @@
     "you": "вы",
     "anonymous": "Аноним",
     "membersOnly": "Только для участников",
-    "online_one": "{{count}} в сети",
-    "online_few": "{{count}} в сети",
-    "online_many": "{{count}} в сети",
-    "online_other": "{{count}} в сети",
     "saved": "Сохранённые",
     "hide": "Скрыть список комнат"
   },

@@ -15,13 +15,9 @@
     font-weight: 700;
 }
 
-.sidebar-server {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-}
-
 .sidebar-header .logo {
+    flex: 1;
+    min-width: 0;
     color: var(--accent);
     font-size: 18px;
     font-weight: 800;
@@ -30,13 +26,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.sidebar-online {
-    font-size: 11.5px;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-shadow: none;
 }
 
 .sidebar-section {

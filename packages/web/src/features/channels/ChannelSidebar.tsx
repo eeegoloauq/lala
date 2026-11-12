@@ -22,7 +22,7 @@ import { buildAdminActions } from '../room/hooks/useAdminActions';
 import { useMeContext } from '../../lib/meContext';
 import { useTimedValue } from '../../hooks/useTimedValue';
 import { useLongPress } from '../../hooks/useLongPress';
-import { countOnline, useMyStatus, usePresence } from '../../lib/presence';
+import { useMyStatus } from '../../lib/presence';
 import { WithStatus } from '../../ui/StatusDot';
 import { StatusMenu } from '../people/StatusMenu';
 import '../settings/settings.css';
@@ -95,6 +95,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     // muted/deafened/avatar per participant are read individually by ChannelUserRow
     // so a voice-activity change only re-renders that one row, not this component.
     const liveParticipants = useLiveParticipants();
+    const myStatus = useMyStatus();
     const { theme, setChoice } = useTheme();
     const cycleTheme = () => {
         const idx = THEMES.indexOf(theme);
@@ -144,18 +145,6 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         }
         return map;
     }, [rooms, activeRoom, liveParticipants, identity]);
-
-    // With presence, everyone who has the app open, as the people list counts them;
-    // otherwise everyone in any room, counted once (the server lists the caller too).
-    const presence = usePresence();
-    const myStatus = useMyStatus();
-    const onlineCount = useMemo(() => {
-        if (presence) return countOnline(rooms, presence, identity, myStatus);
-        const ids = new Set<string>();
-        for (const room of rooms) for (const p of room.participants) ids.add(p.identity);
-        for (const id of liveParticipants.keys()) ids.add(id);
-        return ids.size;
-    }, [rooms, liveParticipants, presence, identity, myStatus]);
 
     useEffect(() => {
         if (renaming) renameInputRef.current?.focus();
@@ -243,10 +232,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         <div className="sidebar">
             {/* Header */}
             <div className="sidebar-header panel-header">
-                <div className="sidebar-server">
-                    <span className="logo">{me?.serverName ?? APP_NAME}</span>
-                    <span className="sidebar-online">{t('sidebar.online', { count: onlineCount })}</span>
-                </div>
+                <span className="logo">{me?.serverName ?? APP_NAME}</span>
                 {onHide && (
                     <button className="sidebar-hide-btn" onClick={onHide} title={t('sidebar.hide')} aria-label={t('sidebar.hide')}>
                         <SidebarIcon size={18} />
