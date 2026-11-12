@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AvatarBadge } from '../../ui/AvatarBadge';
 import { getCachedAvatar, avatarColorForIdentity } from '../../lib/avatarUtils';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../room/icons/Icons';
 import { isBotIdentity } from '../../lib/bots';
@@ -17,7 +16,6 @@ export interface ChannelUserRowProps {
      *  the last known SSE snapshot for a room we're not in. */
     isActiveRoom: boolean;
     isSelf: boolean;
-    isRoomAdmin: boolean;
     /** Server-side (admin) mic mute — always from the SSE room snapshot, not store. */
     serverMuted: boolean;
     /** Fallback mute/deafen state from the SSE room snapshot (used for rooms we
@@ -44,7 +42,6 @@ export const ChannelUserRow = memo(function ChannelUserRow({
     roomId,
     isActiveRoom,
     isSelf,
-    isRoomAdmin,
     serverMuted,
     staticMuted,
     staticDeafened,
@@ -73,24 +70,16 @@ export const ChannelUserRow = memo(function ChannelUserRow({
             onContextMenu={onContextMenu}
             onClick={onOpenProfile}
         >
-            <AvatarBadge
-                topCrown={isRoomAdmin ? (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,1))' }}>
-                        <path d="M2 19l2-9 5 4 3-8 3 8 5-4 2 9H2z" />
-                    </svg>
-                ) : undefined}
+            <div
+                className={`channel-user-avatar${speaking && !isBot ? ' speaking' : ''}`}
+                style={{ background: avatarUrl ? 'transparent' : avatarColorForIdentity(identity) }}
             >
-                <div
-                    className={`channel-user-avatar${speaking && !isBot ? ' speaking' : ''}`}
-                    style={{ background: avatarUrl ? 'transparent' : avatarColorForIdentity(identity) }}
-                >
-                    {avatarUrl ? (
-                        <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} draggable={false} />
-                    ) : (
-                        name[0]?.toUpperCase() ?? '?'
-                    )}
-                </div>
-            </AvatarBadge>
+                {avatarUrl ? (
+                    <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} draggable={false} />
+                ) : (
+                    name[0]?.toUpperCase() ?? '?'
+                )}
+            </div>
             <span className="channel-user-name">{name}</span>
             {isBot && <BotBadge />}
             {isSelf && (

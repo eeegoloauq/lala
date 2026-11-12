@@ -9,6 +9,7 @@ import { requestChatDraft, useAvatarForIdentity, useBotDetails } from '../../lib
 import { BotBadge, ListensMark } from '../../ui/BotBadge';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { CheckIcon, CrossIcon, EarIcon } from '../room/icons/Icons';
+import type { RoomInfo } from '../../lib/types';
 import './profile-card.css';
 
 const WIDTH = 288;
@@ -19,12 +20,15 @@ const shortIdentity = (identity: string) =>
     isBotIdentity(identity) || identity.length <= 12 ? identity : `${identity.slice(0, 4)}…${identity.slice(-4)}`;
 
 /** The open profile card, if any; mounted once in App. */
-export function ProfileCardHost() {
+export function ProfileCardHost({ rooms }: { rooms: RoomInfo[] }) {
     const open = useOpenProfile();
-    return open ? <ProfileCard key={open.identity} {...open} /> : null;
+    if (!open) return null;
+    // The room's creator moderates it; shown here rather than as a mark on every row.
+    const room = rooms.find(r => r.participants.some(p => p.identity === open.identity));
+    return <ProfileCard key={open.identity} {...open} roomAdmin={!!room && room.adminIdentity === open.identity} />;
 }
 
-function ProfileCard({ identity, name, x, y }: { identity: string; name: string; x: number; y: number }) {
+function ProfileCard({ identity, name, x, y, roomAdmin }: { identity: string; name: string; x: number; y: number; roomAdmin: boolean }) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const me = useMeContext();
@@ -74,7 +78,11 @@ function ProfileCard({ identity, name, x, y }: { identity: string; name: string;
                     </h3>
                     <div className="profile-identity" title={identity}>{shortIdentity(identity)}</div>
                 </div>
-                {isSelf && <p className="profile-about">{t('profile.thisIsYou')}</p>}
+                {(isSelf || roomAdmin) && (
+                    <p className="profile-about">
+                        {[isSelf && t('profile.thisIsYou'), roomAdmin && t('profile.roomAdmin')].filter(Boolean).join(' ')}
+                    </p>
+                )}
                 {bot?.status && <p className="profile-status">{bot.status}</p>}
                 {bot && bot.commands.length > 0 && (
                     <div>

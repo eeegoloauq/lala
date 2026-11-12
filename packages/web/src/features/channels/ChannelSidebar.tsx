@@ -293,7 +293,6 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                         roomId={room.id}
                                         isActiveRoom={isActiveRoom}
                                         isSelf={p.identity === identity}
-                                        isRoomAdmin={p.identity === room.adminIdentity}
                                         serverMuted={room.serverMutedParticipants?.includes(p.identity) ?? false}
                                         staticMuted={room.mutedParticipants?.includes(p.identity) ?? false}
                                         staticDeafened={room.deafenedParticipants?.includes(p.identity) ?? false}

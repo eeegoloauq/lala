@@ -161,7 +161,7 @@ export function ParticipantTileView({ name, identity, avatarUrl, video, speaking
         >
             {video ?? (
                 <div className="p-tile-avatar">
-                    <Avatar name={name} identity={identity} size={80} avatarUrl={avatarUrl} />
+                    <Avatar name={name} identity={identity} size="fluid" avatarUrl={avatarUrl} />
                 </div>
             )}
 

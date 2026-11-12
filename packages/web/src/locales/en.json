@@ -422,6 +422,7 @@
   "profile": {
     "title": "Profile of {{name}}",
     "thisIsYou": "This is you.",
+    "roomAdmin": "Runs this room.",
     "commands": "Commands",
     "canDo": "What it can do",
     "speaks": "Plays audio in the call",

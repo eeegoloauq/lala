@@ -38,6 +38,8 @@
     width: 100%;
     aspect-ratio: 16 / 10;
     flex-shrink: 0;
+    /* Lets the avatar size itself from the tile (cqmin below). */
+    container-type: size;
 }
 
 .p-tile.p-tile-clickable {
@@ -194,6 +196,14 @@
     letter-spacing: -1px;
     flex-shrink: 0;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* A third of the tile's short side: clear of the name and status rows in a small tile, and
+   at most 128px, the size avatars are stored at, so a large tile doesn't blur it. */
+.p-avatar-fluid {
+    width: clamp(36px, 34cqmin, 128px);
+    height: clamp(36px, 34cqmin, 128px);
+    font-size: clamp(14px, 13cqmin, 48px);
 }
 
 /* ─── FocusLayout strip override: fill the strip tile ─── */

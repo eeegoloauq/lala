@@ -224,7 +224,7 @@ export default function App() {
                     )}
                 </main>
 
-                <ProfileCardHost />
+                <ProfileCardHost rooms={rooms} />
 
                 {settingsOpen && (
                     <Suspense fallback={null}>
