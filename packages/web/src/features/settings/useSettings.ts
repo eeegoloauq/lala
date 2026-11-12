@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { STORAGE_KEYS } from '../../lib/constants';
 import { safeJsonParse } from '../../lib/utils';
-import { DEFAULT_SETTINGS, AUDIO_QUALITY_PRESETS, NOISE_SUPPRESSION_MODES, CAMERA_EFFECTS } from './types';
+import { DEFAULT_SETTINGS, AUDIO_QUALITY_PRESETS, NOISE_SUPPRESSION_MODES, CAMERA_EFFECTS, PRESENCE_CHOICES } from './types';
 import type { AppSettings } from './types';
 
 // Bump when adding a migration. Stored as `_v` inside the settings JSON.
@@ -49,6 +49,7 @@ const ENUM_FIELDS: Partial<Record<keyof AppSettings, readonly string[]>> = {
   audioQuality: AUDIO_QUALITY_PRESETS,
   noiseSuppressionMode: NOISE_SUPPRESSION_MODES,
   cameraEffect: CAMERA_EFFECTS,
+  presenceStatus: PRESENCE_CHOICES,
 };
 // Optional free-form device-id strings — no entry in DEFAULT_SETTINGS to
 // typeof-check against, so they get an explicit string check instead.

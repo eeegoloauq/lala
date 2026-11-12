@@ -14,7 +14,7 @@ import type { AppSettings } from '../settings/types';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getMyAvatar } from '../../lib/avatarUtils';
 import { playChatSound, playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playScreenShareStartSound, playScreenShareStopSound } from '../../lib/sounds';
-import { setBotsInRoom, setDeafenedInRoom, setLiveParticipants, setMutedInRoom, setSpeakingUsers } from '../../lib/roomStatusStore';
+import { useAvatarMap, setBotsInRoom, setDeafenedInRoom, setLiveParticipants, setMutedInRoom, setSpeakingUsers } from '../../lib/roomStatusStore';
 import type { BotDetails } from '../../lib/bots';
 import { MY_IDENTITY, callState, enterRoom, leaveRoom, onRoomsChanged, setMyState } from './server';
 import type { CallState } from './server';
@@ -190,6 +190,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
 
     const people = call?.people ?? [];
     const myAvatar = getMyAvatar() ?? undefined;
+    const avatars = useAvatarMap();
     const remoteScreens = useFakeScreens(call, (who) => t('demo.screenOf', { name: who }));
     const screens = new Map(remoteScreens);
     if (screen.stream) screens.set(MY_IDENTITY, screen.stream);
@@ -203,7 +204,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
             <ParticipantTileView
                 name={p.name}
                 identity={p.identity}
-                avatarUrl={mine ? myAvatar : undefined}
+                avatarUrl={mine ? myAvatar : avatars.get(p.identity)}
                 video={video ? <StreamVideo stream={video} mirror={mine} /> : undefined}
                 speaking={speakingNow.has(p.identity)}
                 screenSharing={screens.has(p.identity)}

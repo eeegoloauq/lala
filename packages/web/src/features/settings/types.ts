@@ -9,6 +9,8 @@ export type NoiseSuppressionMode = typeof NOISE_SUPPRESSION_MODES[number];
 export const CAMERA_EFFECTS = ['none', 'blur'] as const;
 export type CameraEffect = typeof CAMERA_EFFECTS[number];
 
+export const PRESENCE_CHOICES = ['online', 'idle', 'dnd', 'invisible'] as const;
+
 export interface AppSettings {
   audioQuality: AudioQualityPreset;
   autoGainControl: boolean;
@@ -49,6 +51,8 @@ export interface AppSettings {
   keyScreenShare: string;
   keySidebar: string;
   sidebarHidden: boolean;  // desktop: the room list is hidden (phones use the drawer)
+  peopleHidden: boolean;   // wide screens: the people list is hidden (narrower ones open it over the page)
+  presenceStatus: typeof PRESENCE_CHOICES[number];
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -87,4 +91,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keyScreenShare: 'KeyS',
   keySidebar: 'KeyB',
   sidebarHidden: false,
+  peopleHidden: false,
+  presenceStatus: 'online',
 };

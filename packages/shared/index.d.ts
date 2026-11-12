@@ -122,6 +122,32 @@ export interface Me {
     avatar?: string;     // version of the caller's avatar; none stored when absent
 }
 
+/** The status someone picks. `invisible` reaches no one else: they see the person offline. */
+export type PresenceChoice = 'online' | 'idle' | 'dnd' | 'invisible';
+/** What others see; `idle` also when the person's app has had no input for a while. */
+export type PresenceStatus = 'online' | 'idle' | 'dnd' | 'offline';
+
+/**
+ * One person in GET /api/presence. Everyone with the app open is listed; people who aren't
+ * are listed only when the config names them (`users:`), as members who are offline.
+ */
+export interface PresencePerson {
+    identity: string;   // the device a member used last, for one with several
+    name: string;       // the display name the person used last; the config key before they ever did
+    avatar?: string;    // avatar version
+    status: PresenceStatus;
+}
+/** Response from GET /api/presence */
+export interface PresenceResponse { people: PresencePerson[]; }
+/** Response from POST /api/presence/ticket: opens GET /api/events?ticket=… as the caller, for about 5 minutes. */
+export interface PresenceTicketResponse { ticket: string; }
+/** Payload for PUT /api/presence: the caller's own status and the name to show; sent every 30 seconds as the heartbeat. */
+export interface PresenceUpdate {
+    status: PresenceChoice;
+    idle: boolean;      // no input for a while; shows as idle when the status is online
+    name: string;
+}
+
 /** POST /api/me/avatar: the version of the image just stored. */
 export interface AvatarResponse { avatar: string; }
 
@@ -234,6 +260,7 @@ export type ApiErrorCode =
     | 'invalid_invite'
     | 'invalid_json'
     | 'invalid_signature'
+    | 'invalid_ticket'
     | 'identity_required'
     | 'not_allowed'
     | 'not_found'

@@ -1,4 +1,4 @@
-import type { AvatarResponse, RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse } from './types';
+import type { AvatarResponse, RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse, PresencePerson, PresenceResponse, PresenceTicketResponse, PresenceUpdate } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
 import { IS_DEMO } from './env';
@@ -78,6 +78,19 @@ export async function uploadAvatar(dataUrl: string): Promise<string> {
 
 export function deleteAvatar(): Promise<void> {
     return request<void>('/me/avatar', { method: 'DELETE' });
+}
+
+export async function getPresence(): Promise<PresencePerson[]> {
+    return (await request<PresenceResponse>('/presence')).people;
+}
+
+/** A ticket that opens the event stream as this device; EventSource can't send the device header. */
+export async function getPresenceTicket(): Promise<string> {
+    return (await request<PresenceTicketResponse>('/presence/ticket', { method: 'POST' })).ticket;
+}
+
+export function putPresence(update: PresenceUpdate): Promise<void> {
+    return request<void>('/presence', send('PUT', update));
 }
 
 export function getToken(req: TokenRequest): Promise<TokenResponse> {

@@ -150,7 +150,11 @@
     "talkingMore_one": "{{names}} и ещё {{count}} разговаривают",
     "talkingMore_few": "{{names}} и ещё {{count}} разговаривают",
     "talkingMore_many": "{{names}} и ещё {{count}} разговаривают",
-    "talkingMore_other": "{{names}} и ещё {{count}} разговаривают"
+    "talkingMore_other": "{{names}} и ещё {{count}} разговаривают",
+    "rejoin": "Вернуться в {{name}}",
+    "rejoinHint": "Комната, где вы были в последний раз",
+    "create": "Создать комнату",
+    "createHint": "Пока никого нет. Создайте комнату и отправьте ссылку."
   },
   "chat": {
     "title": "Чат",
@@ -470,7 +474,8 @@
     "open": "Профиль",
     "addedBy": "Добавил {{name}}",
     "joinedAt": "Подключился в {{time}}",
-    "removeBot": "Убрать"
+    "removeBot": "Убрать",
+    "inRoom": "В комнате {{room}}"
   },
   "addBot": {
     "row": "Добавить бота",
@@ -528,5 +533,24 @@
     "not_allowed": "В ту комнату им нельзя",
     "room_full": "Та комната заполнена",
     "not_found": "Их уже нет в комнате"
+  },
+  "people": {
+    "title": "Люди",
+    "inCall": "В звонке",
+    "online": "В сети",
+    "offline": "Не в сети",
+    "show": "Показать людей",
+    "hide": "Скрыть людей"
+  },
+  "status": {
+    "online": "В сети",
+    "idle": "Нет на месте",
+    "dnd": "Не беспокоить",
+    "invisible": "Невидимка",
+    "offline": "Не в сети",
+    "idleHint": "Ставится и сам, если вас нет 10 минут",
+    "dndHint": "Уведомлений не будет",
+    "invisibleHint": "Для других вы не в сети",
+    "change": "Выбрать статус"
   }
 }

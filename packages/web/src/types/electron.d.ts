@@ -63,6 +63,8 @@ export interface ElectronAPI {
 
     /** Notify main process about call state (for power save blocker) */
     setInCall: (inCall: boolean) => void;
+    /** Seconds without input on the whole computer; absent in desktop versions before presence. */
+    getSystemIdleTime?: () => Promise<number | null>;
 
     /** Ping a server (health check via Node.js, bypasses CORS) */
     pingServer: (url: string) => Promise<number | null>;

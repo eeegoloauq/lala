@@ -43,6 +43,8 @@ docker build -f packages/web/Dockerfile -t local/lala-web:dev .
 | `ALLOWED_ORIGINS` | Allowed frontend origins (CORS) |
 | `LALA_ACCESS_PASSWORD` | Optional password for the whole server, at least 12 characters (`openssl rand -base64 18`) |
 | `CSP_CONNECT_SRC` | CSP connect-src (default `wss: ws:`, tighten for prod) |
+| `LALA_MAX_EVENT_STREAMS` | Optional: open apps the server holds at once, which is how many people can be online (1000) |
+| `LALA_MAX_EVENT_STREAMS_PER_IP` | Optional: open apps from one address, for a household or office behind one (20) |
 
 ## Members, admins and permanent rooms
 

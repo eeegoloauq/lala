@@ -1,6 +1,6 @@
 import { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { RoomInfo, NewRoom } from '../../lib/types';
+import type { RoomInfo, NewRoom, PresenceChoice } from '../../lib/types';
 import { APP_NAME, MAX_NAME_LENGTH } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
@@ -22,6 +22,9 @@ import { buildAdminActions } from '../room/hooks/useAdminActions';
 import { useMeContext } from '../../lib/meContext';
 import { useTimedValue } from '../../hooks/useTimedValue';
 import { useLongPress } from '../../hooks/useLongPress';
+import { countOnline, useMyStatus, usePresence } from '../../lib/presence';
+import { WithStatus } from '../../ui/StatusDot';
+import { StatusMenu } from '../people/StatusMenu';
 import '../settings/settings.css';
 import './channel-sidebar.css';
 import { IS_TOUCH as isTouchDevice } from '../../lib/env';
@@ -41,6 +44,9 @@ interface ChannelSidebarProps {
     onHide?: () => void;
     volumes?: Map<string, number>;
     onVolumeChange?: (identity: string, vol: number) => void;
+    /** The status picked in the footer; absent when the server has no presence. */
+    presenceStatus?: PresenceChoice;
+    onPresenceStatusChange?: (status: PresenceChoice) => void;
 }
 
 interface ContextMenuState {
@@ -75,6 +81,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     onHide,
     volumes,
     onVolumeChange,
+    presenceStatus,
+    onPresenceStatusChange,
 }: ChannelSidebarProps) {
     const { t } = useTranslation();
     const me = useMeContext();
@@ -110,6 +118,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     };
     const [addBotMenu, setAddBotMenu] = useState<{ roomId: string; locked: boolean; x: number; y: number } | null>(null);
     const closeAddBotMenu = useCallback(() => setAddBotMenu(null), []);
+    const [statusMenu, setStatusMenu] = useState<DOMRect | null>(null);
+    const closeStatusMenu = useCallback(() => setStatusMenu(null), []);
     const [renaming, setRenaming] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -134,13 +144,17 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         return map;
     }, [rooms, activeRoom, liveParticipants, identity]);
 
-    // Everyone in any room, counted once (the server lists the caller too).
+    // With presence, everyone who has the app open, as the people list counts them;
+    // otherwise everyone in any room, counted once (the server lists the caller too).
+    const presence = usePresence();
+    const myStatus = useMyStatus();
     const onlineCount = useMemo(() => {
+        if (presence) return countOnline(rooms, presence, identity, myStatus);
         const ids = new Set<string>();
         for (const room of rooms) for (const p of room.participants) ids.add(p.identity);
         for (const id of liveParticipants.keys()) ids.add(id);
         return ids.size;
-    }, [rooms, liveParticipants]);
+    }, [rooms, liveParticipants, presence, identity, myStatus]);
 
     useEffect(() => {
         if (renaming) renameInputRef.current?.focus();
@@ -413,9 +427,23 @@ export const ChannelSidebar = memo(function ChannelSidebar({
 
             {/* Footer */}
             <div className="sidebar-footer">
-                <div className="sidebar-footer-avatar">
-                    <Avatar name={displayName || '?'} identity={identity} size={32} avatarUrl={myAvatarUrl ?? undefined} />
-                </div>
+                {presenceStatus && onPresenceStatusChange ? (
+                    <button
+                        className="sidebar-footer-avatar sidebar-status-btn"
+                        onClick={(e) => setStatusMenu(statusMenu ? null : e.currentTarget.getBoundingClientRect())}
+                        title={t('status.change')}
+                        aria-label={t('status.change')}
+                        aria-haspopup="menu"
+                    >
+                        <WithStatus status={myStatus}>
+                            <Avatar name={displayName || '?'} identity={identity} size={32} avatarUrl={myAvatarUrl ?? undefined} />
+                        </WithStatus>
+                    </button>
+                ) : (
+                    <div className="sidebar-footer-avatar">
+                        <Avatar name={displayName || '?'} identity={identity} size={32} avatarUrl={myAvatarUrl ?? undefined} />
+                    </div>
+                )}
                 {renaming ? (
                     <input
                         ref={renameInputRef}
@@ -439,6 +467,10 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                     <SettingsIcon size={14} />
                 </button>
             </div>
+
+            {statusMenu && presenceStatus && onPresenceStatusChange && (
+                <StatusMenu current={presenceStatus} anchor={statusMenu} onPick={onPresenceStatusChange} onClose={closeStatusMenu} />
+            )}
 
             {showCreateModal && (
                 <CreateRoomModal

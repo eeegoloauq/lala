@@ -119,10 +119,28 @@ Send the cookie back on every request. Failed attempts are limited to 10 per 15 
 | `GET /api/rooms/:id` | | `RoomInfo` |
 | `POST /api/rooms` | `CreateRoomRequest` | `201` with the new room, or `200` with a live room of that name |
 | `DELETE /api/rooms/:id` | | `{ ok: true }`; moderators only, not for configured rooms |
-| `GET /api/events` | | Server-sent events; `rooms_updated` when rooms or participants change |
+| `GET /api/events` | | Server-sent events; `rooms_updated` when rooms or participants change, `presence_updated` when someone comes, goes or changes status |
 
 `RoomInfo.canJoin` and `canModerate` describe the caller. A room with `passwordSalt` has a
 password and uses end-to-end encryption.
+
+## Presence
+
+Who has the app open, for the people list.
+
+| Request | Body | Result |
+|---|---|---|
+| `POST /api/presence/ticket` | | `{ ticket }`, valid for 5 minutes |
+| `GET /api/events?ticket=…` | | The event stream as the caller: online while it is open; `401 invalid_ticket` for a bad or expired ticket |
+| `PUT /api/presence` | `PresenceUpdate` | `204`; the caller's status (`online`, `idle`, `dnd`, `invisible`), whether they are idle, and their name |
+| `GET /api/presence` | | `{ people: PresencePerson[] }` |
+
+`EventSource` can't send the device header, so the client trades it for a ticket, which names
+only the public identity. Send `PUT /api/presence` when the status changes and every 30 seconds:
+someone without a heartbeat for 2.5 minutes drops out, and a closed stream takes them out after
+5 seconds. The list has everyone online once and every member the server config names, with
+status `offline` when they aren't; a member with several devices is one row. Someone invisible
+is left out, or listed as offline when they are a member, except in their own list.
 
 ## Joining a call
 

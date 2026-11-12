@@ -1,0 +1,51 @@
+/* The ring matches what the avatar sits on; a container can set --status-ring. */
+.status-avatar {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.status-avatar > .status-dot {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+}
+
+.status-dot {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 50%;
+    background: var(--status-ring, var(--bg-sidebar));
+}
+
+.status-dot-mark {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.status-online { background: var(--status-online); }
+
+/* A moon: the dot with a circle cut from its upper left. */
+.status-idle {
+    background: var(--status-idle);
+    mask: radial-gradient(circle 3.6px at 2.4px 2.4px, transparent 96%, #000);
+}
+
+.status-dnd { background: var(--status-dnd); }
+.status-dnd::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    top: 4px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--status-ring, var(--bg-sidebar));
+}
+
+.status-offline {
+    box-shadow: inset 0 0 0 2.5px var(--status-offline);
+}

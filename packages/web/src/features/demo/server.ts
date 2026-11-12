@@ -4,7 +4,13 @@
  * unchanged; state lives in memory and resets on reload. Nothing here goes over the
  * network, and the regular build never includes this module (see IS_DEMO).
  */
-import type { AccessStatus, AddedBot, Me, RoomBan, RoomBot, RoomInfo, ServerBan, TokenResponse } from '../../lib/types';
+import type { AccessStatus, AddedBot, Me, PresenceChoice, PresencePerson, PresenceStatus, RoomBan, RoomBot, RoomInfo, ServerBan, TokenResponse } from '../../lib/types';
+import { shownStatus } from '../../lib/presence';
+import { setDemoAvatars } from '../../lib/avatarUtils';
+import { demoAvatar } from './avatars';
+
+// Loaded with the first API request, before any list with avatars arrives.
+setDemoAvatars(demoAvatar);
 import { deriveRoomKeys } from '../../lib/roomKeys';
 import type { BotDetails } from '../../lib/bots';
 
@@ -87,6 +93,35 @@ const rooms: DemoRoom[] = [
     room(`Locked · ${DEMO_PASSWORD}`, CROWD.slice(9, 10), { id: 'locked' }),
     room('Late night', [], { id: 'late-night' }),
 ];
+// The demo server names everyone in its config, so people who close the app stay listed as
+// offline members. Some have the app open outside any call; a few are idle or busy.
+const LOBBY = ['Pia', 'Malik', 'Zoe', 'Hugo', 'Ada'].map(person);
+const AWAY = ['Bruno', 'Clara', 'Dmitri', 'Eve'].map(person);
+const EVERYONE = [...CROWD, ...LOBBY, ...AWAY];
+const presence = new Map<string, PresenceStatus>(EVERYONE.map(p => [p.identity, 'online']));
+for (const p of AWAY) presence.set(p.identity, 'offline');
+for (const [p, status] of [[CROWD[5], 'idle'], [CROWD[8], 'dnd'], [LOBBY[2], 'dnd'], [LOBBY[3], 'idle'], [LOBBY[4], 'idle']] as const) presence.set(p.identity, status);
+let mine: { status: PresenceChoice; idle: boolean; name: string } = { status: 'online', idle: false, name: 'You' };
+
+function describePresence(): PresencePerson[] {
+    return [
+        ...EVERYONE.map(({ identity, name }) => ({ identity, name, status: presence.get(identity) ?? 'offline' })),
+        { identity: ME, name: mine.name, avatar: myAvatarVersion, status: shownStatus(mine.status, mine.idle) },
+    ];
+}
+
+/** Someone outside a call closes the app, comes back, goes idle or returns to the keyboard. */
+function presenceActivity() {
+    const inCall = new Set(rooms.flatMap(r => r.people.map(p => p.identity)));
+    const who = pick(EVERYONE)!;
+    const status = presence.get(who.identity);
+    if (status === 'dnd') return;
+    if (status === 'offline') presence.set(who.identity, 'online');
+    else if (status === 'idle') presence.set(who.identity, 'online');
+    else if (!inCall.has(who.identity) && Math.random() < 0.4) presence.set(who.identity, 'offline');
+    else presence.set(who.identity, 'idle');
+}
+
 const serverBans: ServerBan[] = [{ identity: person('Spammer').identity, name: 'Spammer' }];
 // Derived in the background like a real client would; the locked room is ready long before anyone reaches it.
 const lockedRoom = rooms[3];
@@ -197,6 +232,11 @@ const pick = <T,>(list: T[]): T | undefined => list[Math.floor(Math.random() * l
 function startActivity() {
     if (activity) return;
     activity = setInterval(() => {
+        if (Math.random() < 0.3) {
+            presenceActivity();
+            changed();
+            return;
+        }
         // Bots stay where they are.
         const busy = rooms.filter(r => r.people.some(p => p.identity !== ME && !p.bot));
         const mine = rooms.find(r => r.id === callRoom);
@@ -246,6 +286,11 @@ export async function handle(path: string, init: RequestInit = {}): Promise<Resp
     }
     if (path === '/me/avatar' && method === 'DELETE') {
         myAvatarVersion = undefined;
+        return new Response(null, { status: 204 });
+    }
+    if (path === '/presence' && method === 'GET') return json(200, { people: describePresence() });
+    if (path === '/presence' && method === 'PUT') {
+        mine = { status: body.status as PresenceChoice, idle: !!body.idle, name: String(body.name ?? '').slice(0, 50) || 'You' };
         return new Response(null, { status: 204 });
     }
     if (path === '/rooms' && method === 'GET') return json(200, { rooms: rooms.map(describe) });

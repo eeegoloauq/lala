@@ -7,6 +7,8 @@ import { useMeContext } from '../../lib/meContext';
 import { openProfile, useOpenProfile } from '../../lib/profileCard';
 import { requestChatDraft, useAvatarForIdentity, useBotDetails } from '../../lib/roomStatusStore';
 import { BotBadge, ListensMark } from '../../ui/BotBadge';
+import { StatusDot } from '../../ui/StatusDot';
+import { useMyStatus, usePresence } from '../../lib/presence';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { CheckIcon, CrossIcon, EarIcon, OutIcon } from '../room/icons/Icons';
 import { removeBot } from '../../lib/api';
@@ -42,6 +44,10 @@ function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps
     const bot = useBotDetails(identity);
     const isBot = isBotIdentity(identity);
     const isSelf = me?.identity === identity;
+    const presence = usePresence();
+    const myStatus = useMyStatus();
+    // People only; a bot shows its own status line instead.
+    const status = isBot || !presence ? undefined : isSelf ? myStatus : presence.get(identity)?.status ?? (room ? 'online' : undefined);
     const color = avatarColorForIdentity(identity);
     const [position, setPosition] = useState({ left: x, top: y });
     const [removing, setRemoving] = useState(false);
@@ -101,6 +107,12 @@ function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps
                         {bot?.listens && <ListensMark />}
                     </h3>
                     <div className="profile-identity" title={identity}>{shortIdentity(identity)}</div>
+                    {status && (
+                        <div className="profile-presence">
+                            <StatusDot status={status} labelled={false} />
+                            <span>{room ? t('profile.inRoom', { room: room.displayName }) : t(`status.${status}`)}</span>
+                        </div>
+                    )}
                 </div>
                 {(isSelf || roomAdmin) && (
                     <p className="profile-about">

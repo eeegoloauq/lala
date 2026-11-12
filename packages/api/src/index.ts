@@ -12,6 +12,8 @@ import { createAvatarsRouter } from './routes/avatars';
 import { createServerAdminRouter } from './routes/server-admin';
 import { createBotRouter } from './routes/bot';
 import { createRoomBotsRouter } from './routes/roomBots';
+import { createPresenceRouter } from './routes/presence';
+import { sweepPresence } from './lib/presence';
 import { botAuth } from './lib/bots';
 import { syncBots } from './lib/botSync';
 import { loadConfig } from './lib/config';
@@ -32,6 +34,7 @@ import { dropStaleRooms, syncPermanentRooms } from './routes/rooms';
  * - GET /api/bot, POST /api/bot/profile — A bot's account, status line and commands
  * - GET /api/bot/events       — SSE for a bot: rooms it is added to and removed from
  * - /api/rooms/:id/bots       — People add bots to a room and remove them
+ * - /api/presence             — Who is online, the caller's status, tickets for the event stream
  */
 const app = express();
 app.set('trust proxy', 1);
@@ -40,7 +43,7 @@ const port = parseInt(process.env.API_PORT || '3001', 10);
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',').map(o => o.trim());
 app.use(cors({
     origin: allowedOrigins,
-    methods: ['GET', 'POST', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
 const limiter = (max: number, skip?: (req: express.Request) => boolean) => rateLimit({
@@ -89,6 +92,10 @@ app.use('/api/rooms',
     limiter(30, req => req.method === 'GET'),   // 120/min
     createRoomsRouter());
 app.use('/api/events', limiter(5), createEventsRouter());
+// Every client refetches the list on each change (batched to one event a second) and sends
+// its status every 30 seconds per tab; a ticket is needed only when the stream (re)opens.
+app.use('/api/presence/ticket', limiter(10));
+app.use('/api/presence', limiter(120), createPresenceRouter());
 // Each change makes every client refetch the room list, so changes get a small budget.
 app.use('/api/me/avatar', limiter(5, req => req.method === 'GET'));
 app.use('/api/me', limiter(30), createMeRouter());
@@ -137,6 +144,7 @@ process.on('uncaughtException', (err) => {
     const dropStale = () => dropStaleRooms().catch((err) => console.error('[rooms] dropping stale rooms failed:', err));
     await dropStale();
     setInterval(dropStale, 5 * 60 * 1000);
+    setInterval(() => sweepPresence().catch((err) => console.error('[presence] sweep failed:', err)), 15 * 1000);
     app.listen(port, '0.0.0.0', () => {
         console.log(`[lala-api] listening on port ${port}`);
         console.log(`[lala-api] LiveKit: ${process.env.LIVEKIT_URL}`);

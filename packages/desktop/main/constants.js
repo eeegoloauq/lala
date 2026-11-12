@@ -41,6 +41,7 @@ const IPC = {
     GET_AUTO_LAUNCH: 'lala:get-auto-launch',
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
     SET_IN_CALL: 'lala:set-in-call',
+    GET_IDLE_TIME: 'lala:get-idle-time',
 
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',

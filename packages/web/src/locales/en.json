@@ -144,7 +144,11 @@
     "talking_one": "{{names}} is talking",
     "talking_other": "{{names}} are talking",
     "talkingMore_one": "{{names}} and {{count}} more are talking",
-    "talkingMore_other": "{{names}} and {{count}} more are talking"
+    "talkingMore_other": "{{names}} and {{count}} more are talking",
+    "rejoin": "Back to {{name}}",
+    "rejoinHint": "The room you were in last",
+    "create": "Create a room",
+    "createHint": "Nobody's here yet. Start a room and send the link."
   },
   "chat": {
     "title": "Chat",
@@ -458,7 +462,8 @@
     "open": "Profile",
     "addedBy": "Added by {{name}}",
     "joinedAt": "Joined at {{time}}",
-    "removeBot": "Remove"
+    "removeBot": "Remove",
+    "inRoom": "In {{room}}"
   },
   "addBot": {
     "row": "Add bot",
@@ -516,5 +521,24 @@
     "not_allowed": "They aren't allowed in that room",
     "room_full": "That room is full",
     "not_found": "They aren't in the room any more"
+  },
+  "people": {
+    "title": "People",
+    "inCall": "In a call",
+    "online": "Online",
+    "offline": "Offline",
+    "show": "Show people",
+    "hide": "Hide people"
+  },
+  "status": {
+    "online": "Online",
+    "idle": "Idle",
+    "dnd": "Do Not Disturb",
+    "invisible": "Invisible",
+    "offline": "Offline",
+    "idleHint": "Also set by itself after 10 minutes away",
+    "dndHint": "You won't get notifications",
+    "invisibleHint": "You'll appear offline",
+    "change": "Set your status"
   }
 }

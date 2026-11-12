@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { RoomInfo, CreateRoomRequest } from '../lib/types';
-import { getRooms, createRoom } from '../lib/api';
+import { getRooms, createRoom, getPresenceTicket } from '../lib/api';
+import { presenceChanged } from '../lib/presence';
 import { IS_DEMO } from '../lib/env';
 
 export function useRooms() {
@@ -55,11 +56,19 @@ export function useRooms() {
             return () => { active = false; unsubscribe?.(); };
         }
 
-        // Real-time updates via SSE — no polling
-        let es: EventSource;
+        // Real-time updates via SSE — no polling. The stream opens with a presence ticket,
+        // which keeps this device online while it is open; without one (a server that
+        // turns this device away) it still carries room changes.
+        let es: EventSource | undefined;
         let retry: ReturnType<typeof setTimeout> | undefined;
-        const connect = () => {
-            es = new EventSource('/api/events');
+        let active = true;
+        const connect = async () => {
+            const ticket = await getPresenceTicket().catch(() => undefined);
+            if (!active) return;
+            es = new EventSource(ticket ? `/api/events?ticket=${encodeURIComponent(ticket)}` : '/api/events');
+            const stream = es;
+
+            es.addEventListener('presence_updated', () => presenceChanged());
 
             // Fetch on every room change event from LiveKit webhook
             es.addEventListener('rooms_updated', () => fetchRooms());
@@ -69,22 +78,26 @@ export function useRooms() {
             es.addEventListener('connected', () => fetchRooms());
 
             // EventSource retries dropped connections by itself, but a non-200 answer
-            // (502 while the API restarts, 401 after the instance password changed)
-            // closes it for good. Reopen it ourselves, and make a plain request so a
-            // 401 reaches AccessGate.
+            // (502 while the API restarts, 401 after the instance password changed or
+            // for a ticket that expired meanwhile) closes it for good. Reopen it
+            // ourselves with a new ticket, and make a plain request so a 401 reaches
+            // AccessGate.
             es.addEventListener('error', () => {
                 setError('server_unavailable');
-                if (es.readyState === EventSource.CLOSED) {
+                if (stream.readyState === EventSource.CLOSED) {
                     fetchRooms();
                     retry = setTimeout(connect, 5000);
                 }
             });
+            // Presence changed while the stream was away.
+            es.addEventListener('connected', () => presenceChanged());
         };
         connect();
 
         return () => {
+            active = false;
             clearTimeout(retry);
-            es.close();
+            es?.close();
         };
     }, [fetchRooms]);
 

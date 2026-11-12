@@ -30,6 +30,12 @@
   --color-warning: #f59e0b;
   --color-info: #3b82f6;
 
+  /* Presence: the dot on an avatar */
+  --status-online: var(--color-success);
+  --status-idle: var(--color-warning);
+  --status-dnd: var(--color-danger);
+  --status-offline: var(--text-muted);
+
   /* Borders */
   --border-color: #1e1e2e;
   --border-radius: 8px;
@@ -45,6 +51,7 @@
   --space-2xl: 48px;
 
   --sidebar-width: 240px;
+  --people-width: 240px;
   --control-bar-height: 64px;
 
   /* Shadows */

@@ -39,6 +39,11 @@ export async function isShutOut(identity: string, ip: string | undefined): Promi
     return banned === 1 || ipBanned === 1;
 }
 
+/** Everyone banned from the server, by identity. */
+export async function serverBannedIdentities(): Promise<Set<string>> {
+    return new Set(await redis().hkeys(BANS));
+}
+
 /** Each ban with when its address ban ends, if there is one. */
 export async function listServerBans(): Promise<Array<{ identity: string; name: string; ipBannedUntil?: number }>> {
     const bans = Object.entries(await redis().hgetall(BANS));

@@ -3,7 +3,7 @@
 // IPC for the connection page and the loaded web app. Screen share and the
 // updater register their own channels.
 
-const { app, ipcMain, net, powerSaveBlocker } = require('electron');
+const { app, ipcMain, net, powerMonitor, powerSaveBlocker } = require('electron');
 const { IS_WAYLAND, IPC } = require('./constants');
 const { state, sendToRenderer } = require('./state');
 const { isUrlAllowed, isFileSender, isTrustedSender, isFileOrTrustedSender } = require('./trust');
@@ -61,6 +61,13 @@ function registerIpcHandlers() {
         arch: process.arch,
         isWayland: IS_WAYLAND,
     }));
+
+    // Seconds without input on the whole computer, so the web app shows the person idle
+    // while they work in another program, not only when the window sits untouched.
+    ipcMain.handle(IPC.GET_IDLE_TIME, (event) => {
+        if (!isTrustedSender(event)) return null;
+        return powerMonitor.getSystemIdleTime();
+    });
 
     // Badge count for unread messages
     ipcMain.on(IPC.SET_BADGE_COUNT, (event, count) => {

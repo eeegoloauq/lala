@@ -14,6 +14,7 @@ const IPC = {
     GET_AUTO_LAUNCH: 'lala:get-auto-launch',
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
     SET_IN_CALL: 'lala:set-in-call',
+    GET_IDLE_TIME: 'lala:get-idle-time',
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',
     GET_STRINGS: 'lala:get-strings',
@@ -68,6 +69,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** Notify main process about call state (for power save blocker) */
     setInCall: (inCall) => ipcRenderer.send(IPC.SET_IN_CALL, !!inCall),
+
+    /** Seconds since the last keyboard or mouse input anywhere on the computer */
+    getSystemIdleTime: () => ipcRenderer.invoke(IPC.GET_IDLE_TIME),
 
     /** Ping a server (health check, bypasses CORS) */
     pingServer: (url) => ipcRenderer.invoke(IPC.PING_SERVER, url),

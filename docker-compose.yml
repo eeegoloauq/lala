@@ -82,6 +82,8 @@ services:
       - LIVEKIT_HOST=lala-livekit:7880
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - LALA_ACCESS_PASSWORD=${LALA_ACCESS_PASSWORD:-}
+      - LALA_MAX_EVENT_STREAMS=${LALA_MAX_EVENT_STREAMS:-}
+      - LALA_MAX_EVENT_STREAMS_PER_IP=${LALA_MAX_EVENT_STREAMS_PER_IP:-}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@lala-redis:6379
       - LALA_CONFIG=/config/lala.yaml
     # A directory, not the file: without config/lala.yaml the API runs as an open server.

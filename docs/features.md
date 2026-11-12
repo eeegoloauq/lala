@@ -9,6 +9,7 @@ state lives in LiveKit and Redis.
 - Screen sharing with quality/FPS controls; the desktop app also shares system audio
 - Chat over data channels with emoji picker and TTS
 - Room admin: kick, ban, mute; passwords hashed with scrypt
+- People list: who is in a call, online or offline, with Online, Idle, Do Not Disturb and Invisible
 - 5 themes: dark, light, AMOLED, Discord, Windows XP
 - RNNoise noise suppression (AudioWorklet)
 - Desktop app with auto-updates, tray, native screen share picker

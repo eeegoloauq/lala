@@ -13,6 +13,29 @@ Web and desktop override `minimatch` to patched v11 for
 parents require a patched version. Desktop keeps separate `undici` v6 and v7 overrides. After
 changing either, run web lint and build, desktop packaging and the call tests.
 
+## Presence
+
+- The people list needs to know who has the app open, not only who is in a call. Each open
+  app holds the event stream, so that is where presence lives. `EventSource` can't send the
+  `X-Lala-Device` header, and the device ID must not go into a URL, so the client trades it
+  for a ticket (`<identity>.<expiry>.<hmac>`, 5 minutes, signed with a key from
+  `LIVEKIT_API_SECRET`) that names only the public identity.
+- A stream alone doesn't show that an app is gone: writes to a computer that went to sleep
+  keep succeeding until TCP gives up. So the client also sends its status every 30 seconds,
+  and Redis keeps online identities in a sorted set (`lala:presence:online`) scored by when
+  they lapse, 2.5 minutes after the last beat. That leaves room for background tabs, which
+  browsers throttle to about one timer a minute. A closed stream removes its identity after
+  a 5-second grace, so a reconnect doesn't flicker, and only when no other tab of it is
+  open on this instance. Several API instances agree on who is online; the
+  `presence_updated` event is sent only by the instance that saw the change, like
+  `rooms_updated`.
+- The last name and status stay for 90 days (`lala:presence:<identity>`), so a member who is
+  offline is listed under the name they used. Members come from the config, grouped by their
+  key, so someone with several devices is one row. Guests appear only while online.
+- Idle is the client's: 10 minutes without input, from the system's idle time in the desktop
+  app (input in other programs counts) and from input in the page in a browser. Speaking in
+  a call counts as input.
+
 ## Bots
 
 A bot is a separate program that joins a call through the [client API](api.md), like any

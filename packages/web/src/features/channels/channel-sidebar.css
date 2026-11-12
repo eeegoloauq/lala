@@ -108,6 +108,18 @@
     flex-shrink: 0;
 }
 
+.sidebar-status-btn {
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: var(--avatar-radius);
+    cursor: pointer;
+}
+
+.sidebar-footer {
+    --status-ring: var(--bg-sidebar);
+}
+
 .sidebar-footer .user-name {
     font-size: 13px;
     font-weight: 600;

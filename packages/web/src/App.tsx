@@ -14,7 +14,10 @@ import { MeContext } from './lib/meContext';
 import { useRoute } from './hooks/useRoute';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useSidebarShortcut } from './hooks/useSidebarShortcut';
-import { SidebarIcon } from './features/room/icons/Icons';
+import { PeopleIcon, SidebarIcon } from './features/room/icons/Icons';
+import { PeoplePanel } from './features/people/PeoplePanel';
+import { usePresenceSync } from './hooks/usePresenceSync';
+import { usePresence } from './lib/presence';
 import { useDisplayName } from './hooks/useDisplayName';
 import { usePersistedVolumes } from './hooks/usePersistedVolumes';
 import type { NewRoom } from './lib/types';
@@ -84,6 +87,26 @@ export default function App() {
         if (local && !me.avatar) uploadAvatar(local).catch(err => console.warn('[App] Uploading the avatar failed:', err));
     }, [me]);
     usePublishAvatars(rooms, me?.identity, myAvatar);
+    usePresenceSync(me?.identity, displayName, settings.presenceStatus);
+    // The people list sits beside the call. Wide screens show it unless hidden (remembered);
+    // narrower ones start without it, and phones open it as a drawer over the page.
+    // A server without presence has no list and no button for it.
+    const hasPresence = usePresence() !== null;
+    const isWide = useMediaQuery('(min-width: 1100px)');
+    const [peopleOpen, setPeopleOpen] = useState(false);
+    const peopleDocked = hasPresence && !isPhone && (isWide ? !settings.peopleHidden : peopleOpen);
+    const peopleOverlay = hasPresence && isPhone && peopleOpen;
+    const togglePeople = () => {
+        if (isWide) updateSettings({ peopleHidden: !settings.peopleHidden });
+        else setPeopleOpen(open => !open);
+    };
+    const closePeople = useCallback(() => setPeopleOpen(false), []);
+    useEffect(() => {
+        if (!peopleOverlay) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closePeople(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [peopleOverlay, closePeople]);
     // The call's tiles and menus read server mutes, the floor and the rooms to move people
     // to from the same list as the sidebar.
     useEffect(() => {
@@ -225,10 +248,23 @@ export default function App() {
                         onHide={() => updateSettings({ sidebarHidden: true })}
                         volumes={volumes}
                         onVolumeChange={handleVolumeChange}
+                        presenceStatus={hasPresence ? settings.presenceStatus : undefined}
+                        onPresenceStatusChange={(presenceStatus) => updateSettings({ presenceStatus })}
                     />
                 </div>
 
-                <main className="main-content">
+                <main className={`main-content${hasPresence ? ' has-people-toggle' : ''}`}>
+                    {hasPresence && (
+                        <button
+                            className={`people-toggle${peopleDocked || peopleOverlay ? ' active' : ''}`}
+                            onClick={togglePeople}
+                            title={peopleDocked || peopleOverlay ? t('people.hide') : t('people.show')}
+                            aria-label={peopleDocked || peopleOverlay ? t('people.hide') : t('people.show')}
+                            aria-pressed={peopleDocked || peopleOverlay}
+                        >
+                            <PeopleIcon size={18} />
+                        </button>
+                    )}
                     <button
                         className="sidebar-hamburger"
                         onClick={isPhone ? () => setSidebarOpen(true) : toggleSidebar}
@@ -259,9 +295,17 @@ export default function App() {
                             onVolumeChange={handleVolumeChange}
                         />
                     ) : (
-                        <WaveformWelcome rooms={rooms} onJoinRoom={handleJoinRoom} />
+                        <WaveformWelcome rooms={rooms} onJoinRoom={handleJoinRoom} onCreateRoom={handleCreateRoom} />
                     )}
                 </main>
+
+                {peopleDocked && <PeoplePanel rooms={rooms} displayName={displayName} />}
+                {peopleOverlay && (
+                    <>
+                        <div className="people-backdrop" onClick={closePeople} />
+                        <PeoplePanel rooms={rooms} displayName={displayName} onClose={closePeople} />
+                    </>
+                )}
 
                 <ProfileCardHost rooms={rooms} />
 

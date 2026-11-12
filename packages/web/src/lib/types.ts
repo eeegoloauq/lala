@@ -28,6 +28,12 @@ export type {
     ThemeColor,
     ThemeSize,
     ServerTheme,
+    PresenceChoice,
+    PresenceStatus,
+    PresencePerson,
+    PresenceResponse,
+    PresenceTicketResponse,
+    PresenceUpdate,
 } from '@lala/shared';
 
 /** What the create-room form and room templates produce; the keys are derived before sending. */

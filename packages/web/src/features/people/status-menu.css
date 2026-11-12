@@ -1,0 +1,34 @@
+.status-menu {
+    --status-ring: var(--bg-secondary);
+    width: 240px;
+}
+
+.status-menu-item {
+    align-items: center;
+    gap: 10px;
+}
+
+.status-menu-item:hover {
+    --status-ring: var(--bg-hover);
+}
+
+.status-menu-text {
+    display: grid;
+    flex: 1;
+    gap: 1px;
+}
+
+.status-menu-hint {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+    .status-menu {
+        width: auto;
+    }
+
+    .status-menu-item {
+        padding-block: 8px;
+    }
+}

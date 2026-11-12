@@ -245,6 +245,16 @@ export function SidebarIcon(props: IconProps) {
     );
 }
 
+/** Showing or hiding the people list. */
+export function PeopleIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <circle cx="9" cy="8" r="3.5" />
+            <path d="M2.5 20a6.5 6.5 0 0113 0M15.5 4.6a3.5 3.5 0 010 6.8M18 14.2a6.5 6.5 0 013.5 5.8" />
+        </Svg>
+    );
+}
+
 /** Taking someone out of the room. */
 export function OutIcon(props: IconProps) {
     return (

@@ -1,3 +1,8 @@
+import { IS_DEMO } from './env';
+
+/** The demo's pictures, registered by its in-page server; the demo has no server to serve avatars. */
+let demoAvatars: ((identity: string) => string | undefined) | undefined;
+export const setDemoAvatars = (lookup: typeof demoAvatars) => { demoAvatars = lookup; };
 /**
  * Palette for deterministic per-identity avatar accent colors. Chosen to stay
  * legible as text/icon backgrounds on both dark and light theme surfaces.
@@ -76,6 +81,7 @@ const VERSION = /^[0-9a-f]{16}$/;
  * browser keeps each URL for good and a new picture is a new URL.
  */
 export function avatarUrl(identity: string, version: string | undefined): string | undefined {
+    if (IS_DEMO) return demoAvatars?.(identity);
     return version && VERSION.test(version) ? `/api/avatars/${encodeURIComponent(identity)}?v=${version}` : undefined;
 }
 
