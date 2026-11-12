@@ -3,7 +3,8 @@ import { RemoteParticipant, Track } from 'livekit-client';
 import type { Participant, RemoteTrackPublication } from 'livekit-client';
 import type { ParticipantContextMenuProps } from '../VideoGrid/ParticipantContextMenu';
 import { useRoomUIContext } from '../RoomUIContext';
-import { canSpeak, hasAttribute, isServerMuted } from '../lib/permissions';
+import { canSpeak, hasAttribute } from '../lib/permissions';
+import { isServerMutedInRoom } from '../../../lib/roomStatusStore';
 import { setScreenShareSubscribed } from '../lib/screenShare';
 import { isBotIdentity } from '../../../lib/bots';
 import { openProfile } from '../../../lib/profileCard';
@@ -50,11 +51,11 @@ export function useParticipantContextMenu() {
             screenSharePub: participant instanceof RemoteParticipant
                 ? participant.getTrackPublication(Track.Source.ScreenShare)
                 : undefined,
-            serverMuted: isServerMuted(participant),
+            serverMuted: isServerMutedInRoom(participant.identity),
             voiced: hasAttribute(participant, 'lala.voice'),
             // Someone who may not speak by right, and hasn't been muted, can be given the floor.
             // Not a bot: the server config decides whether it speaks.
-            canBeVoiced: !isBotIdentity(participant.identity) && !canSpeak(participant) && !isServerMuted(participant),
+            canBeVoiced: !isBotIdentity(participant.identity) && !canSpeak(participant) && !isServerMutedInRoom(participant.identity),
             x,
             y,
         });

@@ -10,7 +10,8 @@ import { ConnectionQuality, ParticipantEvent } from 'livekit-client';
 import { Avatar } from './Avatar';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon, FlipCameraIcon } from '../icons/Icons';
 import { useParticipantState } from '../hooks/useParticipantState';
-import { hasAttribute, isServerMuted } from '../lib/permissions';
+import { hasAttribute } from '../lib/permissions';
+import { useIsServerMutedInRoom } from '../../../lib/roomStatusStore';
 import { readDeafened } from '../lib/participantMeta';
 import { botListens, isBotIdentity } from '../../../lib/bots';
 import { BotBadge, ListensMark } from '../../../ui/BotBadge';
@@ -56,10 +57,6 @@ function useIsDeafenedFromMeta(participant: Participant): boolean {
     );
 }
 
-function useIsServerMuted(participant: Participant): boolean {
-    return useParticipantState(participant, [ParticipantEvent.AttributesChanged], isServerMuted);
-}
-
 function useHandRaised(participant: Participant): boolean {
     return useParticipantState(participant, [ParticipantEvent.AttributesChanged], (p) => hasAttribute(p, 'lala.hand'));
 }
@@ -82,7 +79,7 @@ export const ParticipantTile = memo(function ParticipantTile({ participant, trac
     const micMuted = useMicMuted(participant);
     const deafenedFromMeta = useIsDeafenedFromMeta(participant);
     const isScreenSharing = useIsScreenSharing(participant);
-    const isServerMuted = useIsServerMuted(participant);
+    const isServerMuted = useIsServerMutedInRoom(participant.identity);
     const handRaised = useHandRaised(participant);
     const listens = useListens(participant);
     const botStatus = useBotDetails(participant.identity)?.status;

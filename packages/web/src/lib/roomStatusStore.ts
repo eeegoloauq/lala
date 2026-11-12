@@ -21,6 +21,10 @@ const deafenedStore = createStore<Set<string>>(new Set());
 const liveParticipantsStore = createStore<Map<string, string>>(new Map());
 // Avatar URL by identity, for everyone in any listed room; not room-scoped.
 const avatarStore = createStore<Map<string, string>>(new Map());
+// Who a moderator muted in the active room, from the server's room list: the one source,
+// for the sidebar, the tiles and the menus alike. A participant can rewrite its own
+// attributes, so the `lala.server-muted` attribute is not trusted for this.
+const serverMutedStore = createStore<Set<string>>(new Set());
 // Bots in the active room, by identity.
 const botsStore = createStore<Map<string, BotDetails>>(new Map());
 // Text a profile card asks the chat composer to take (a bot command); the composer clears it.
@@ -43,6 +47,14 @@ export function setDeafenedInRoom(ids: Set<string>): void {
 export function setLiveParticipants(participants: Map<string, string>): void {
     liveParticipantsStore.set(participants);
 }
+
+export function setServerMutedInRoom(ids: string[]): void {
+    const current = serverMutedStore.get();
+    if (current.size === ids.length && ids.every((id) => current.has(id))) return;
+    serverMutedStore.set(new Set(ids));
+}
+
+export const isServerMutedInRoom = (identity: string) => serverMutedStore.get().has(identity);
 
 export function setBotsInRoom(bots: Map<string, BotDetails>): void {
     botsStore.set(bots);
@@ -89,6 +101,10 @@ export function useIsDeafenedInRoom(identity: string): boolean {
 
 export function useLiveParticipants(): Map<string, string> {
     return useSyncExternalStore(liveParticipantsStore.subscribe, liveParticipantsStore.get);
+}
+
+export function useIsServerMutedInRoom(identity: string): boolean {
+    return useSyncExternalStore(serverMutedStore.subscribe, () => serverMutedStore.get().has(identity));
 }
 
 export function useAvatarMap(): Map<string, string> {
