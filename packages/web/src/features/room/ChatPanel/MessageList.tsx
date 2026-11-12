@@ -9,6 +9,7 @@ import type { BotCard } from '../../../lib/types';
 import { BotCardView } from './BotCardView';
 import { BotBadge } from '../../../ui/BotBadge';
 import { ImageLightbox } from './ImageLightbox';
+import { ChatText } from '../../../ui/ChatText';
 
 export type ChatEntry =
     | { kind: 'chat'; msg: ReceivedChatMessage }
@@ -141,8 +142,8 @@ export function MessageList({ entries, localIdentity, onCancelFile }: MessageLis
                             e.kind === 'file'
                                 ? <FileBubble key={e.id} item={e.item} onCancel={onCancelFile} onOpenImage={setLightboxItem} t={t} />
                                 : e.card
-                                    ? <Fragment key={e.id}><div className="cp-bubble">{e.text}</div><BotCardView card={e.card} /></Fragment>
-                                    : <div key={e.id} className="cp-bubble">{e.text}</div>
+                                    ? <Fragment key={e.id}><div className="cp-bubble"><ChatText text={e.text} myIdentity={localIdentity} /></div><BotCardView card={e.card} /></Fragment>
+                                    : <div key={e.id} className="cp-bubble"><ChatText text={e.text} myIdentity={localIdentity} /></div>
                         ))}
                     </div>
                 ))}

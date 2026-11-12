@@ -1,9 +1,10 @@
 .emoji-picker {
     position: absolute;
     bottom: calc(100% + 6px);
-    left: 12px;
+    /* Above the emoji button at the box's right end, as wide as a picker needs and no wider:
+       in a wide text chat it would otherwise stretch into a row of lonely emoji. */
     right: 12px;
-    width: auto;
+    width: min(340px, calc(100% - 24px));
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--ctx-menu-radius, var(--border-radius));
@@ -18,7 +19,7 @@
 .emoji-scroll {
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: 240px;
+    max-height: 280px;
     padding: 4px 8px;
     scrollbar-width: thin;
     scrollbar-color: var(--bg-hover) transparent;
@@ -64,18 +65,18 @@
     opacity: 0.5;
 }
 
-/* Emoji grid — 7 cols gives ~34px/cell in 260px picker, no overflow */
+/* Cells of about 38px, as many as fit (8 at the full 340px). */
 .emoji-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 1px;
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: 2px;
 }
 
 .emoji-btn {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 22px;
     padding: 4px;
     border-radius: 4px;
     line-height: 1;
@@ -122,4 +123,40 @@
 .emoji-nav-btn:hover {
     opacity: 1;
     background: var(--bg-hover);
+}
+.emoji-search {
+    padding: 8px 8px 4px;
+}
+
+.emoji-search-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.emoji-search-input:focus {
+    border-color: var(--accent);
+}
+
+.emoji-none {
+    margin: 24px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.emoji-results {
+    padding-top: 6px;
+}
+
+/* Groups off screen cost nothing to draw: about 1,900 emoji are in the list. */
+.emoji-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
 }

@@ -1,0 +1,930 @@
+/* Text chats and the rules page (features/text/). Built from theme tokens only. */
+
+.tc-view {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+}
+
+.tc-view-missing {
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+
+/* The same bar as the room header above a call (room-header.css), so themes style both alike. */
+.tc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 56px;
+    padding: 0 12px 0 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--panel-header-bg);
+    color: var(--panel-header-color);
+    text-shadow: var(--panel-header-text-shadow);
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.tc-header-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.tc-header-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.tc-header-topic {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding-left: 10px;
+    margin-left: 2px;
+    border-left: 1px solid var(--border-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ─── Messages ─── */
+.tc-feed {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.tc-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-anchor: none;
+    padding: 0 0 12px;
+}
+
+.tc-top {
+    min-height: 1px;
+}
+
+.tc-start {
+    padding: 28px 20px 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.tc-loading {
+    width: 22px;
+    height: 22px;
+    margin: 16px auto;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: tc-spin 0.8s linear infinite;
+}
+
+@keyframes tc-spin {
+    to { transform: rotate(360deg); }
+}
+
+.tc-day {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 20px 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.tc-day::before,
+.tc-day::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.tc-msg {
+    position: relative;
+    display: flex;
+    gap: 12px;
+    padding: 6px 20px 2px;
+    margin-top: 10px;
+}
+
+.tc-msg-continued {
+    margin-top: 0;
+    padding-top: 1px;
+}
+
+.tc-msg:hover,
+.tc-msg-active {
+    background: var(--bg-hover);
+}
+
+.tc-msg-mention {
+    background: color-mix(in srgb, var(--color-warning) 9%, transparent);
+    box-shadow: inset 2px 0 0 var(--color-warning);
+}
+
+.tc-msg-mention:hover {
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+}
+
+.tc-msg-gutter {
+    width: 40px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.tc-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--avatar-radius);
+    border: none;
+    padding: 0;
+    overflow: hidden;
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.tc-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.tc-msg-time-inline {
+    visibility: hidden;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    line-height: 22px;
+    white-space: nowrap;
+}
+
+.tc-msg:hover .tc-msg-time-inline {
+    visibility: visible;
+}
+
+.tc-msg-body {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.tc-msg-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tc-msg-name {
+    font: inherit;
+    font-size: 14.5px;
+    font-weight: 650;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.tc-msg-name:hover {
+    text-decoration: underline;
+}
+
+.tc-msg-time {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.tc-msg-text {
+    font-size: 14.5px;
+    line-height: 1.45;
+    color: var(--text-primary);
+    word-break: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+}
+
+/* ─── Hover actions ─── */
+.tc-msg-actions {
+    position: absolute;
+    top: -14px;
+    right: 20px;
+    display: none;
+    gap: 2px;
+    padding: 2px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.tc-msg:hover .tc-msg-actions,
+.tc-msg-active .tc-msg-actions,
+.tc-msg-actions:focus-within {
+    display: flex;
+}
+
+.tc-action {
+    min-width: 30px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+}
+
+.tc-action:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.tc-action-danger:hover,
+.tc-action-confirm {
+    color: var(--color-danger);
+}
+
+.tc-action-confirm {
+    padding: 0 8px;
+    font-weight: 600;
+}
+
+/* ─── Reactions ─── */
+.tc-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.tc-reaction {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: var(--bg-control);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.tc-reaction:hover {
+    border-color: var(--border-color);
+}
+
+.tc-reaction.mine {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    color: var(--text-primary);
+}
+
+.tc-reaction-emoji {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.tc-reaction-count {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.tc-reaction-add {
+    opacity: 0;
+    color: var(--text-muted);
+}
+
+.tc-msg:hover .tc-reaction-add,
+.tc-reaction-add:focus-visible {
+    opacity: 1;
+}
+
+.tc-react-pop {
+    position: fixed;
+    width: 320px;
+    z-index: 300;
+}
+
+.tc-react-pop .emoji-picker {
+    position: static;
+    width: 100%;
+}
+
+/* ─── Attachments ─── */
+.tc-media {
+    position: relative;
+    max-width: min(400px, 100%);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background: var(--bg-control);
+}
+
+.tc-media img,
+.tc-media video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.tc-media-open {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
+}
+
+.tc-media-hidden img,
+.tc-media-hidden video {
+    filter: blur(28px) brightness(0.7);
+    transform: scale(1.1);
+}
+
+.tc-spoiler-cover {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.tc-spoiler-cover span {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.tc-audio {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: min(400px, 100%);
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-secondary);
+}
+
+.tc-audio-name {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.tc-audio audio,
+.tc-media video {
+    color-scheme: var(--media-color-scheme);
+}
+
+.tc-audio audio {
+    width: 100%;
+    height: 36px;
+}
+
+.tc-audio-reveal {
+    align-self: flex-start;
+    padding: 6px 12px;
+    background: var(--bg-control);
+    color: var(--text-primary);
+}
+
+.tc-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(400px, 100%);
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.tc-file:hover {
+    border-color: var(--accent);
+}
+
+.tc-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tc-file-size {
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.tc-file-expired {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.tc-jump {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* ─── Composer ─── */
+.tc-composer {
+    flex-shrink: 0;
+    padding: 0 8px 8px;
+}
+
+.tc-composer .cp-input-area {
+    border-top: none;
+    padding: 0 8px;
+}
+
+.tc-composer .cp-input {
+    font-size: 14px;
+}
+
+/* A chat nobody writes in shows this where its box would be. */
+.tc-readonly {
+    margin: 10px 8px 0;
+    padding: 8px 12px;
+    min-height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    color: var(--text-muted);
+    font-size: 14px;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* ─── In a call's side panel ─── */
+.tc-view-compact {
+    background: transparent;
+}
+
+.tc-view-compact .tc-msg {
+    padding: 4px 12px 2px;
+    gap: 9px;
+}
+
+.tc-view-compact .tc-msg-gutter,
+.tc-view-compact .tc-avatar {
+    width: 30px;
+}
+
+.tc-view-compact .tc-avatar {
+    height: 30px;
+    font-size: 12px;
+}
+
+.tc-view-compact .tc-msg-name,
+.tc-view-compact .tc-msg-text {
+    font-size: 13.5px;
+}
+
+.tc-view-compact .tc-msg-actions {
+    right: 10px;
+}
+
+.tc-view-compact .tc-composer {
+    padding: 0 0 4px;
+}
+
+/* ─── Rules: one message from the server, laid out like any chat ─── */
+.tc-rules-list {
+    flex: 1;
+    padding-top: 6px;
+}
+
+.tc-avatar-server {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    cursor: default;
+}
+
+.tc-msg-name-server {
+    color: var(--text-accent);
+    cursor: default;
+}
+
+.tc-msg-name-server:hover {
+    text-decoration: none;
+}
+
+.tc-rules-agree {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.tc-rules-agree .btn {
+    width: auto;
+    padding: 8px 20px;
+}
+
+.tc-rules-error {
+    color: var(--color-danger);
+    font-size: 13px;
+}
+
+@media (max-width: 640px) {
+    .tc-header {
+        padding-left: 56px;
+        padding-right: 56px;
+    }
+
+    .tc-header-topic {
+        display: none;
+    }
+
+    .tc-msg {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    /* No hover on a phone: actions stay reachable from the reaction row's button. */
+    .tc-reaction-add {
+        opacity: 1;
+    }
+}
+
+/* ─── The "Text" section of the room list ─── */
+.sidebar-text {
+    margin-bottom: 8px;
+}
+
+.text-item {
+    width: 100%;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+}
+
+.text-item-gap {
+    width: 15px;
+    flex-shrink: 0;
+}
+
+.text-item .channel-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Unread: the name in full color and weight, as people know it from other chats. */
+.channel-item.text-item-unread {
+    color: var(--text-primary);
+    font-weight: 650;
+}
+
+.channel-item.text-item-unread::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    width: 4px;
+    height: 8px;
+    border-radius: 0 4px 4px 0;
+    background: var(--text-primary);
+}
+
+.text-item {
+    position: relative;
+}
+
+.text-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--color-danger);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+.sidebar-gated {
+    padding: 8px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+/* ─── Replies: a line across the top of the row, curving down to the avatar ─── */
+.tc-msg {
+    flex-wrap: wrap;
+}
+
+.tc-reply {
+    --reply-indent: 52px;   /* avatar column (40px) and the gap after it */
+    --reply-curve-x: 20px;  /* the avatar's middle */
+    flex: 0 0 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: -6px;
+    padding: 0 0 0 var(--reply-indent);
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+}
+
+.tc-reply::before {
+    content: '';
+    position: absolute;
+    left: var(--reply-curve-x);
+    top: 50%;
+    width: calc(var(--reply-indent) - var(--reply-curve-x) - 4px);
+    height: 10px;
+    border-left: 2px solid var(--border-color);
+    border-top: 2px solid var(--border-color);
+    border-top-left-radius: 6px;
+}
+
+.tc-view-compact .tc-reply {
+    --reply-indent: 39px;
+    --reply-curve-x: 15px;
+}
+
+.tc-reply-avatar {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border-radius: var(--avatar-radius);
+    overflow: hidden;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tc-reply-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tc-reply-name {
+    font-weight: 650;
+    flex-shrink: 0;
+}
+
+.tc-reply-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.tc-reply:hover .tc-reply-text {
+    color: var(--text-primary);
+}
+
+/* Where a jump landed: a short glow that fades. */
+.tc-flash > .tc-msg {
+    animation: tc-flash 2s ease-out;
+}
+
+@keyframes tc-flash {
+    0%, 30% { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+    100% { background: transparent; }
+}
+
+/* ─── Pins ─── */
+.tc-pinned-mark {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+
+.tc-action.active {
+    color: var(--accent);
+}
+
+.tc-header-tools {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+}
+
+.tc-header-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-control);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+/* The same as the people toggle beside it (people-panel.css). */
+.tc-header-btn:hover {
+    color: var(--text-primary);
+}
+
+.tc-header-btn.active {
+    color: var(--text-primary);
+    background: var(--bg-active);
+}
+
+/* Room for the people toggle, which sits over the header's right end. */
+.main-content.has-people-toggle .tc-header {
+    padding-right: 56px;
+}
+
+.cp-header-tools {
+    margin-left: auto;
+    margin-right: 4px;
+    display: flex;
+}
+
+.cp-header-tools .tc-header-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+}
+
+.tc-pins {
+    position: fixed;
+    z-index: 300;
+    max-height: min(480px, 70vh);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ctx-menu-radius, var(--border-radius));
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.tc-pins-head {
+    padding: 12px 14px;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tc-pins-list {
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.tc-pins-empty {
+    margin: 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.tc-pin {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: var(--border-radius);
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.tc-pin:hover {
+    background: var(--bg-hover);
+}
+
+.tc-pin-head {
+    display: flex;
+    width: 100%;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.tc-pin-name {
+    font-weight: 650;
+    font-size: 13.5px;
+}
+
+.tc-pin-text {
+    font-size: 13.5px;
+    line-height: 1.4;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.tc-pin-missing {
+    display: block;
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ─── Menus: what only the chat menus have, on top of .ctx-menu ─── */
+.ctx-menu-section {
+    padding: 8px 14px 2px;
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.ctx-menu-check {
+    width: 14px;
+    display: inline-flex;
+    color: var(--accent);
+}
+
+.ctx-menu-hint {
+    color: var(--text-muted);
+}
+
+.ctx-menu-reactions {
+    display: flex;
+    gap: 2px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ctx-menu-emoji {
+    flex: 1;
+    height: 34px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    font-size: 18px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.ctx-menu-emoji:hover {
+    background: var(--bg-hover);
+}
+
+.ctx-menu-emoji.mine {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+}

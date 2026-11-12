@@ -53,7 +53,10 @@
     "anonymous": "Anonymous",
     "membersOnly": "Members only",
     "saved": "Saved",
-    "hide": "Hide the room list"
+    "hide": "Hide the room list",
+    "text": "Text",
+    "chatMentions_one": "{{name}}, {{count}} mention",
+    "chatMentions_other": "{{name}}, {{count}} mentions"
   },
   "room": {
     "wrongPassword": "Wrong password",
@@ -169,7 +172,65 @@
     "openImage": "Open full size",
     "sendFailed": "The message wasn't sent, try again",
     "notAllowed": "Chat is off in this room",
-    "botCommands": "Bot commands"
+    "botCommands": "Bot commands",
+    "spoiler": "Spoiler",
+    "spoilerReveal": "Show spoiler",
+    "unknownPerson": "unknown",
+    "mentionMatching": "People matching {{query}}",
+    "mentionList": "People to mention",
+    "attachments": "Files to send",
+    "markSpoiler": "Mark as spoiler",
+    "unmarkSpoiler": "Not a spoiler",
+    "removeAttachment": "Remove",
+    "fileExpired": "{{name}} was removed to make space",
+    "loading": "Loading",
+    "channelStart": "This is the start of the chat.",
+    "newMessages": "New messages",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "messageActions": "Message actions",
+    "addReaction": "Add reaction",
+    "delete": "Delete message",
+    "deleteConfirm": "Delete?",
+    "reactedBy": "{{names}} reacted with {{emoji}}",
+    "channelMissing": "This chat isn't here anymore",
+    "dropToAttach": "Drop to attach",
+    "placeholderChannel": "Message #{{name}}",
+    "adminsOnly": "Only admins post here",
+    "backToCall": "Back to the call's chat",
+    "format": {
+      "title": "Formatting",
+      "bold": "Bold (Ctrl+B)",
+      "italic": "Italic (Ctrl+I)",
+      "underline": "Underline (Ctrl+U)",
+      "strike": "Strikethrough",
+      "code": "Code",
+      "spoiler": "Spoiler",
+      "quote": "Quote"
+    },
+    "reply": "Reply",
+    "replyingTo": "Replying to",
+    "cancelReply": "Cancel reply",
+    "jumpToOriginal": "Go to the message",
+    "originalGone": "The original message is no longer here",
+    "attachmentOnly": "Attachment",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinned": "Pinned",
+    "pinnedMessages": "Pinned messages",
+    "noPins": "Nothing pinned here yet",
+    "pinOutsideHistory": "This message is older than the chat's history; it stays here as a pin.",
+    "markRead": "Mark as read",
+    "copyText": "Copy text",
+    "moreReactions": "More reactions",
+    "notify": {
+      "title": "Notifications",
+      "all": "All messages",
+      "mentions": "Only mentions",
+      "none": "Nothing",
+      "default": "default"
+    },
+    "rulesReadOnly": "You can't send messages here"
   },
   "controls": {
     "mute": "Mute microphone",
@@ -357,7 +418,11 @@
     "themeServer": "Server default ({{name}})",
     "userCss": "Your CSS",
     "userCssLabel": "Custom CSS",
-    "userCssHint": "Only on this device"
+    "userCssHint": "Only on this device",
+    "notifications": "Notifications",
+    "desktopNotifications": "Desktop notifications",
+    "desktopNotificationsDesc": "For mentions and replies to you; right-click a chat to change what it notifies about",
+    "notificationsBlocked": "Blocked in the browser's site settings"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",
@@ -374,11 +439,19 @@
   },
   "emoji": {
     "recent": "Recent",
-    "faces": "Faces",
-    "hands": "Hands",
-    "objects": "Objects",
-    "food": "Food",
-    "hearts": "Hearts"
+    "search": "Find an emoji",
+    "none": "No emoji by that name",
+    "groups": {
+      "smileys": "Smileys",
+      "people": "People",
+      "nature": "Animals and nature",
+      "food": "Food and drink",
+      "travel": "Travel and places",
+      "activities": "Activities",
+      "objects": "Objects",
+      "symbols": "Symbols",
+      "flags": "Flags"
+    }
   },
   "app": {
     "openSidebar": "Show the room list"
@@ -538,5 +611,11 @@
     "dndHint": "You won't get notifications",
     "invisibleHint": "You'll appear offline",
     "change": "Set your status"
+  },
+  "rules": {
+    "title": "Rules",
+    "agree": "I agree",
+    "failed": "That didn't go through, try again",
+    "roomsLocked": "Rooms and chats open once you agree to the rules."
   }
 }

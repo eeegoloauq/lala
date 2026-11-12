@@ -53,7 +53,12 @@
     "anonymous": "Аноним",
     "membersOnly": "Только для участников",
     "saved": "Сохранённые",
-    "hide": "Скрыть список комнат"
+    "hide": "Скрыть список комнат",
+    "text": "Текст",
+    "chatMentions_one": "{{name}}, {{count}} упоминание",
+    "chatMentions_few": "{{name}}, {{count}} упоминания",
+    "chatMentions_many": "{{name}}, {{count}} упоминаний",
+    "chatMentions_other": "{{name}}, {{count}} упоминания"
   },
   "room": {
     "wrongPassword": "Неверный пароль",
@@ -173,7 +178,65 @@
     "openImage": "Открыть в полном размере",
     "sendFailed": "Сообщение не отправилось, попробуйте ещё раз",
     "notAllowed": "В этой комнате чат выключен",
-    "botCommands": "Команды ботов"
+    "botCommands": "Команды ботов",
+    "spoiler": "Спойлер",
+    "spoilerReveal": "Показать спойлер",
+    "unknownPerson": "неизвестный",
+    "mentionMatching": "Люди по запросу {{query}}",
+    "mentionList": "Кого упомянуть",
+    "attachments": "Файлы к отправке",
+    "markSpoiler": "Отметить как спойлер",
+    "unmarkSpoiler": "Не спойлер",
+    "removeAttachment": "Убрать",
+    "fileExpired": "{{name}} удалён, чтобы освободить место",
+    "loading": "Загрузка",
+    "channelStart": "Это начало чата.",
+    "newMessages": "Новые сообщения",
+    "today": "Сегодня",
+    "yesterday": "Вчера",
+    "messageActions": "Действия с сообщением",
+    "addReaction": "Добавить реакцию",
+    "delete": "Удалить сообщение",
+    "deleteConfirm": "Удалить?",
+    "reactedBy": "{{names}}: {{emoji}}",
+    "channelMissing": "Этого чата больше нет",
+    "dropToAttach": "Отпустите, чтобы прикрепить",
+    "placeholderChannel": "Сообщение в #{{name}}",
+    "adminsOnly": "Здесь пишут только админы",
+    "backToCall": "Назад к чату звонка",
+    "format": {
+      "title": "Форматирование",
+      "bold": "Жирный (Ctrl+B)",
+      "italic": "Курсив (Ctrl+I)",
+      "underline": "Подчёркнутый (Ctrl+U)",
+      "strike": "Зачёркнутый",
+      "code": "Код",
+      "spoiler": "Спойлер",
+      "quote": "Цитата"
+    },
+    "reply": "Ответить",
+    "replyingTo": "Ответ для",
+    "cancelReply": "Отменить ответ",
+    "jumpToOriginal": "Перейти к сообщению",
+    "originalGone": "Исходного сообщения больше нет",
+    "attachmentOnly": "Вложение",
+    "pin": "Закрепить",
+    "unpin": "Открепить",
+    "pinned": "Закреплено",
+    "pinnedMessages": "Закреплённые сообщения",
+    "noPins": "Здесь пока ничего не закреплено",
+    "pinOutsideHistory": "Это сообщение старше истории чата; оно остаётся здесь как закреплённое.",
+    "markRead": "Отметить прочитанным",
+    "copyText": "Копировать текст",
+    "moreReactions": "Другие реакции",
+    "notify": {
+      "title": "Уведомления",
+      "all": "Все сообщения",
+      "mentions": "Только упоминания",
+      "none": "Ничего",
+      "default": "по умолчанию"
+    },
+    "rulesReadOnly": "Здесь нельзя писать сообщения"
   },
   "controls": {
     "mute": "Выключить микрофон",
@@ -361,7 +424,11 @@
     "themeServer": "Как на сервере ({{name}})",
     "userCss": "Свой CSS",
     "userCssLabel": "Пользовательский CSS",
-    "userCssHint": "Только на этом устройстве"
+    "userCssHint": "Только на этом устройстве",
+    "notifications": "Уведомления",
+    "desktopNotifications": "Уведомления на рабочем столе",
+    "desktopNotificationsDesc": "Об упоминаниях и ответах вам; правый клик по чату меняет, о чём он сообщает",
+    "notificationsBlocked": "Заблокированы в настройках сайта в браузере"
   },
   "update": {
     "available": "Обновление {{version}} доступно — загрузка...",
@@ -378,11 +445,19 @@
   },
   "emoji": {
     "recent": "Недавние",
-    "faces": "Лица",
-    "hands": "Руки",
-    "objects": "Предметы",
-    "food": "Еда",
-    "hearts": "Сердца"
+    "search": "Найти эмодзи",
+    "none": "Нет эмодзи с таким названием",
+    "groups": {
+      "smileys": "Смайлики",
+      "people": "Люди",
+      "nature": "Животные и природа",
+      "food": "Еда и напитки",
+      "travel": "Путешествия и места",
+      "activities": "Занятия",
+      "objects": "Предметы",
+      "symbols": "Символы",
+      "flags": "Флаги"
+    }
   },
   "app": {
     "openSidebar": "Показать список комнат"
@@ -548,5 +623,11 @@
     "dndHint": "Уведомлений не будет",
     "invisibleHint": "Для других вы не в сети",
     "change": "Выбрать статус"
+  },
+  "rules": {
+    "title": "Правила",
+    "agree": "Согласен",
+    "failed": "Не получилось, попробуйте ещё раз",
+    "roomsLocked": "Комнаты и чаты откроются, когда вы согласитесь с правилами."
   }
 }

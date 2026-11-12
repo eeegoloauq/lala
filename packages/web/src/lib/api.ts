@@ -1,4 +1,4 @@
-import type { AvatarResponse, RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse, PresencePerson, PresenceResponse, PresenceTicketResponse, PresenceUpdate } from './types';
+import type { AvatarResponse, RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse, PresencePerson, PresenceResponse, PresenceTicketResponse, PresenceUpdate, ChannelsResponse, MessagesResponse, ChatMessage, ChatAttachment, UploadResponse, SendMessageRequest, PinsResponse } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
 import { IS_DEMO } from './env';
@@ -7,6 +7,9 @@ const API_BASE = '/api';
 
 /** Fired when the instance password session is missing or expired; AccessGate shows the password screen. */
 export const ACCESS_REQUIRED_EVENT = 'lala:access-required';
+
+/** Fired when the server wants the rules agreed to first; the app shows them again. */
+export const RULES_REQUIRED_EVENT = 'lala:rules-required';
 
 /**
  * Shared fetch wrapper for every API call. Unifies network-error wrapping,
@@ -34,6 +37,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
         }
         const body = await res.json().catch(() => ({ error: 'server_error' }));
         if (body.error === 'access_required') window.dispatchEvent(new Event(ACCESS_REQUIRED_EVENT));
+        if (body.error === 'rules_required') window.dispatchEvent(new Event(RULES_REQUIRED_EVENT));
         throw new ApiError(body.error ?? 'server_error', res.status);
     }
 
@@ -159,3 +163,50 @@ export const addBot = (roomId: string, key: string) => request<void>(roomBots(ro
 
 /** For whoever added the bot and the room's moderators. */
 export const removeBot = (roomId: string, key: string) => request<void>(roomBots(roomId, key), { method: 'DELETE' });
+
+const chat = (channel: string, rest = '') => `/chats/${encodeURIComponent(channel)}${rest}`;
+
+/** The text chats, the rules and the messages that mention the caller. */
+export function getChannels(): Promise<ChannelsResponse> {
+    return request<ChannelsResponse>('/chats');
+}
+
+/** Agrees to this version of the rules. */
+export const acceptRules = (version: string) => request<void>('/rules/accept', send('POST', { version }));
+
+/** Up to `limit` messages before `before` (the newest when absent), oldest first. */
+export function getMessages(channel: string, before?: string, limit = 50): Promise<MessagesResponse> {
+    const query = new URLSearchParams({ limit: String(limit), ...(before ? { before } : {}) });
+    return request<MessagesResponse>(chat(channel, `/messages?${query}`));
+}
+
+/** Stores a file for a message that is about to be sent. */
+export async function uploadChatFile(channel: string, file: File): Promise<ChatAttachment> {
+    const res = await request<UploadResponse>(chat(channel, '/files'), {
+        method: 'POST',
+        headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
+        body: file,
+    });
+    return res.attachment;
+}
+
+export function sendMessage(channel: string, req: SendMessageRequest): Promise<ChatMessage> {
+    return request<ChatMessage>(chat(channel, '/messages'), send('POST', req));
+}
+
+/** One's own message, or anyone's for an admin. */
+export const deleteMessage = (channel: string, id: string) =>
+    request<void>(chat(channel, `/messages/${encodeURIComponent(id)}`), { method: 'DELETE' });
+
+/** Adds or takes back the caller's reaction. */
+export const setReaction = (channel: string, id: string, emoji: string, on: boolean) =>
+    request<void>(chat(channel, `/messages/${encodeURIComponent(id)}/reactions/${encodeURIComponent(emoji)}`), { method: on ? 'PUT' : 'DELETE' });
+
+/** The chat's pinned messages, newest pin first. */
+export async function getPins(channel: string): Promise<ChatMessage[]> {
+    return (await request<PinsResponse>(chat(channel, '/pins'))).messages;
+}
+
+/** For admins: pins or unpins a message. */
+export const setPinned = (channel: string, id: string, on: boolean) =>
+    request<void>(chat(channel, `/pins/${encodeURIComponent(id)}`), { method: on ? 'PUT' : 'DELETE' });

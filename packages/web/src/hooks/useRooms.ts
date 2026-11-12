@@ -3,6 +3,8 @@ import type { RoomInfo, CreateRoomRequest } from '../lib/types';
 import { getRooms, createRoom, getPresenceTicket } from '../lib/api';
 import { presenceChanged } from '../lib/presence';
 import { IS_DEMO } from '../lib/env';
+import { applyChatEvent, resyncChat } from '../lib/textChat';
+import type { ChatEvent } from '../lib/types';
 
 export function useRooms() {
     const [rooms, setRooms] = useState<RoomInfo[]>([]);
@@ -62,6 +64,7 @@ export function useRooms() {
         let es: EventSource | undefined;
         let retry: ReturnType<typeof setTimeout> | undefined;
         let active = true;
+        let connectedOnce = false;
         const connect = async () => {
             const ticket = await getPresenceTicket().catch(() => undefined);
             if (!active) return;
@@ -91,6 +94,14 @@ export function useRooms() {
             });
             // Presence changed while the stream was away.
             es.addEventListener('connected', () => presenceChanged());
+
+            // Text chats: each event's data is the ChatEvent itself; a reconnect reloads.
+            for (const type of ['chat_message', 'chat_deleted', 'chat_reactions'] as const) {
+                es.addEventListener(type, (e) => {
+                    try { applyChatEvent(JSON.parse((e as MessageEvent<string>).data) as ChatEvent); } catch { /* malformed: ignored */ }
+                });
+            }
+            es.addEventListener('connected', () => { if (connectedOnce) resyncChat(); connectedOnce = true; });
         };
         connect();
 

@@ -370,6 +370,11 @@
   outline: none;
   resize: none;
   height: 36px;
+  /* Grows with its text where the browser can (Chromium); elsewhere it scrolls at one line. */
+  field-sizing: content;
+  min-height: 36px;
+  max-height: 160px;
+  line-height: 1.4;
   transition: border-color var(--transition-fast);
 }
 
@@ -761,4 +766,229 @@
 .cp-card-body small {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* ─── Formatting bar: above the box while text in it is selected ─── */
+.cp-format-bar {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 12px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.cp-format-btn {
+  width: 28px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cp-format-btn code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.cp-format-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ─── Files waiting for the message ─── */
+.cp-staged {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px 4px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.cp-staged-item {
+  position: relative;
+  flex-shrink: 0;
+  width: 112px;
+  height: 92px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-control);
+  overflow: hidden;
+}
+
+.cp-staged-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cp-staged-spoiler .cp-staged-thumb {
+  filter: blur(10px);
+}
+
+.cp-staged-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  padding: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.cp-staged-file span:first-of-type {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-staged-size {
+  color: var(--text-muted);
+}
+
+.cp-staged-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cp-staged-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 3px;
+}
+
+.cp-staged-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cp-staged-btn:hover,
+.cp-staged-btn.active {
+  background: var(--accent);
+}
+
+/* ─── @ suggestions: a person per row ─── */
+.cp-mention-item {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  padding: 5px 10px;
+  --status-ring: var(--bg-control);
+}
+
+.cp-mention-item.active,
+.cp-mention-item:hover {
+  --status-ring: color-mix(in srgb, var(--accent) 16%, var(--bg-control));
+}
+
+.cp-suggest-item .cp-mention-avatar {
+  color: white;
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+}
+
+.cp-suggest-item .cp-mention-name {
+  color: var(--text-primary);
+}
+
+/* ─── A text chat shown in the call's panel ─── */
+.cp-header-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cp-back {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.cp-back:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.cp-panel .tc-view {
+  background: transparent;
+}
+
+/* ─── Answering a message ─── */
+.cp-replying {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 12px;
+  padding: 6px 10px;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  background: var(--bg-control);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.cp-replying strong {
+  color: var(--text-primary);
+}
+
+.cp-replying-cancel {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.cp-replying-cancel:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }

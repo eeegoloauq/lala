@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { AppSettings } from '../types';
 import { Select } from '../../../ui/Select';
 import { getVoices, ttsSupported } from '../../../lib/tts';
+import { askForDesktopNotifications, desktopNotificationsAllowed } from '../../../lib/chatNotify';
+import { IS_ELECTRON } from '../../../lib/env';
 
 // Load speech synthesis voices (they load async in some browsers)
 function useTtsVoices() {
@@ -25,10 +27,39 @@ interface ChatSectionProps {
 export function ChatSection({ headerRef, settings, onUpdate }: ChatSectionProps) {
   const { t } = useTranslation();
   const ttsVoices = useTtsVoices();
+  const [allowed, setAllowed] = useState(desktopNotificationsAllowed);
+  const blocked = !IS_ELECTRON && typeof Notification !== 'undefined' && Notification.permission === 'denied';
 
   return (
     <>
       <h2 className="settings-header" ref={headerRef}>{t('settings.chat')}</h2>
+      <div className="settings-section">
+        <div className="settings-section-title">{t('settings.notifications')}</div>
+        <div className="settings-row">
+          <div>
+            <div className="settings-row-label">{t('settings.desktopNotifications')}</div>
+            <div className="settings-row-desc">
+              {blocked ? t('settings.notificationsBlocked') : t('settings.desktopNotificationsDesc')}
+            </div>
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              className="toggle-input"
+              checked={settings.chatNotifications && allowed}
+              disabled={blocked}
+              onChange={async (e) => {
+                const on = e.target.checked;
+                // The browser asks only from a click like this one.
+                if (on) setAllowed(await askForDesktopNotifications());
+                onUpdate({ chatNotifications: on });
+              }}
+            />
+            <span className="toggle-slider" />
+          </label>
+        </div>
+      </div>
+
       <div className="settings-section">
         <div className="settings-section-title">{t('settings.tts')}</div>
 

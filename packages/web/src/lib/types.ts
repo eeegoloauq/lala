@@ -34,6 +34,18 @@ export type {
     PresenceResponse,
     PresenceTicketResponse,
     PresenceUpdate,
+    TextChannel,
+    ServerRules,
+    ChannelsResponse,
+    ChatAttachment,
+    ChatReactions,
+    ChatMessage,
+    MessagesResponse,
+    UploadResponse,
+    SendMessageRequest,
+    ChatEvent,
+    ChatReplyPreview,
+    PinsResponse,
 } from '@lala/shared';
 
 /** What the create-room form and room templates produce; the keys are derived before sending. */

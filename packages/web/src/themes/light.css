@@ -3,6 +3,7 @@
    show where one surface ends. */
 /* ─── Light Theme ─── */
 [data-theme="light"] {
+  --media-color-scheme: light;
   --bg-primary: #e9ebef;
   --bg-secondary: #ffffff;
   --bg-sidebar: #f4f5f7;

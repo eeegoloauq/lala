@@ -8,6 +8,7 @@ import type { AccessStatus, AddedBot, Me, PresenceChoice, PresencePerson, Presen
 import { shownStatus } from '../../lib/presence';
 import { setDemoAvatars } from '../../lib/avatarUtils';
 import { demoAvatar } from './avatars';
+import { demoChat } from './chat';
 
 // Loaded with the first API request, before any list with avatars arrives.
 setDemoAvatars(demoAvatar);
@@ -102,6 +103,14 @@ const presence = new Map<string, PresenceStatus>(EVERYONE.map(p => [p.identity, 
 for (const p of AWAY) presence.set(p.identity, 'offline');
 for (const [p, status] of [[CROWD[5], 'idle'], [CROWD[8], 'dnd'], [LOBBY[2], 'dnd'], [LOBBY[3], 'idle'], [LOBBY[4], 'idle']] as const) presence.set(p.identity, status);
 let mine: { status: PresenceChoice; idle: boolean; name: string } = { status: 'online', idle: false, name: 'You' };
+
+const chat = demoChat(ME, () => mine.name, EVERYONE);
+
+/** Called on every text chat event, as the server's event stream would deliver them. */
+export const onChatEvent = chat.onEvent;
+
+/** What answers before the rules are agreed to: the rules themselves and who you are. */
+const BEFORE_RULES = new Set(['/access', '/me', '/me/avatar', '/chats', '/rules/accept']);
 
 function describePresence(): PresencePerson[] {
     return [
@@ -277,8 +286,12 @@ export async function handle(path: string, init: RequestInit = {}): Promise<Resp
     // A little latency keeps loading states visible, as they are against a server.
     await new Promise(resolve => setTimeout(resolve, 120));
 
+    if (chat.rulesPending() && !BEFORE_RULES.has(path.split('?')[0])) return fail(403, 'rules_required');
+    const chatAnswer = chat.handle(path, method, init);
+    if (chatAnswer) return chatAnswer;
+
     if (path === '/access' && method === 'GET') return json(200, { required: false, granted: true } satisfies AccessStatus);
-    if (path === '/me') return json(200, { identity: ME, role: 'admin', allowed: true, canCreateRooms: true, serverName: 'Lala', avatar: myAvatarVersion } satisfies Me);
+    if (path === '/me') return json(200, { identity: ME, role: 'admin', allowed: true, canCreateRooms: true, serverName: 'Lala', avatar: myAvatarVersion, textChats: true } satisfies Me);
     // The picture stays on the page (DemoCall shows the visitor's own copy); only its version is kept.
     if (path === '/me/avatar' && method === 'POST') {
         myAvatarVersion = Math.random().toString(16).slice(2, 10).padEnd(16, '0');

@@ -120,6 +120,7 @@ export interface Me {
     serverName: string; // `name` in the server config, "Lala" without one
     theme?: ServerTheme; // the server's default theme, when the config sets one
     avatar?: string;     // version of the caller's avatar; none stored when absent
+    textChats?: boolean; // the server has text chats (and maybe rules); the client asks for them only then
 }
 
 /** The status someone picks. `invisible` reaches no one else: they see the person offline. */
@@ -243,6 +244,117 @@ export interface InviteResponse {
     invite: string;
 }
 
+// ─── Text chats ───
+// Chats are named in the server config; history lives in Redis and expires (by age and
+// count, both from the config). Message IDs sort in time order and are the paging cursor.
+
+/** One text chat, from GET /api/chats. */
+export interface TextChannel {
+    id: string;
+    name: string;
+    /** A line under the name, from the config. */
+    topic?: string;
+    /** False in a chat only admins post in (`post: admins`). */
+    canPost: boolean;
+    /** The newest message's ID; the client compares it with what it has read. */
+    lastMessageId?: string;
+}
+
+/** The server's rules: text from the config, shown like a chat that nobody writes in. */
+export interface ServerRules {
+    text: string;
+    /** Changes with the text, so an edit asks everyone to agree again. */
+    version: string;
+    /** Whether people must agree before they can do anything else. */
+    required: boolean;
+    /** Whether the caller agreed to this version. */
+    accepted: boolean;
+    /** When this version first appeared on the server (ms): the date the rules show. */
+    updatedAt: number;
+}
+
+/** Response from GET /api/chats */
+export interface ChannelsResponse {
+    channels: TextChannel[];
+    rules?: ServerRules;
+    /** Messages that mention the caller, newest last (the server keeps the latest 50). */
+    mentions: Array<{ channel: string; id: string }>;
+}
+
+/** A file kept with a message, deleted with it or when the server's file space runs out. */
+export interface ChatAttachment {
+    id: string;
+    name: string;
+    /** The type the server detected from the content, not the uploader's claim. */
+    type: string;
+    size: number;
+    /** Images and videos: the size to reserve before it loads. */
+    width?: number;
+    height?: number;
+    /** Hidden behind a blur until the viewer clicks it. */
+    spoiler?: boolean;
+    /** Absent once the file was removed to make space. */
+    url?: string;
+}
+
+/** Reactions on a message: emoji to who reacted (at most 20 different emoji per message). */
+export type ChatReactions = Record<string, string[]>;
+
+export interface ChatMessage {
+    id: string;
+    channel: string;
+    identity: string;
+    /** The sender's name when they sent it. */
+    name: string;
+    /** With formatting marks; a mention is `<@identity>`. */
+    text: string;
+    /** Milliseconds since the epoch. */
+    at: number;
+    attachments?: ChatAttachment[];
+    reactions?: ChatReactions;
+    /** The message this one answers, as it was then (the original may be gone since). */
+    reply?: ChatReplyPreview;
+    /** Pinned messages are kept when the history around them expires. */
+    pinned?: boolean;
+}
+
+/** What a reply shows of its original: who wrote it and its text, cut to 200 characters. */
+export interface ChatReplyPreview {
+    id: string;
+    identity: string;
+    name: string;
+    text: string;
+}
+
+/** Response from GET /api/chats/:id/pins (at most 50, newest pin first). */
+export interface PinsResponse { messages: ChatMessage[]; }
+
+/** Response from GET /api/chats/:id/messages?before=<id>&limit=<n>; oldest first. */
+export interface MessagesResponse {
+    messages: ChatMessage[];
+    /** Whether older messages exist. */
+    more: boolean;
+}
+
+/** Body of POST /api/chats/:id/files is the file itself; this is the answer. */
+export interface UploadResponse { attachment: ChatAttachment; }
+
+/** Body of POST /api/chats/:id/messages */
+export interface SendMessageRequest {
+    text: string;
+    /** Uploaded attachment IDs, each with whether it is a spoiler. */
+    attachments?: Array<{ id: string; spoiler?: boolean }>;
+    /** The ID of the message this answers. */
+    replyTo?: string;
+}
+
+/** Event stream: `chat_message`, `chat_deleted`, `chat_reactions` and `chat_pinned`. */
+export type ChatEvent =
+    | { type: 'chat_message'; message: ChatMessage }
+    | { type: 'chat_deleted'; channel: string; id: string }
+    | { type: 'chat_reactions'; channel: string; id: string; reactions: ChatReactions }
+    | { type: 'chat_pinned'; channel: string; message: ChatMessage };
+
 /**
  * Error codes in API `{ error: <code> }` responses, plus two codes the web
  * client synthesizes locally: 'rate_limited' (HTTP 429 from the rate
@@ -252,6 +364,7 @@ export interface InviteResponse {
 export type ApiErrorCode =
     | 'access_required'
     | 'banned'
+    | 'channel_not_found'
     | 'bot_not_found'
     | 'bot_offline'
     | 'forbidden'
@@ -271,6 +384,7 @@ export type ApiErrorCode =
     | 'room_full'
     | 'room_not_found'
     | 'room_required'
+    | 'rules_required'
     | 'server_error'
     | 'server_unavailable'
     | 'too_many_connections'

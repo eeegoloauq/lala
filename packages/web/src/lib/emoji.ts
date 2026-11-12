@@ -1,38 +1,6 @@
 import { safeJsonParse } from './utils';
 
-export interface EmojiCategory {
-    id: string;
-    label: string;
-    emoji: string[];
-}
-
-export const EMOJI_CATEGORIES: EmojiCategory[] = [
-    {
-        id: 'faces',
-        label: '😀',
-        emoji: ['😀','😂','🥲','😍','🥰','😊','😭','😤','😡','🤔','😏','😎','🤗','😅','🤣','😬'],
-    },
-    {
-        id: 'hands',
-        label: '👋',
-        emoji: ['👍','👎','👋','🙌','🤝','✌️','👏','🤦','🤷','💪'],
-    },
-    {
-        id: 'objects',
-        label: '💡',
-        emoji: ['💻','📱','🎮','🎵','🎉','💡','🔥','⚡','🌟','🚀'],
-    },
-    {
-        id: 'food',
-        label: '🍕',
-        emoji: ['🍕','🍺','☕','🍔','🍣','🍭','🍿','💯'],
-    },
-    {
-        id: 'hearts',
-        label: '❤️',
-        emoji: ['❤️','💛','💚','💙','💜','🖤','💔','🥹'],
-    },
-];
+// The full list is generated at build time (virtual:lala-emoji, scripts/emojiData.ts).
 
 const RECENT_KEY = 'lala_recent_emoji';
 const MAX_RECENT = 16;

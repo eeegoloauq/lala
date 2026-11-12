@@ -30,6 +30,7 @@ export interface AppSettings {
   screenShareAudio: boolean;
   accentColor?: string;
   chatTTS: boolean;
+  chatNotifications: boolean; // desktop notifications from text chats (each chat's level decides when)
   ttsVolume: number;       // 0–100, default 50
   ttsReadOwn: boolean;     // read own messages aloud
   ttsMaxLength: number;    // truncate message at this char count
@@ -70,6 +71,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   noiseSuppressionMode: 'browser',
   silenceGate: 0,
   chatTTS: true,
+  chatNotifications: true,
   ttsVolume: 15,
   ttsReadOwn: false,
   ttsMaxLength: 200,

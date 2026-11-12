@@ -8,6 +8,7 @@ import { TileGrid } from '../room/VideoGrid/TileGrid';
 import { ControlBarView } from '../room/ControlBar/ControlBar';
 import { FocusLayoutView, FocusStripTile } from '../room/FocusLayout/FocusLayout';
 import { FocusMainView } from '../room/FocusLayout/FocusMain';
+import { openInCall, useOpenInCall } from '../../lib/textChat';
 import { ChatPanel, DESKTOP_CHAT_QUERY } from '../room/ChatPanel/ChatPanel';
 import type { ChatEntry } from '../room/ChatPanel/MessageList';
 import type { AppSettings } from '../settings/types';
@@ -47,6 +48,16 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     const [call, setCall] = useState<CallState | null>(() => callState(roomId));
     const [speaking, setSpeaking] = useState<ReadonlySet<string>>(new Set());
     const [chatOpen, setChatOpen] = useState(false);
+    // A text chat picked in the room list opens in this panel, keeping the call on screen.
+    const textInCall = useOpenInCall();
+    useEffect(() => { if (textInCall) { setChatOpen(true); setChatMounted(true); } }, [textInCall]);
+    // Closing the panel or leaving the call goes back to the call's own chat next time.
+    const wasOpen = useRef(false);
+    useEffect(() => {
+        if (wasOpen.current && !chatOpen) openInCall(null);
+        wasOpen.current = chatOpen;
+    }, [chatOpen]);
+    useEffect(() => () => openInCall(null), []);
     // Mounted on first open, as in a call: the composer takes the focus when it mounts.
     const [chatMounted, setChatMounted] = useState(false);
     const [unread, setUnread] = useState(0);

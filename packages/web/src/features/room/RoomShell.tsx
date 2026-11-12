@@ -7,6 +7,7 @@ import { ConnectionState, Track } from 'livekit-client';
 import { VideoGrid } from './VideoGrid/VideoGrid';
 import { FocusLayout } from './FocusLayout/FocusLayout';
 import { ControlBar } from './ControlBar/ControlBar';
+import { openInCall, useOpenInCall } from '../../lib/textChat';
 import { ChatPanel, DESKTOP_CHAT_QUERY } from './ChatPanel/ChatPanel';
 import { useMicSound, useTalkingWhileMuted } from './hooks/useMicSounds';
 import { playMuteSound, playUnmuteSound } from '../../lib/sounds';
@@ -57,6 +58,16 @@ interface RoomShellProps {
 export function RoomShell({ canModerate, name, startDeafened = false, onOpenSettings, onMoved, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
+    // A text chat picked in the room list opens in this panel, keeping the call on screen.
+    const textInCall = useOpenInCall();
+    useEffect(() => { if (textInCall) setChatOpen(true); }, [textInCall]);
+    // Closing the panel or leaving the call goes back to the call's own chat next time.
+    const wasOpen = useRef(false);
+    useEffect(() => {
+        if (wasOpen.current && !chatOpen) openInCall(null);
+        wasOpen.current = chatOpen;
+    }, [chatOpen]);
+    useEffect(() => () => openInCall(null), []);
     const [audioMuted, setAudioMuted] = useState(startDeafened);
     const [screenShareModalOpen, setScreenShareModalOpen] = useState(false);
     const [focusedIdentity, setFocusedIdentity] = useState<string | null>(null);

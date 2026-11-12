@@ -30,13 +30,22 @@ import { saveRoomPassword, getRoomPassword } from './lib/passwords';
 import { getTemplates, saveTemplate } from './lib/roomTemplates';
 import { resetRoomSession, setModerationInRoom } from './lib/roomStatusStore';
 import { setListedRooms } from './lib/moving';
+import { useTextChatSync } from './hooks/useTextChatSync';
+import { loadChannels, openInCall, RULES_IN_CALL, useChannels, useRulesPending } from './lib/textChat';
+import { setNotifyContext } from './lib/chatNotify';
+import { useMyStatus } from './lib/presence';
+import { presenceChanged } from './lib/presence';
+import { RULES_REQUIRED_EVENT } from './lib/api';
+import { TextChannelView } from './features/text/TextChannelView';
+import { RulesView } from './features/text/RulesView';
+import type { TextTarget } from './features/text/TextChannelList';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
 
 export default function App() {
     const { t } = useTranslation();
-    const { rooms, error: roomsError, addRoom } = useRooms();
+    const { rooms, error: roomsError, addRoom, refresh: refreshRooms } = useRooms();
     const { displayName, setDisplayName } = useDisplayName();
     const me = useMe();
     const { settings, updateSettings } = useSettings();
@@ -87,7 +96,21 @@ export default function App() {
         if (local && !me.avatar) uploadAvatar(local).catch(err => console.warn('[App] Uploading the avatar failed:', err));
     }, [me]);
     usePublishAvatars(rooms, me?.identity, myAvatar);
-    usePresenceSync(me?.identity, displayName, settings.presenceStatus);
+    useTextChatSync(me?.identity, !!me?.textChats);
+    // The server wants its rules agreed to first: until then the rules are all there is.
+    const rulesPending = useRulesPending();
+    usePresenceSync(me?.identity, displayName, settings.presenceStatus, rulesPending);
+    useEffect(() => {
+        // Only a server with text chats has rules to ask for.
+        const onRequired = () => loadChannels();
+        window.addEventListener(RULES_REQUIRED_EVENT, onRequired);
+        return () => window.removeEventListener(RULES_REQUIRED_EVENT, onRequired);
+    }, []);
+    const handleRulesAgreed = useCallback(() => {
+        loadChannels();
+        refreshRooms();
+        presenceChanged();
+    }, [refreshRooms]);
     // The people list sits beside the call. Wide screens show it unless hidden (remembered);
     // narrower ones start without it, and phones open it as a drawer over the page.
     // A server without presence has no list and no button for it.
@@ -125,7 +148,11 @@ export default function App() {
         setThemeInputs({ accent: settings.accentColor });
     }, [setThemeInputs, settings.accentColor]);
 
-    const activeRoom = route.roomId;
+    const activeRoom = rulesPending ? null : route.roomId;
+    // Outside a call the main area may show a text chat or the rules; in a call, chats open
+    // in its side panel so the call stays on screen.
+    const textView = rulesPending ? { kind: 'rules' as const } : activeRoom ? null : route.text;
+    const textKey = textView?.kind === 'chat' ? textView.id : textView?.kind;
 
     // Keep a ref to rooms so the auto-save timer can read latest data
     const roomsRef = useRef(rooms);
@@ -151,6 +178,29 @@ export default function App() {
         route.navigate('/room/' + id);
         setSidebarOpen(false);
     };
+
+    const handleOpenText = useCallback((target: TextTarget) => {
+        setSidebarOpen(false);
+        // In a call both open in its side panel: picking one never leaves the call.
+        if (activeRoom) openInCall(target.kind === 'rules' ? RULES_IN_CALL : target.id);
+        else route.navigate(target.kind === 'rules' ? '/rules' : `/chat/${target.id}`);
+    }, [activeRoom, route]);
+
+    // What chat notifications need from here: settings, Do Not Disturb, names, and a way to open a chat.
+    const channels = useChannels();
+    const presenceList = usePresence();
+    const myStatus = useMyStatus();
+    useEffect(() => {
+        setNotifyContext({
+            me: me?.identity,
+            sound: settings.soundChat,
+            desktop: settings.chatNotifications,
+            doNotDisturb: myStatus === 'dnd',
+            open: (id) => handleOpenText({ kind: 'chat', id }),
+            channelName: (id) => channels?.find(c => c.id === id)?.name,
+            personName: (id) => presenceList?.get(id)?.name,
+        });
+    }, [me?.identity, settings.soundChat, settings.chatNotifications, myStatus, handleOpenText, channels, presenceList]);
 
     const handleLeave = () => {
         route.navigate('/');
@@ -225,7 +275,7 @@ export default function App() {
 
     return (
         <MeContext.Provider value={me}>
-            <div className={`app-layout${!activeRoom ? ' no-room' : ''}${sidebarHidden ? ' sidebar-hidden' : ''}`}>
+            <div className={`app-layout${!activeRoom && !textView ? ' no-room' : ''}${sidebarHidden ? ' sidebar-hidden' : ''}`}>
                 {sidebarOpen && (
                     <div
                         className="sidebar-mobile-overlay"
@@ -250,6 +300,9 @@ export default function App() {
                         onVolumeChange={handleVolumeChange}
                         presenceStatus={hasPresence ? settings.presenceStatus : undefined}
                         onPresenceStatusChange={(presenceStatus) => updateSettings({ presenceStatus })}
+                        textView={textView}
+                        onOpenText={handleOpenText}
+                        gated={rulesPending}
                     />
                 </div>
 
@@ -294,6 +347,10 @@ export default function App() {
                             volumes={volumes}
                             onVolumeChange={handleVolumeChange}
                         />
+                    ) : textView?.kind === 'rules' ? (
+                        <RulesView onAgreed={handleRulesAgreed} />
+                    ) : textView?.kind === 'chat' ? (
+                        <TextChannelView key={textKey} channel={textView.id} />
                     ) : (
                         <WaveformWelcome rooms={rooms} onJoinRoom={handleJoinRoom} onCreateRoom={handleCreateRoom} />
                     )}

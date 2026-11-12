@@ -5,6 +5,7 @@
    Silver panels, blue title bars, Tahoma, bevel buttons.
    ═══════════════════════════════════════════════════════ */
 [data-theme="winxp"] {
+  --media-color-scheme: light;
   --bg-primary:    #ece9d8;
   --bg-secondary:  #d4d0c8;
   --bg-sidebar:    #d9d5c8;
@@ -182,7 +183,9 @@
 [data-theme="winxp"] .sidebar-header .logo {
   color: #ffffff;
 }
-[data-theme="winxp"] .room-header-meta {
+[data-theme="winxp"] .room-header-meta,
+[data-theme="winxp"] .tc-header-topic,
+[data-theme="winxp"] .tc-header-icon {
   color: rgba(255, 255, 255, 0.85);
 }
 [data-theme="winxp"] .room-header-listens {

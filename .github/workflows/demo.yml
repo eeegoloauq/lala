@@ -27,16 +27,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        # The whole history, so the release tags are there: the demo shows their notes.
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: packages/web/package-lock.json
-      # The background blur model is fetched at build by pinned URL and checksum (vite.config.ts).
+      # The background blur model and the emoji data are fetched at build by pinned URL and
+      # checksum (vite.config.ts, scripts/emojiData.ts).
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          path: packages/web/node_modules/.cache/mediapipe
-          key: mediapipe-${{ hashFiles('packages/web/vite.config.ts') }}
+          path: |
+            packages/web/node_modules/.cache/mediapipe
+            packages/web/node_modules/.cache/emoji
+          key: build-downloads-${{ hashFiles('packages/web/vite.config.ts', 'packages/web/scripts/emojiData.ts') }}
       # Gives the site's path (/lala), which the build takes as its base.
       - id: pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6

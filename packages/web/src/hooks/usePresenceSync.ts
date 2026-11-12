@@ -15,17 +15,19 @@ const BEAT_MS = 30_000;
  * Tells the server this device's status, every 30 seconds and on each change, and keeps the
  * presence store current: fetched again on every `presence_updated` event (see useRooms).
  */
-export function usePresenceSync(identity: string | undefined, name: string, choice: PresenceChoice): void {
+export function usePresenceSync(identity: string | undefined, name: string, choice: PresenceChoice, paused = false): void {
     const idle = useIdle(IDLE_AFTER_MS, identity);
 
+    // Paused while the server's rules wait to be agreed to (it refuses presence until then);
+    // agreeing sends at once, so others see the name and status right away.
     useEffect(() => {
         setMyStatus(shownStatus(choice, idle));
-        if (!identity || !name) return;
+        if (!identity || !name || paused) return;
         const send = () => putPresence({ status: choice, idle, name }).catch(() => { /* the next beat tries again */ });
         send();
         const timer = setInterval(send, BEAT_MS);
         return () => clearInterval(timer);
-    }, [identity, name, choice, idle]);
+    }, [identity, name, choice, idle, paused]);
 
     // The demo announces its people's changes with its room changes.
     useEffect(() => {

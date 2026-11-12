@@ -3,6 +3,8 @@
 /* Theme variables */
 :root,
 [data-theme="dark"] {
+  /* The browser's own media players (songs, videos in chats) follow the theme. */
+  --media-color-scheme: dark;
   /* Backgrounds */
   --bg-primary: #0b0b10;
   --bg-secondary: #13131a;

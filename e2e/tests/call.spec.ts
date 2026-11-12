@@ -551,7 +551,9 @@ test('a file sent in the chat arrives whole', async ({ browser }) => {
 
     const content = 'x'.repeat(200_000);
     await alice.page.getByRole('button', { name: 'Chat' }).click();
+    // A picked file waits in the box's tray until it is sent.
     await alice.page.locator('input[type="file"]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from(content) });
+    await alice.page.getByTitle('Send').click();
     await bob.page.getByRole('button', { name: 'Chat' }).click();
     const download = bob.page.getByTitle('Download');
     await expect(download).toBeVisible({ timeout: 20_000 });
@@ -561,6 +563,7 @@ test('a file sent in the chat arrives whole', async ({ browser }) => {
     // The sender names the type: an SVG (which can carry script) arrives as a download, not a picture.
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
     await alice.page.locator('input[type="file"]').setInputFiles({ name: 'pic.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) });
+    await alice.page.getByTitle('Send').click();
     await expect(download).toHaveCount(2, { timeout: 20_000 });
     await expect(bob.page.locator('.cp-file-thumb')).toHaveCount(0);
     const [svgFile] = await Promise.all([bob.page.waitForEvent('download'), download.nth(1).click()]);

@@ -23,6 +23,7 @@ import { useMeContext } from '../../lib/meContext';
 import { useTimedValue } from '../../hooks/useTimedValue';
 import { useLongPress } from '../../hooks/useLongPress';
 import { useMyStatus } from '../../lib/presence';
+import { TextChannelList, type TextTarget } from '../text/TextChannelList';
 import { WithStatus } from '../../ui/StatusDot';
 import { StatusMenu } from '../people/StatusMenu';
 import '../settings/settings.css';
@@ -48,6 +49,11 @@ interface ChannelSidebarProps {
     /** The status picked in the footer; absent when the server has no presence. */
     presenceStatus?: PresenceChoice;
     onPresenceStatusChange?: (status: PresenceChoice) => void;
+    /** What the main area shows outside a call: a text chat or the rules. */
+    textView: TextTarget | null;
+    onOpenText: (target: TextTarget) => void;
+    /** The rules come first: rooms stay out of the list until they are agreed to. */
+    gated?: boolean;
 }
 
 interface ContextMenuState {
@@ -84,6 +90,9 @@ export const ChannelSidebar = memo(function ChannelSidebar({
     onVolumeChange,
     presenceStatus,
     onPresenceStatusChange,
+    textView,
+    onOpenText,
+    gated = false,
 }: ChannelSidebarProps) {
     const { t } = useTranslation();
     const me = useMeContext();
@@ -250,6 +259,8 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 ref={channelListRef}
                 onClick={handleUserCardClick}
             >
+                <TextChannelList current={textView} inCall={!!activeRoom} onOpen={onOpenText} />
+                {gated ? <p className="sidebar-gated">{t('rules.roomsLocked')}</p> : (<>
                 <div className="sidebar-section-header">
                     <span className="sidebar-section-title section-title">{t('sidebar.rooms')}</span>
                     {canCreateRooms && (
@@ -410,6 +421,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                         ))}
                     </div>
                 )}
+                </>)}
             </div>
 
             {/* Footer */}

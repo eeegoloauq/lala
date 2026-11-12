@@ -4,6 +4,8 @@ interface Route {
     path: string;
     /** Extracted room ID when path is /room/:id, otherwise null */
     roomId: string | null;
+    /** The text chat at /chat/:id, or the rules at /rules (outside a call). */
+    text: { kind: 'chat'; id: string } | { kind: 'rules' } | null;
     /** Password from URL hash fragment (#pw=...), null if absent */
     hashPassword: string | null;
     navigate: (to: string) => void;
@@ -17,6 +19,12 @@ const appPath = () => window.location.pathname.slice(BASE.length) || '/';
 function parseRoomId(pathname: string): string | null {
     const m = pathname.match(/^\/room\/([a-zA-Z0-9_-]+)$/);
     return m ? m[1] : null;
+}
+
+function parseText(pathname: string): Route['text'] {
+    if (pathname === '/rules') return { kind: 'rules' };
+    const m = pathname.match(/^\/chat\/([a-zA-Z0-9_-]+)$/);
+    return m ? { kind: 'chat', id: m[1] } : null;
 }
 
 function parseHashPassword(hash: string): string | null {
@@ -53,5 +61,5 @@ export function useRoute(): Route {
     }, []);
 
     const roomId = parseRoomId(path);
-    return { path, roomId, hashPassword: roomId && roomId === invite.roomId ? invite.password : null, navigate };
+    return { path, roomId, text: parseText(path), hashPassword: roomId && roomId === invite.roomId ? invite.password : null, navigate };
 }
