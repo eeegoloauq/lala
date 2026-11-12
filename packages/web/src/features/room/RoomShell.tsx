@@ -135,9 +135,9 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
     const handleFullscreen = useCallback(() => {
         if (!document.fullscreenEnabled) return;
         if (document.fullscreenElement) {
-            document.exitFullscreen();
+            document.exitFullscreen().catch(() => {});
         } else {
-            document.documentElement.requestFullscreen();
+            document.documentElement.requestFullscreen().catch(() => {});
         }
     }, []);
 

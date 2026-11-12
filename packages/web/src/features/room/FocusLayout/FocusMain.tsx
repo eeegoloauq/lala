@@ -9,7 +9,14 @@ import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
 import { AmbientCanvas } from './AmbientCanvas';
 import type { FocusView } from './useFocus';
 
-const fullscreenSupported = typeof document !== 'undefined' && !!document.fullscreenEnabled;
+/** WebKit's own fullscreen player, not in the DOM typings: iPhone Safari has no element fullscreen. */
+type WebKitVideoElement = HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+
+const elementFullscreen = typeof document !== 'undefined' && !!document.fullscreenEnabled;
+/** iPhone: only a video can go fullscreen, in the system player; its Done button exits. */
+const videoFullscreen = !elementFullscreen && typeof HTMLVideoElement !== 'undefined'
+    && 'webkitEnterFullscreen' in HTMLVideoElement.prototype;
+const fullscreenSupported = elementFullscreen || videoFullscreen;
 
 interface FocusMainProps {
     focused: FocusView | null;
@@ -67,10 +74,12 @@ export function FocusMainView({ focused, pip, ambient, onSwap, onExit, onMenu, o
     }, []);
 
     const toggleFullscreen = () => {
-        if (!document.fullscreenElement && mainRef.current) {
-            mainRef.current.requestFullscreen();
+        if (videoFullscreen) {
+            (videoRef.current as WebKitVideoElement | null)?.webkitEnterFullscreen?.();
+        } else if (!document.fullscreenElement && mainRef.current) {
+            mainRef.current.requestFullscreen().catch(() => {});
         } else {
-            document.exitFullscreen();
+            document.exitFullscreen().catch(() => {});
         }
     };
 
