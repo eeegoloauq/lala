@@ -43,6 +43,11 @@ while :; do
     echo "  \"$IP\" is not an IPv4 address, try again." >&2
 done
 
+# A private server asks everyone for one password; invite links copied in the app skip it.
+PRIVATE=$(ask "Keep the server private with a password? [y/N]: " "n")
+ACCESS=""
+case "$PRIVATE" in [yY]*) ACCESS=$(random 12) ;; esac
+
 # LiveKit has no account to sign up for: the key and secret are made up here, and compose
 # hands the same pair to LiveKit and to the API.
 KEY="lala$(random 6)"
@@ -57,6 +62,7 @@ sed -e "s|^LIVEKIT_URL=.*|LIVEKIT_URL=wss://$RTC|" \
     -e "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$REDIS|" \
     -e "s|^LIVEKIT_DOMAIN=.*|LIVEKIT_DOMAIN=$RTC|" \
     -e "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=https://$APP|" \
+    -e "s|^LALA_ACCESS_PASSWORD=.*|LALA_ACCESS_PASSWORD=$ACCESS|" \
     .env.example > .env
 chmod 600 .env
 echo "Wrote .env."
@@ -81,3 +87,7 @@ Next:
 
 Then open https://$APP.
 EOF
+if [ -n "$ACCESS" ]; then
+    echo
+    echo "Server password: $ACCESS (LALA_ACCESS_PASSWORD in .env)"
+fi
