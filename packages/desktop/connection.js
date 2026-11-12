@@ -5,13 +5,15 @@
 // via <script src="connection.js"> from the same origin (file://), so
 // contextIsolation/sandbox on the BrowserWindow still applies normally.
 
-// Strings come from strings.js, loaded by index.html just before this file.
+// The text comes from the main process (locales/*.json via strings.js) before init runs.
+let STRINGS = {};
+
 function detectLanguage() {
     return localStorage.getItem('lala_language') || navigator.language || 'en';
 }
 
 function t(key) {
-    return window.LalaStrings.translate(detectLanguage(), `connect.${key}`);
+    return STRINGS[key] ?? key;
 }
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -343,7 +345,6 @@ async function showAutoConnect(url) {
 
 // ─── Apply translations ──────────────────────────────────────
 function applyTranslations() {
-    document.documentElement.lang = window.LalaStrings.languageFor(detectLanguage());
     document.getElementById('subtitleText').textContent = t('subtitle');
     connectBtn.textContent = t('connect');
     document.getElementById('serversHeader').textContent = t('savedServers');
@@ -353,30 +354,38 @@ function applyTranslations() {
 }
 
 // ─── Init ───────────────────────────────────────────────────
-applyTranslations();
-renderServers();
+async function init() {
+    const { lang, strings } = await window.electronAPI.getStrings(detectLanguage());
+    STRINGS = strings;
+    document.documentElement.lang = lang;
 
-// Auto-connect toggle
-const noAutoCheckbox = document.getElementById('noAutoConnectCheckbox');
-noAutoCheckbox.checked = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
-noAutoCheckbox.addEventListener('change', () => {
-    if (noAutoCheckbox.checked) {
-        localStorage.setItem(AUTO_CONNECT_KEY, 'true');
+    applyTranslations();
+    renderServers();
+
+    // Auto-connect toggle
+    const noAutoCheckbox = document.getElementById('noAutoConnectCheckbox');
+    noAutoCheckbox.checked = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
+    noAutoCheckbox.addEventListener('change', () => {
+        if (noAutoCheckbox.checked) {
+            localStorage.setItem(AUTO_CONNECT_KEY, 'true');
+        } else {
+            localStorage.removeItem(AUTO_CONNECT_KEY);
+        }
+    });
+
+    // Auto-connect to last server unless disabled
+    const saved = getSavedServers();
+    const noAutoConnect = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
+    if (returnedFromError) {
+        document.getElementById('mainContainer').style.display = '';
+    } else if (saved.length > 0 && !noAutoConnect) {
+        showAutoConnect(saved[0].url);
     } else {
-        localStorage.removeItem(AUTO_CONNECT_KEY);
+        document.getElementById('mainContainer').style.display = '';
     }
-});
-
-// Auto-connect to last server unless disabled
-const saved = getSavedServers();
-const noAutoConnect = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
-if (returnedFromError) {
-    document.getElementById('mainContainer').style.display = '';
-} else if (saved.length > 0 && !noAutoConnect) {
-    showAutoConnect(saved[0].url);
-} else {
-    document.getElementById('mainContainer').style.display = '';
 }
+
+init();
 
 // Show version
 if (window.electronAPI?.getAppInfo) {

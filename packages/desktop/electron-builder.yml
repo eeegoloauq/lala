@@ -11,6 +11,7 @@ files:
   - index.html
   - connection.js
   - strings.js
+  - locales/**/*
   - build/**/*
 
 afterPack: ./scripts/afterPack.js

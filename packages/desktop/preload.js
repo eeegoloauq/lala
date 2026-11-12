@@ -16,6 +16,7 @@ const IPC = {
     SET_IN_CALL: 'lala:set-in-call',
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',
+    GET_STRINGS: 'lala:get-strings',
     LOAD_URL_ERROR: 'lala:load-url-error',
     UPDATE_STATUS: 'lala:update-status',
 };
@@ -73,6 +74,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** Navigate back to the connection page (server switching) */
     navigateBack: () => ipcRenderer.send(IPC.NAVIGATE_BACK),
+
+    /** The connection page's text for a locale: { lang, strings } (connection page only) */
+    getStrings: (locale) => ipcRenderer.invoke(IPC.GET_STRINGS, locale),
 
     /** Check if running in Electron */
     isElectron: true,

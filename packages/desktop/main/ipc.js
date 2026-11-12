@@ -9,6 +9,7 @@ const { state, sendToRenderer } = require('./state');
 const { isUrlAllowed, isFileSender, isTrustedSender, isFileOrTrustedSender } = require('./trust');
 const { loadServer, navigateToConnectionPage } = require('./window');
 const { setBadgeCount } = require('./tray');
+const { stringsFor } = require('../strings');
 
 function registerIpcHandlers() {
     // Ping a server (health check from connection page, bypasses CORS).
@@ -43,6 +44,13 @@ function registerIpcHandlers() {
             return;
         }
         loadServer(url);
+    });
+
+    // The connection page's text (locales/*.json), which a file:// page can't read itself.
+    // Only the connection page asks; a server page has its own translations.
+    ipcMain.handle(IPC.GET_STRINGS, (event, locale) => {
+        if (!isFileSender(event)) return null;
+        return stringsFor(typeof locale === 'string' ? locale.slice(0, 35) : 'en', 'connect');
     });
 
     // Get app info

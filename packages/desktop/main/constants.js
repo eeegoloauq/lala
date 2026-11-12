@@ -44,6 +44,7 @@ const IPC = {
 
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',
+    GET_STRINGS: 'lala:get-strings',
     // Main → Renderer
     LOAD_URL_ERROR: 'lala:load-url-error',
     UPDATE_STATUS: 'lala:update-status',

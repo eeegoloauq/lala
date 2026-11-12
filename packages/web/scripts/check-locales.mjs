@@ -1,11 +1,13 @@
-// Checks every file in src/locales/ against en.json, the source: no missing or unknown
+// Checks every file in a locales directory (src/locales/, or the one given as an argument,
+// such as ../desktop/locales) against its en.json, the source: no missing or unknown
 // keys, and the same {{placeholders}} as English. Plural forms differ by language (English
 // has _one/_other, Russian adds _few/_many), so they are compared by their base key.
 // Runs as part of `npm run lint`. Exits 1 on any problem.
 import { readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DIR = fileURLToPath(new URL('../src/locales/', import.meta.url));
+const DIR = process.argv[2] ? resolve(process.argv[2]) + '/' : fileURLToPath(new URL('../src/locales/', import.meta.url));
 const PLURAL = /_(zero|one|two|few|many|other)$/;
 
 /** Flattens to base key -> set of placeholders across its plural forms. */
@@ -49,4 +51,4 @@ if (problems) {
     console.error(`\n${problems} problem(s) in translations.`);
     process.exit(1);
 }
-console.log(`Translations match en.json (${source.size} keys).`);
+console.log(`Translations in ${DIR} match en.json (${source.size} keys).`);
