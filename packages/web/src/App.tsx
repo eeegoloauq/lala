@@ -173,7 +173,7 @@ export default function App() {
                         onJoinRoom={handleJoinRoom}
                         onCreateRoom={handleCreateRoom}
                         onOpenSettings={() => { setSettingsOpen(true); setSidebarOpen(false); }}
-                        onClose={() => setSidebarOpen(false)}
+                        onClose={activeRoom ? () => setSidebarOpen(false) : undefined}
                         volumes={volumes}
                         onVolumeChange={handleVolumeChange}
                     />

@@ -4,7 +4,6 @@ import type { RoomInfo, NewRoom } from '../../lib/types';
 import { APP_NAME, MAX_NAME_LENGTH } from '../../lib/constants';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { getTemplates, removeTemplate } from '../../lib/roomTemplates';
-import { useCopyInvite } from './useCopyInvite';
 import { openProfile } from '../../lib/profileCard';
 import { SettingsIcon, MoonIcon, SpeakerIcon, LockIcon, EarIcon } from '../room/icons/Icons';
 import { ParticipantContextMenu } from '../room/VideoGrid/ParticipantContextMenu';
@@ -18,6 +17,7 @@ import { useLiveParticipants } from '../../lib/roomStatusStore';
 import { buildAdminActions } from '../room/hooks/useAdminActions';
 import { useMeContext } from '../../lib/meContext';
 import { useTimedValue } from '../../hooks/useTimedValue';
+import { useLongPress } from '../../hooks/useLongPress';
 import '../settings/settings.css';
 import './channel-sidebar.css';
 import { IS_TOUCH as isTouchDevice } from '../../lib/env';
@@ -48,6 +48,8 @@ interface ContextMenuState {
 interface RoomContextMenuState {
     roomId: string;
     roomName: string;
+    hasPassword: boolean;
+    canModerate: boolean;
     permanent: boolean;
     x: number;
     y: number;
@@ -134,12 +136,6 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         setRenaming(false);
     };
 
-    const { copy: copyInvite, copied: copiedRoom } = useCopyInvite();
-    const handleCopyInvite = useCallback((e: React.MouseEvent, roomId: string, hasPassword: boolean) => {
-        e.stopPropagation();
-        copyInvite(roomId, hasPassword);
-    }, [copyInvite]);
-
     const openProfileBeside = (e: React.MouseEvent, participantIdentity: string, participantName: string) => {
         const rect = e.currentTarget.getBoundingClientRect();
         openProfile({ identity: participantIdentity, name: participantName, x: rect.right + 8, y: rect.top });
@@ -150,14 +146,21 @@ export const ChannelSidebar = memo(function ChannelSidebar({
         setContextMenu({ identity: participantIdentity, name: participantName, roomId, x: e.clientX, y: e.clientY });
     }, []);
 
-    // Room-level right-click menu (banned users / delete room) for moderators only;
-    // everyone else gets the browser's own context menu.
+    // Room menu: the invite link for everyone, banned users and delete for moderators.
+    // Right-click on desktop and Android, long press on iOS (which fires no contextmenu).
+    const openRoomMenu = useCallback((room: RoomInfo, x: number, y: number) => {
+        setRoomContextMenu({
+            roomId: room.id, roomName: room.displayName, hasPassword: !!room.passwordSalt,
+            canModerate: room.canModerate, permanent: room.permanent, x, y,
+        });
+    }, []);
     const handleRoomContextMenu = useCallback((e: React.MouseEvent, room: RoomInfo) => {
-        if (!room.canModerate) return;
         e.preventDefault();
         e.stopPropagation();
-        setRoomContextMenu({ roomId: room.id, roomName: room.displayName, permanent: room.permanent, x: e.clientX, y: e.clientY });
-    }, []);
+        openRoomMenu(room, e.clientX, e.clientY);
+    }, [openRoomMenu]);
+    const longPress = useLongPress();
+    const closeRoomMenu = useCallback(() => setRoomContextMenu(null), []);
 
     // Keep room participants in a ref for the long-press callback
     const roomParticipantsRef = useRef(roomParticipants);
@@ -255,6 +258,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                             onClick={() => room.canJoin && onJoinRoom(room.id)}
                             title={room.canJoin ? undefined : t('sidebar.membersOnly')}
                             onContextMenu={(e) => handleRoomContextMenu(e, room)}
+                            {...longPress((x, y) => openRoomMenu(room, x, y))}
                         >
                             <SpeakerIcon className="channel-icon" size={14} />
                             <span className="channel-name">{room.displayName}</span>
@@ -274,22 +278,6 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                                     {room.maxParticipants > 0 ? `/${room.maxParticipants}` : ''}
                                 </span>
                             )}
-                            <button
-                                className={`channel-copy-btn${copiedRoom === room.id ? ' copied' : ''}`}
-                                onClick={(e) => handleCopyInvite(e, room.id, !!room.passwordSalt)}
-                                title={t('sidebar.copyLink')}
-                            >
-                                {copiedRoom === room.id ? (
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                ) : (
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                                    </svg>
-                                )}
-                            </button>
                         </div>
 
                         {(() => {
@@ -421,11 +409,13 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 <RoomContextMenu
                     roomId={roomContextMenu.roomId}
                     roomName={roomContextMenu.roomName}
+                    hasPassword={roomContextMenu.hasPassword}
+                    canModerate={roomContextMenu.canModerate}
                     permanent={roomContextMenu.permanent}
                     x={roomContextMenu.x}
                     y={roomContextMenu.y}
                     onOpenBans={setBansRoomId}
-                    onClose={() => setRoomContextMenu(null)}
+                    onClose={closeRoomMenu}
                 />
             )}
 

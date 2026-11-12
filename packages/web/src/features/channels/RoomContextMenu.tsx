@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../lib/errorMessage';
 import { deleteRoom } from '../../lib/api';
 import { useDismiss } from '../../hooks/useDismiss';
+import { useCopyInvite } from './useCopyInvite';
+import { LinkIcon } from '../room/icons/Icons';
 // Reuses the same themed .ctx-menu / .ctx-menu-item classes as the participant
 // right-click menu (winxp has hand-tuned overrides for these selectors already —
 // see globals.css `[data-theme="winxp"] .ctx-menu*`), so this menu is themed for
@@ -12,6 +14,9 @@ import '../room/VideoGrid/participant-context-menu.css';
 export interface RoomContextMenuProps {
     roomId: string;
     roomName: string;
+    hasPassword: boolean;
+    /** Bans and delete; the server checks the right again. */
+    canModerate: boolean;
     /** Configured rooms can't be deleted from the app. */
     permanent: boolean;
     x: number;
@@ -20,15 +25,25 @@ export interface RoomContextMenuProps {
     onClose: () => void;
 }
 
-/** Right-click menu on a room row for its moderators; the server checks the right again. */
-export function RoomContextMenu({ roomId, roomName, permanent, x, y, onOpenBans, onClose }: RoomContextMenuProps) {
+/** Right-click (long press on touch) menu on a room row: the invite link for everyone, bans and delete for its moderators. */
+export function RoomContextMenu({ roomId, roomName, hasPassword, canModerate, permanent, x, y, onOpenBans, onClose }: RoomContextMenuProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const { copy, copied } = useCopyInvite();
+
     useDismiss(ref, onClose);
+
+    // Close a moment after the link is copied, so "Link copied" is seen.
+    const justCopied = copied === roomId;
+    useEffect(() => {
+        if (!justCopied) return;
+        const timer = setTimeout(onClose, 700);
+        return () => clearTimeout(timer);
+    }, [justCopied, onClose]);
 
     const style: React.CSSProperties = {
         position: 'fixed',
@@ -58,7 +73,12 @@ export function RoomContextMenu({ roomId, roomName, permanent, x, y, onOpenBans,
         <div className="ctx-menu" style={style} ref={ref}>
             <div className="ctx-menu-name">{roomName}</div>
 
-            <button
+            <button className="ctx-menu-item" onClick={() => copy(roomId, hasPassword)}>
+                <LinkIcon size={14} strokeWidth={2} />
+                {justCopied ? t('roomHeader.copied') : t('roomHeader.copyInvite')}
+            </button>
+
+            {canModerate && <button
                 className="ctx-menu-item"
                 onClick={() => { onOpenBans(roomId); onClose(); }}
             >
@@ -67,9 +87,9 @@ export function RoomContextMenu({ roomId, roomName, permanent, x, y, onOpenBans,
                     <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
                 </svg>
                 {t('roomAdmin.bannedUsers')}
-            </button>
+            </button>}
 
-            {!permanent && <div className="ctx-menu-admin">
+            {canModerate && !permanent && <div className="ctx-menu-admin">
                 <button
                     className="ctx-menu-item ctx-menu-item--danger"
                     onClick={handleDeleteClick}

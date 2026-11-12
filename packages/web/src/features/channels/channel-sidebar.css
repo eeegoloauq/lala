@@ -126,6 +126,10 @@
     cursor: pointer;
     transition: background var(--transition-fast);
     color: var(--text-secondary);
+    /* A long press opens the room menu, not iOS's text selection and callout. */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .channel-item:hover {
@@ -255,40 +259,6 @@
 .channel-user-indicator svg {
     width: 11px;
     height: 11px;
-}
-
-/* ─── Invite copy button in channel item ─── */
-.channel-copy-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    padding: 0;
-    flex-shrink: 0;
-    opacity: 0;
-    transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
-}
-
-@media (hover: hover) {
-    .channel-item:hover .channel-copy-btn {
-        opacity: 1;
-    }
-}
-
-.channel-copy-btn:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-}
-
-.channel-copy-btn.copied {
-    opacity: 1;
-    color: #22c55e;
 }
 
 /* ─── Mobile close button in sidebar header ─── */

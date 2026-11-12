@@ -40,11 +40,12 @@ test('two people talk in a password room', async ({ browser }) => {
     await alice.page.getByRole('button', { name: 'Create', exact: true }).click();
     await alice.page.waitForURL(/\/room\//);
 
-    // Alice copies the invite link: it carries the room password (the E2EE key) and a server invite.
+    // Alice copies the invite link from the room's menu: it carries the room password (the E2EE key) and a server invite.
     const room = alice.page.locator('.channel-item', { hasText: 'E2E room' });
-    await room.hover();
-    await room.getByTitle('Copy invite link').click();
-    await expect(room.locator('.channel-copy-btn.copied')).toBeVisible();
+    await room.click({ button: 'right' });
+    const menu = alice.page.locator('.ctx-menu');
+    await menu.getByRole('button', { name: 'Copy invite link' }).click();
+    await expect(menu.getByRole('button', { name: 'Link copied' })).toBeVisible();
     const link = await alice.page.evaluate(() => navigator.clipboard.readText());
     expect(link).toMatch(/#pw=room-password&invite=\d+\.[\w-]+$/);
 
