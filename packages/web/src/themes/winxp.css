@@ -158,9 +158,11 @@
      + pseudo), including when both active+hover apply simultaneously. */
   background: #316ac5;
   color: #ffffff;
-  border-left: none;
-  padding-left: 12px;
   text-shadow: 1px 1px rgba(0,0,0,0.3);
+}
+[data-theme="winxp"] .channel-item.active .channel-icon,
+[data-theme="winxp"] .channel-item.active .channel-count {
+  color: #ffffff;
 }
 
 /* ── Settings modal ── */

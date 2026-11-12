@@ -35,7 +35,7 @@
   },
   "sidebar": {
     "passwordProtected": "Защищён паролем · E2EE",
-    "voiceChannels": "Голосовые каналы",
+    "rooms": "Комнаты",
     "createChannel": "Создать канал",
     "noChannels": "Каналов пока нет",
     "connectionError": "Не удалось подключиться к серверу",

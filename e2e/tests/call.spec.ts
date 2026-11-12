@@ -13,7 +13,7 @@ test('server password keeps the app closed', async ({ page }) => {
     await page.getByLabel('Server password').fill('wrong-password');
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.getByRole('alert')).toHaveText('Wrong password');
-    await expect(page.getByText('Voice Channels')).toBeHidden();
+    await expect(page.getByText('Rooms', { exact: true })).toBeHidden();
 
     expect((await page.request.get('/api/rooms')).status()).toBe(401);
     expect((await page.request.get('/api/health')).status()).toBe(200);

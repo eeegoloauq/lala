@@ -36,7 +36,7 @@ export async function enter(browser: Browser, name: string, settings?: object, d
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByPlaceholder('Your name...').fill(name);
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByText('Voice Channels')).toBeVisible();
+    await expect(page.getByText('Rooms', { exact: true })).toBeVisible();
     return { page, errors };
 }
 

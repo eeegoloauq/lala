@@ -220,7 +220,7 @@ export const ChannelSidebar = memo(function ChannelSidebar({
                 onClick={handleUserCardClick}
             >
                 <div className="sidebar-section-header">
-                    <span className="sidebar-section-title">{t('sidebar.voiceChannels')}</span>
+                    <span className="sidebar-section-title">{t('sidebar.rooms')}</span>
                     {canCreateRooms && (
                         <button
                             className="sidebar-add-btn"

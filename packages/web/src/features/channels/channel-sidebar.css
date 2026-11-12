@@ -55,14 +55,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 8px 8px;
+    min-height: 28px;
+    padding: 0 4px 2px 8px;
 }
 
 .sidebar-section-title {
-    font-size: 10px;
-    font-weight: 800;
+    font-size: 11px;
+    font-weight: 650;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.07em;
     color: var(--text-muted);
 }
 
@@ -74,15 +75,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: var(--border-radius);
-    transition: color var(--transition-fast);
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    transition: color var(--transition-fast), background var(--transition-fast);
     padding: 0;
 }
 
 .sidebar-add-btn:hover {
     color: var(--text-primary);
+    background: var(--bg-hover);
 }
 
 .sidebar-empty {
@@ -121,8 +123,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
-    border-radius: var(--border-radius);
+    min-height: 34px;
+    padding: 0 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: background var(--transition-fast);
     color: var(--text-secondary);
@@ -137,41 +140,46 @@
     color: var(--text-primary);
 }
 
+/* The room you're in: a soft tint, the accent only on its icon. */
 .channel-item.active {
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
-    color: var(--text-accent);
-    border-left: 3px solid var(--accent);
-    padding-left: 9px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--text-primary);
 }
 
 .channel-item .channel-icon {
-    font-size: 14px;
-    opacity: 0.6;
     flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.channel-item.active .channel-icon {
+    color: var(--accent);
 }
 
 .channel-item .channel-name {
     font-size: 14px;
     font-weight: 500;
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .channel-item .channel-count {
     font-size: 11px;
+    font-variant-numeric: tabular-nums;
     color: var(--text-muted);
-    background: var(--bg-hover);
-    padding: 2px 6px;
-    border-radius: 10px;
+    min-width: 18px;
+    text-align: right;
+    flex-shrink: 0;
 }
 
 /* ─── Participant mini-cards in sidebar ─── */
 .channel-users {
-    padding: 6px 8px 8px 20px;
+    padding: 2px 0 8px 20px;
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    border-left: 2px solid var(--border-color);
-    margin: 2px 0 4px 20px;
+    gap: 2px;
 }
 
 .channel-user-card {
@@ -179,7 +187,7 @@
     align-items: center;
     gap: 10px;
     height: 38px;
-    padding: 0 6px;
+    padding: 0 8px;
     border-radius: 6px;
     transition: background var(--transition-fast);
     cursor: default;
@@ -209,8 +217,10 @@
 }
 
 .channel-user-name {
-    font-size: 13px;
-    color: var(--text-secondary);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 0;
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -218,11 +228,8 @@
 }
 
 .channel-user-you {
-    font-size: 10px;
+    font-size: 10.5px;
     color: var(--text-muted);
-    background: var(--bg-hover);
-    padding: 1px 5px;
-    border-radius: 4px;
     flex-shrink: 0;
 }
 
@@ -238,7 +245,7 @@
 .channel-user-indicators {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 6px;
     flex-shrink: 0;
     min-width: 14px;
     /* reserve space for at least one icon */
@@ -248,7 +255,6 @@
     display: flex;
     align-items: center;
     color: var(--text-muted);
-    opacity: 0.75;
 }
 
 .channel-user-indicator.server-muted {
@@ -257,8 +263,8 @@
 }
 
 .channel-user-indicator svg {
-    width: 11px;
-    height: 11px;
+    width: 14px;
+    height: 14px;
 }
 
 /* ─── Mobile close button in sidebar header ─── */
@@ -362,7 +368,7 @@
 
 /* ─── Room templates (history) ─── */
 .channel-templates {
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 .channel-item-locked {
@@ -371,38 +377,45 @@
 }
 
 .channel-item-template {
-    opacity: 0.45;
+    color: var(--text-muted);
     cursor: pointer;
-}
-.channel-item-template:hover {
-    opacity: 0.75;
 }
 
 .channel-template-icon {
     flex-shrink: 0;
-    opacity: 0.7;
 }
 
 .channel-template-remove {
     display: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     background: none;
     border: none;
+    border-radius: 6px;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 2px;
+    padding: 0;
     margin-left: auto;
-    opacity: 0.5;
 }
 .channel-template-remove:hover {
-    opacity: 1;
     color: var(--color-danger);
 }
 .channel-item-template:hover .channel-template-remove {
     display: flex;
 }
+/* No hover on touch screens: keep the remove button visible and easy to hit. */
+@media (hover: none) {
+    .channel-template-remove {
+        display: flex;
+        width: 36px;
+        height: 36px;
+        margin-right: -8px;
+    }
+}
 
 .channel-item-template.channel-item-error {
-    opacity: 0.7;
     color: var(--color-danger);
 }
 

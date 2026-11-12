@@ -35,7 +35,7 @@
   },
   "sidebar": {
     "passwordProtected": "Password protected · E2EE",
-    "voiceChannels": "Voice Channels",
+    "rooms": "Rooms",
     "createChannel": "Create channel",
     "noChannels": "No channels yet",
     "connectionError": "Could not connect to server",
