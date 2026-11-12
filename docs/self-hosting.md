@@ -77,6 +77,10 @@ call see an ear next to a bot that can. An `avatar:` is an image file in the con
 under 24 KB. Restart the `api` container to apply a change. Removing a bot, or a room from its
 list, takes it out of those calls at the restart and voids the tokens it holds.
 
+With `invite:` (`everyone`, `members` or `admins`) people can add the bot to any room without a
+password from "Add bot" under the room's people, and it needs no `rooms:`. The bot must be
+running and connected for that; [`examples/bots`](../examples/bots) has one to start from.
+
 The bot's avatar, status line and commands reach the call through the LiveKit webhook
 (`/api/webhook`), which `livekit.yaml.example` already configures.
 

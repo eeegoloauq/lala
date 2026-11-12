@@ -29,9 +29,11 @@ server password; a wrong one answers `401 invalid_bot_credential`, and after 10 
 |---|---|---|
 | `GET /api/bot` | | `BotInfo`: identity, name, rooms, rights, status and commands |
 | `POST /api/bot/profile` | `BotProfile`, fields optional | The stored `BotProfile` |
+| `GET /api/bot/events` | | Server-sent events: `invited` (`BotInvitedEvent`) and `removed` (`BotRemovedEvent`) |
+| `DELETE /api/rooms/:id/bots/me` | | Leaves a room it was added to, for good |
 
-A bot joins with `POST /api/token` like anyone else, only into the rooms its entry lists, and
-password rooms still need the room key. Its token:
+A bot joins with `POST /api/token` like anyone else, into the rooms its entry lists and the
+rooms people added it to, and password rooms still need the room key. Its token:
 
 - carries the name from the config, whatever `name` the request sends;
 - lets it publish the microphone with `speak` and send data (chat, files) with `chat`, never
@@ -41,6 +43,38 @@ password rooms still need the room key. Its token:
 
 A bot never moderates or creates rooms and can't make server invites. Moderators can mute,
 kick and ban it as they would a person, but not give it the floor.
+
+### Adding a bot to a room
+
+A bot whose entry has `invite:` can be added to any room without a password by the people
+that level names (a room's creator counts as an admin there). The bot keeps
+`GET /api/bot/events` open; while it does, it is online and can be added. On connect the stream
+sends `invited` for each room it was already added to, so a bot that restarts finds its rooms
+again. On `invited` it joins with `POST /api/token`; on `removed` (it was removed, or the room
+ended) it leaves. A bot that drops and reconnects keeps its invitation. A bot that leaves for
+good calls `DELETE /api/rooms/:id/bots/me`, and the room sees "Y left".
+
+| Request | Body | Result |
+|---|---|---|
+| `GET /api/rooms/:id/bots` | | `{ bots: RoomBot[] }`: the bots the caller may add here |
+| `POST /api/rooms/:id/bots/:key` | | `201` added, `200` already added (the bot is asked to join again); `409 bot_offline`, `409 password_room` |
+| `DELETE /api/rooms/:id/bots/:key` | | Removes it from the call and ends the invitation; for whoever added it and moderators |
+
+Only someone in the call adds to it. The invitation lasts the room's lifetime. Kicking or
+banning an added bot also ends its invitation. `RoomInfo.addedBots` lists who added which bot,
+and `RoomInfo.canAddBots` says whether the caller may add any. The server announces
+`added`, `removed` and `left` on `lala.moderation`.
+
+Password rooms can't have added bots yet: the bot would need the media key, which the server
+never has. The config takes a `publicKey:` per bot for that already; it is not used yet.
+
+### Cards
+
+A bot can attach a card to a chat message: the `lala.card` attribute of the `lk.chat` text
+stream, JSON `BotCard` with a title (at most 60 characters), an optional line (at most 120) and
+an icon from `BotCardIcon`. Send the message text with it, which older clients and read-aloud
+use. Clients show cards only from `bot-` identities and never load remote images. Cards are not
+edited or deleted; put what changes in the status line.
 
 The server sets the bot's attributes when it joins and on every profile change:
 `lala.avatar` (from the config), `lala.bot-status` (at most 100 characters) and
@@ -103,9 +137,9 @@ limited to 30 per 15 minutes per IP and room.
 | Attribute | `lala.server-muted`, `lala.voice` | server | `1` or empty |
 | Attribute | `lala.avatar`, `lala.bot-status`, `lala.bot-commands` | server, on bots | See [Bots](#bots) |
 | Metadata | `{ "deafened": true }` | the participant | JSON |
-| Text stream | `lk.chat` | the participant | Chat message, as sent by LiveKit's `useChat` |
+| Text stream | `lk.chat` | the participant | Chat message, as sent by LiveKit's `useChat`; a bot's may carry `lala.card` (see [Cards](#cards)) |
 | Byte stream | `files` | the participant | File transfer |
-| Data | `lala.moderation` | server | `ModerationEvent` JSON |
+| Data | `lala.moderation` | server | `ModerationEvent` JSON, also when a bot is added, removed or leaves |
 
 Clients ignore `lala.moderation` messages from anyone but the server.
 

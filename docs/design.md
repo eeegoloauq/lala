@@ -32,35 +32,44 @@ more than its token allows. Bot accounts (set up as in [self-hosting](self-hosti
 - The bot secret stands in for the server password. A password room still needs the room
   password, because the bot needs the media key to speak in an encrypted call.
 
-### Planned: adding a bot to a room
+### Adding a bot to a room
 
-Not built yet. Today a bot joins only the rooms listed for it in `lala.yaml`. The plan lets
-people add a bot to any room, including rooms they created, while the server keeps the say:
+Besides the rooms listed for it in `lala.yaml`, a bot can be added to any room by the people
+its config allows, including rooms they created, while the server keeps the say:
 
-- A per-bot `invite:` setting (`everyone`, `members` or `admins`) lets people add the bot to
-  any room without a password. "Add bot" is the last row under the room's people; it lists the
-  bots this room may have and calls `POST /api/rooms/:id/bots/:key`. The server checks the
-  setting and records the invitation and the inviter in Redis for the room's lifetime.
+- A per-bot `invite:` setting (`everyone`, `members` or `admins`, ranked as room rights, so a
+  creator counts as an admin in their own room) lets people add the bot to any room without a
+  password. "Add bot" is the last row under the room's people; it lists the bots this room may
+  have and calls `POST /api/rooms/:id/bots/:key`. The server checks the setting and that the
+  inviter is in the call, and records the invitation and the inviter in Redis for the room's
+  lifetime.
 - The bot keeps `GET /api/bot/events` open (server-sent events) with its credential and gets
-  invited and removed events. It then joins through `POST /api/token` as now; the token check
-  accepts a room the bot is configured for or invited into. The bot dials out, so it needs no
-  open port or webhook URL, as with Discord's gateway or Slack's Socket Mode.
+  invited and removed events; a bot without the stream open shows as offline and can't be
+  added. It then joins through `POST /api/token`; the token check accepts a room the bot is
+  configured for or invited into. The bot dials out, so it needs no open port or webhook URL,
+  as with Discord's gateway or Slack's Socket Mode. The stream lives in the API process and the
+  invitation in Redis, so a restarted API re-sends invitations when the bot reconnects.
 - LiveKit agent dispatch is not used: its workers need the LiveKit API secret, which gives
   full control of the media server.
-- The room sees "X added Y". Before adding a bot with `listen`, the inviter confirms that it
-  will hear everyone in the call. The inviter or a moderator removes the bot; it is a kick and
-  ends the invitation.
-- A bot that drops reconnects without a chat line, like a person. A bot that leaves for good
-  ends its own invitation with `DELETE /api/rooms/:id/bots/me`, and the room sees "Y left".
+- The room sees "X added Y", announced by the server. Before adding a bot with `listen`, the
+  inviter confirms that it will hear everyone in the call. The inviter or a moderator removes
+  the bot; it is a kick with token revocation and ends the invitation. A moderator's plain
+  kick or ban of an added bot ends it too.
+- A bot that drops reconnects like a person. A bot that leaves for good ends its own
+  invitation with `DELETE /api/rooms/:id/bots/me`, and the room sees "Y left".
+- The inviter's client shows a joining tile until the bot arrives and "didn't join" after 20
+  seconds, with Try again (the server asks the bot again) and Dismiss (which ends the
+  invitation, so the bot doesn't turn up later unasked).
 - Status is what the bot does now: one line on its tile and profile, updated in place, with no
   running clock (the profile shows when it joined). A card is a chat reply to a command: title,
-  one line and an icon from Lala's set, sent beside a plain-text message that older clients and
-  read-aloud use. Cards are never edited or deleted, so a music bot shows the current song in
-  its status and posts a card only when someone queues one. Clients check the card's lengths;
-  no remote images, which would show viewers' addresses to another site.
-- Password rooms come later. The bot needs the media key, which the server never sees. Each
-  bot gets a key pair with the public key in `lala.yaml`, and the inviter's client encrypts
-  the room key to it; the server only relays the result. Add the public key to the config
-  shape in the first version so this needs no config change later.
+  one line and an icon from Lala's set, sent as the `lala.card` attribute beside a plain-text
+  message that older clients and read-aloud use. Cards are never edited or deleted, so a music
+  bot shows the current song in its status and posts a card only when someone queues one.
+  Clients check the card's lengths; no remote images, which would show viewers' addresses to
+  another site.
+- `examples/bots/dice.mjs` is a working bot on LiveKit's Node SDK, and the e2e suite runs it.
 
-Build it when a real bot needs rooms the config does not list.
+Password rooms come later. The bot needs the media key, which the server never sees. Each bot
+gets a key pair with the public key in `lala.yaml`, and the inviter's client encrypts the room
+key to it; the server only relays the result. The config already takes `publicKey:`, so this
+needs no config change.

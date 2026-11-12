@@ -61,3 +61,6 @@ bots:
   #   secret: "scrypt$16384$8$1$…"
   #   rooms: [General]       # rooms from the list above
   #   rights: [speak, chat]  # any of speak, chat, listen; listen lets it hear and see the call
+  #   invite: members        # optional: who may add it to any room without a password
+  #                          # (everyone, members, admins); then rooms may be left out
+  #   publicKey: "…"         # optional, base64 X25519; reserved for password rooms, not used yet
