@@ -12,7 +12,8 @@ docker compose up -d
 ```
 
 `setup.sh` asks for the domains and whether the server should have a password, and writes
-`.env` with new keys. To write `.env` by hand instead, start from [`.env.example`](../.env.example).
+`.env` with new keys. At the end it prints a link that makes you the server's admin; it works
+once. To write `.env` by hand instead, start from [`.env.example`](../.env.example).
 
 ## HTTPS
 
@@ -48,10 +49,10 @@ git pull && docker compose pull && docker compose up -d
 ## Admins, rooms and text chats
 
 Copy [`config/lala.example.yaml`](../config/lala.example.yaml) to `config/lala.yaml`; every
-option is explained in it. Put your ID from Settings → Profile under `users:` to make yourself
-admin. Apply changes with `docker compose restart api`; calls keep going.
+option is explained in it. More admins and members go under `users:`, by the ID from
+Settings → Profile. Apply changes with `docker compose restart api`; calls keep going.
 
-Without the file the server is open to everyone and has no admins.
+Without the file the server is open to everyone.
 
 ## Bots
 
@@ -74,6 +75,7 @@ The bot gets the printed credential, and the printed `secret:` line goes under `
 | `ALLOWED_ORIGINS` | `https://lala.example.com` |
 | `LALA_REGISTRY`, `LALA_TAG` | Where images come from: `ghcr.io/eeegoloauq`, and `latest` or a version |
 | `LALA_ACCESS_PASSWORD` | Optional: one password for the whole server, 12+ characters. Invite links copied from a room let people in without it |
+| `LALA_ADMIN_CLAIM` | Optional: the token in the admin link from `setup.sh`; it does nothing once the server has an admin |
 | `CSP_CONNECT_SRC` | Optional: `wss://rtc.example.com` to allow only your LiveKit |
 | `LALA_MAX_EVENT_STREAMS` | Optional: how many people can be online at once (1000) |
 | `LALA_MAX_EVENT_STREAMS_PER_IP` | Optional: open apps from one address (20) |
