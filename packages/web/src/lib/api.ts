@@ -70,6 +70,9 @@ export function getMe(): Promise<Me> {
     return request<Me>('/me');
 }
 
+/** Redeems the one-time link that makes the caller the server's first admin. */
+export const claimAdmin = (token: string) => request<void>('/claim', send('POST', { token }));
+
 /** Stores the caller's avatar (an image data URL) on the server; returns its version. */
 export async function uploadAvatar(dataUrl: string): Promise<string> {
     // Decoded here: fetching a data: URL is a connection the CSP doesn't allow.

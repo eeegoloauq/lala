@@ -14,6 +14,8 @@ import { createBotRouter } from './routes/bot';
 import { createRoomBotsRouter } from './routes/roomBots';
 import { createPresenceRouter } from './routes/presence';
 import { createChatsRouter } from './routes/chats';
+import { createClaimRouter } from './routes/claim';
+import { loadClaimedAdmins } from './lib/adminClaim';
 import { loadRules, requireRules } from './lib/rules';
 import { initFiles, sweepFiles } from './lib/chatFiles';
 import { messageExists, sweepChats } from './lib/chats';
@@ -114,6 +116,7 @@ app.use('/api/me', limiter(30), createMeRouter());
 // A client loads each avatar once per version; the rest comes from its cache.
 app.use('/api/avatars', limiter(150), createAvatarsRouter());
 app.use('/api/admin', limiter(20), createServerAdminRouter());
+app.use('/api/claim', limiter(10), createClaimRouter());
 app.use('/api/bot', limiter(20), createBotRouter());
 // Opening a chat loads a page of messages and its pictures; sending, reacting and
 // uploading get their own smaller budgets.
@@ -159,6 +162,7 @@ process.on('uncaughtException', (err) => {
     await connectRedis();
     await syncPermanentRooms();
     await loadRules();
+    await loadClaimedAdmins();
     await initFiles();
     await syncBots().catch((err) => console.error('[bots] syncing connected bots with the config failed:', err));
     const dropStale = () => dropStaleRooms().catch((err) => console.error('[rooms] dropping stale rooms failed:', err));

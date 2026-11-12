@@ -53,6 +53,8 @@ case "$PRIVATE" in [yY]*) ACCESS=$(random 12) ;; esac
 KEY="lala$(random 6)"
 SECRET=$(random 32)
 REDIS=$(random 24)
+# Spent by the first person to open the link printed below, who becomes admin.
+CLAIM=$(random 16)
 
 # The values are domains, an address and hex, so they are safe in these patterns.
 sed -e "s|^LIVEKIT_URL=.*|LIVEKIT_URL=wss://$RTC|" \
@@ -63,6 +65,7 @@ sed -e "s|^LIVEKIT_URL=.*|LIVEKIT_URL=wss://$RTC|" \
     -e "s|^LIVEKIT_DOMAIN=.*|LIVEKIT_DOMAIN=$RTC|" \
     -e "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=https://$APP|" \
     -e "s|^LALA_ACCESS_PASSWORD=.*|LALA_ACCESS_PASSWORD=$ACCESS|" \
+    -e "s|^LALA_ADMIN_CLAIM=.*|LALA_ADMIN_CLAIM=$CLAIM|" \
     .env.example > .env
 chmod 600 .env
 echo "Wrote .env."
@@ -85,7 +88,9 @@ Next:
        reverse_proxy 127.0.0.1:7880
    }
 
-Then open https://$APP.
+Then open this link to become the server's admin (it works once):
+
+   https://$APP/#claim=$CLAIM
 EOF
 if [ -n "$ACCESS" ]; then
     echo

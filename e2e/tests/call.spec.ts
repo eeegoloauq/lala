@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
-import { SERVER_PASSWORD } from '../playwright.config';
+import { ADMIN_CLAIM, SERVER_PASSWORD } from '../playwright.config';
 import { api, createRoom, enter, media, openPage, serverTracks } from './helpers';
 
 // Participants of one test must not linger in the next one's rooms.
@@ -28,6 +28,19 @@ test('server password keeps the app closed', async ({ page }) => {
     await expect(page.getByPlaceholder('Your name...')).toBeVisible();
     await page.reload();
     await expect(page.getByPlaceholder('Your name...')).toBeVisible();
+});
+
+test('the admin link from setup.sh does nothing on a server that has an admin', async ({ browser }) => {
+    const guest = await enter(browser, 'Guest');
+    // Opened as a link: a fresh load, not a change of the hash on the open page.
+    await guest.page.goto(`/#claim=${ADMIN_CLAIM}`);
+    await guest.page.reload();
+    await expect(guest.page.getByText('Rooms', { exact: true })).toBeVisible();
+    // The token leaves the address bar either way.
+    expect(new URL(guest.page.url()).hash).toBe('');
+    const deviceId = await guest.page.evaluate(() => localStorage.getItem('lala-device-id') ?? '');
+    expect((await api(guest.page, deviceId, 'GET', '/me')).body.role).toBe('guest');
+    expect((await api(guest.page, deviceId, 'POST', '/claim', { token: ADMIN_CLAIM })).status).toBe(403);
 });
 
 test('two people talk in a password room', async ({ browser }) => {

@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
+export const ADMIN_CLAIM = 'e2e-admin-claim-not-used-outside-tests';
 export const SERVER_PASSWORD = 'e2e-server-password';
 export const LIVEKIT_KEY = 'e2e-key';
 export const LIVEKIT_SECRET = 'e2e-secret-not-used-outside-tests-000';
@@ -55,6 +56,8 @@ export default defineConfig({
                 LIVEKIT_API_SECRET: LIVEKIT_SECRET,
                 REDIS_URL: 'redis://127.0.0.1:6380',
                 LALA_CONFIG: '../../e2e/lala-e2e.yaml',
+                // A server with admins in its config: the link must not make anyone admin.
+                LALA_ADMIN_CLAIM: ADMIN_CLAIM,
             },
         },
         {

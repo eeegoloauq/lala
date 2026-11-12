@@ -2,7 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AccessGate } from './features/access/AccessGate';
-import { takeInviteFromHash } from './features/access/inviteLink';
+import { takeFromHash, takeInviteFromHash } from './features/access/inviteLink';
+import { setPendingClaim } from './lib/adminClaim';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './features/settings/ThemeProvider';
 import { initSecureStore } from './lib/secureStore';
@@ -31,6 +32,7 @@ if ('serviceWorker' in navigator) {
 
 // Taken out of the URL before the router reads it, once: render effects may run twice.
 const invite = takeInviteFromHash();
+setPendingClaim(takeFromHash('claim'));
 
 // The secret store's sync API requires hydration before first render.
 // initSecureStore never rejects (degrades to memory-only), so render always runs.

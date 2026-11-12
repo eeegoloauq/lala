@@ -1,12 +1,14 @@
 import { TrackSource, type ParticipantPermission, type VideoGrant } from 'livekit-server-sdk';
 import { config, type BotConfig, type ConfigChat, type Level, type Right, type Role } from './config';
 import { botOf, isBotIdentity } from './bots';
+import { isClaimedAdmin } from './adminClaim';
 import type { Flags, RoomState } from './rooms';
 
 const RANK: Record<Level, number> = { everyone: 0, members: 1, admins: 2 };
 
+/** From the config, or admin through the claim link (`adminClaim.ts`). */
 export const roleOf = (identity: string | undefined): Role | undefined =>
-    identity === undefined ? undefined : config().users.get(identity)?.role;
+    identity === undefined ? undefined : config().users.get(identity)?.role ?? (isClaimedAdmin(identity) ? 'admin' : undefined);
 
 /** Admins, and the creator in their own room, rank as admins; members as members. */
 function rank(identity: string | undefined, room?: RoomState): number {
