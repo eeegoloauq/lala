@@ -6,6 +6,13 @@ Internal work that shouldn't be done in passing. Remove an item when it ships.
 
 Nothing open.
 
+## Dependency overrides
+
+Web and desktop override `minimatch` to patched v11 for
+[GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249); drop it once the
+parents require a patched version. Desktop keeps separate `undici` v6 and v7 overrides. After
+changing either, run web lint and build, desktop packaging and the call tests.
+
 ## Bots
 
 A bot is a separate program that joins a call through the [client API](api.md), like any
