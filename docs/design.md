@@ -36,6 +36,53 @@ changing either, run web lint and build, desktop packaging and the call tests.
   app (input in other programs counts) and from input in the page in a browser. Speaking in
   a call counts as input.
 
+## Text chats
+
+The web client and the demo are built; the API side is not yet. Wire types are in
+`packages/shared` (`TextChannel`, `ServerRules`, `ChatMessage`, `ChatEvent`, …); the demo's
+`features/demo/chat.ts` answers the same routes and is the reference for their behaviour.
+
+- **A server with chats says so**: `Me.textChats`. Only then does the client ask for them, so
+  an older API stays quiet.
+- **Chats and rules come from the config.** `chats:` names each chat (id, name, topic, who may
+  post: everyone or admins); `rules:` is Markdown text and whether agreeing is required.
+  Changing the text makes a new `version` (a hash of it), and the server records when it first
+  saw each version (`updatedAt`, the date the rules show), so an edit asks everyone again.
+- **The rules gate is the server's.** While `required` and not agreed to, rooms, tokens,
+  presence and chats answer `403 rules_required`; `GET /api/chats` still answers (with no
+  chats) and `POST /api/rules/accept {version}` records the agreement per identity in Redis.
+  The client shows only the rules until then and sends no presence.
+- **History is a Redis stream per chat.** Stream IDs (`<ms>-<seq>`) are the message IDs and
+  the paging cursor. Trimmed by age and count from the config (defaults 30 days, 10,000
+  messages); 4,000 characters per message. `GET /api/chats/:id/messages?before=<id>&limit=50`
+  pages back, oldest first, with `more`. Pinned messages are copied out of the stream, so
+  they outlive its trimming (at most 50 per chat, `GET /api/chats/:id/pins`).
+- **Mentions are `<@identity>` in the text.** The composer shows `@Name` and swaps in the
+  identity of the person picked, since names aren't unique. The server keeps each identity's
+  last 50 mentions (`ChannelsResponse.mentions`); what has been read is the client's
+  (`lala_chat_read`), so nothing per person is stored for unread.
+- **Replies carry a preview** (`reply`: id, identity, name, first 200 characters), filled in by
+  the server from the original when sent, so a reply renders without the original loaded.
+  Jumping to it loads older pages until it is there.
+- **Reactions**: emoji to identities, at most 20 different emoji per message, one emoji each
+  (`PUT`/`DELETE /api/chats/:id/messages/:mid/reactions/:emoji`).
+- **Delete** is one action for everyone: one's own message, any message for admins. Pins are
+  for admins.
+- **Events** ride the existing stream: `chat_message`, `chat_deleted`, `chat_reactions`,
+  `chat_pinned`, each with the `ChatEvent` as its data. A reconnect makes the client reload.
+- **Files** upload first (`POST /api/chats/:id/files`, the file as the body, its name in
+  `X-File-Name`), then the message names them with a spoiler flag each. Kept on disk, not in
+  Redis: one size limit for the whole server (default 1 GB), the oldest removed first, a file
+  removed with its message. The server detects the type from the content: PNG, JPEG, GIF,
+  WebP, AVIF, common audio and MP4/WebM video are served inline, everything else as a
+  download; photos lose their location metadata. A removed file leaves its entry without a
+  `url` ("removed to make space").
+- **Notifications** are the client's: per chat (`lala_chat_notify`) all messages, only
+  mentions and replies (default) or nothing; Do Not Disturb silences them.
+- **Not in the first version**: GIF search (Klipy needs a key per server and loads from its
+  CDN), skin tones in the emoji picker, mentions from a call's chat reaching people outside
+  it, editing messages.
+
 ## Bots
 
 A bot is a separate program that joins a call through the [client API](api.md), like any
