@@ -84,7 +84,11 @@
     },
     "dismiss": "Dismiss",
     "notAllowed": "Members only",
-    "notAllowedDesc": "The server admin has opened this room to members only."
+    "notAllowedDesc": "The server admin has opened this room to members only.",
+    "e2eeUnsupported": "This browser can't encrypt calls",
+    "e2eeUnsupportedDesc": "Password rooms are end-to-end encrypted, and this browser doesn't support it. Use a current Chrome, Edge, Firefox or Safari, or the desktop app.",
+    "e2eeFailed": "Encryption could not be turned on",
+    "e2eeFailedDesc": "The call was not joined, so nothing was sent unencrypted. Try again."
   },
   "ctx": {
     "unmute": "Unmute",

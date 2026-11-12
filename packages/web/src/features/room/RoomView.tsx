@@ -41,6 +41,8 @@ const ERROR_SCREENS: Record<string, { title: string; desc: string }> = {
     room_full: { title: 'room.full', desc: 'room.fullDesc' },
     banned: { title: 'room.banned', desc: 'room.bannedDesc' },
     not_allowed: { title: 'room.notAllowed', desc: 'room.notAllowedDesc' },
+    e2ee_unsupported: { title: 'room.e2eeUnsupported', desc: 'room.e2eeUnsupportedDesc' },
+    e2ee_failed: { title: 'room.e2eeFailed', desc: 'room.e2eeFailedDesc' },
 };
 
 export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
@@ -79,10 +81,26 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
     const room = useMemo(
         () => new Room({
             ...mediaOptionsFrom(settingsRef.current),
-            ...(e2eeSetup ? { e2ee: { keyProvider: e2eeSetup.keyProvider, worker: e2eeSetup.worker } } : {}),
+            // `encryption` (not the older `e2ee`) also covers the data channel: chat and files.
+            ...(e2eeSetup ? { encryption: { keyProvider: e2eeSetup.keyProvider, worker: e2eeSetup.worker } } : {}),
         }),
         [e2eeSetup],
     );
+    // The key provider alone encrypts nothing: a participant publishes in the clear until
+    // setE2EEEnabled(true). The call connects only after it, so no track goes out before.
+    const [encryptedRoom, setEncryptedRoom] = useState<Room | null>(null);
+    useEffect(() => {
+        if (!e2eeSetup) return;
+        let live = true;
+        room.setE2EEEnabled(true).then(
+            () => { if (live) setEncryptedRoom(room); },
+            (err) => {
+                console.error('[RoomView] Turning on encryption failed:', err instanceof Error ? err.message : err);
+                if (live) setErrorCode('e2ee_failed');
+            },
+        );
+        return () => { live = false; };
+    }, [room, e2eeSetup]);
     useLiveSettings(room, settings);
 
     // The join attempt in progress; a password typed into the prompt belongs to it.
@@ -113,7 +131,11 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
     const applyToken = async (attempt: AbortSignal, { token, url, canModerate }: TokenResponse, e2eeKey?: ArrayBuffer, pw?: string) => {
         if (IS_DEMO) {
             // No call to connect to: the demo shows one instead.
-        } else if (e2eeKey && isE2EESupported()) {
+        } else if (e2eeKey && !isE2EESupported()) {
+            // A password room is an encrypted call; joining it in the clear would break that promise.
+            setErrorCode('e2ee_unsupported');
+            return;
+        } else if (e2eeKey) {
             // Setting up E2EE makes a new Room, so warming up this one would be wasted.
             const keyProvider = new ExternalE2EEKeyProvider();
             await keyProvider.setKey(e2eeKey);
@@ -412,7 +434,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
         );
     }
 
-    if (!connection) {
+    if (!connection || (e2eeSetup && encryptedRoom !== room)) {
         return <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>{t('room.connecting')}</p></div>;
     }
 

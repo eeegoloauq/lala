@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 export const SERVER_PASSWORD = 'e2e-server-password';
+export const LIVEKIT_KEY = 'e2e-key';
+export const LIVEKIT_SECRET = 'e2e-secret-not-used-outside-tests-000';
 
 // Builds and starts the real stack: LiveKit, Redis, the API and the production web bundle
 // served by `vite preview` with the production CSP, proxying /api to :3001 like nginx does.
@@ -45,8 +47,8 @@ export default defineConfig({
             env: {
                 LALA_ACCESS_PASSWORD: SERVER_PASSWORD,
                 LIVEKIT_URL: 'ws://127.0.0.1:7880',
-                LIVEKIT_API_KEY: 'e2e-key',
-                LIVEKIT_API_SECRET: 'e2e-secret-not-used-outside-tests-000',
+                LIVEKIT_API_KEY: LIVEKIT_KEY,
+                LIVEKIT_API_SECRET: LIVEKIT_SECRET,
                 REDIS_URL: 'redis://127.0.0.1:6380',
                 LALA_CONFIG: '../../e2e/lala-e2e.yaml',
             },

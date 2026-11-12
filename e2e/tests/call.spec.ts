@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
 import { SERVER_PASSWORD } from '../playwright.config';
-import { api, createRoom, enter, media, openPage } from './helpers';
+import { api, createRoom, enter, media, openPage, serverTracks } from './helpers';
 
 // Participants of one test must not linger in the next one's rooms.
 test.afterEach(async ({ browser }) => {
@@ -61,6 +61,11 @@ test('two people talk in a password room', async ({ browser }) => {
     await alice.page.getByRole('button', { name: 'Turn on camera' }).click();
     // Bob decodes Alice's encrypted video: frames have a size and keep advancing.
     await expect.poll(async () => (await media(bob.page)).videos.some(v => v.width > 0 && v.time > 1), { timeout: 20_000 }).toBe(true);
+    // Decoding alone would pass unencrypted too: the media server must see only encrypted
+    // tracks, the two microphones and the camera.
+    const tracks = await serverTracks(new URL(alice.page.url()).pathname.split('/').pop()!);
+    expect(tracks).toHaveLength(3);
+    expect(tracks.map(t => t.encryption)).toEqual(['GCM', 'GCM', 'GCM']);
 
     await alice.page.getByRole('button', { name: 'Chat' }).click();
     await alice.page.getByPlaceholder('Send a message...').fill('hello from alice');

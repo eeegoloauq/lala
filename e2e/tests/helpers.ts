@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
-import { SERVER_PASSWORD } from '../playwright.config';
+import { LIVEKIT_KEY, LIVEKIT_SECRET, SERVER_PASSWORD } from '../playwright.config';
 
 // Each person in a test is a separate client to the API, as they would be in real use:
 // per-address limits (rate limits, SSE connections) must not add up across tests.
@@ -65,4 +65,24 @@ export async function createRoom(page: Page, name: string, options: { stage?: bo
     if (options.stage) await page.getByLabel('Only I speak').check();
     await page.getByRole('button', { name: 'Create', exact: true }).click();
     await page.waitForURL(/\/room\//);
+}
+
+/**
+ * The tracks LiveKit has for a room, from its server API with the e2e keys: what the media
+ * server itself sees, such as whether a track is end-to-end encrypted.
+ */
+export async function serverTracks(room: string): Promise<Array<{ source?: string; encryption?: string }>> {
+    const { createHmac } = await import('node:crypto');
+    const b64 = (v: object) => Buffer.from(JSON.stringify(v)).toString('base64url');
+    const now = Math.floor(Date.now() / 1000);
+    const unsigned = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ iss: LIVEKIT_KEY, nbf: now - 10, exp: now + 60, video: { roomAdmin: true, room } })}`;
+    const jwt = `${unsigned}.${createHmac('sha256', LIVEKIT_SECRET).update(unsigned).digest('base64url')}`;
+    const res = await fetch('http://127.0.0.1:7880/twirp/livekit.RoomService/ListParticipants', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room }),
+    });
+    if (!res.ok) throw new Error(`ListParticipants: ${res.status} ${await res.text()}`);
+    const { participants = [] } = await res.json() as { participants?: Array<{ tracks?: Array<{ source?: string; encryption?: string }> }> };
+    return participants.flatMap(p => p.tracks ?? []);
 }
