@@ -103,7 +103,7 @@ function writeEntry(key: string, dataUrl: string): void {
     }
 }
 
-/** Compress and center-crop an image file to a 48×48 JPEG data URL. */
+/** Compress and center-crop an image file to a 128×128 JPEG data URL. */
 export async function compressAvatar(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const img = new Image();

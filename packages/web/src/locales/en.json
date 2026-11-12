@@ -211,7 +211,7 @@
     "displayName": "Display name",
     "namePlaceholder": "Your name...",
     "avatar": "Avatar",
-    "avatarHint": "Shown to others in the room (48x48 JPEG)",
+    "avatarHint": "Shown to others in the room (128×128 JPEG)",
     "uploadPhoto": "Upload photo",
     "remove": "Remove",
     "savedPasswords": "Saved room passwords",

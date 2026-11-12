@@ -217,7 +217,7 @@
     "displayName": "Имя",
     "namePlaceholder": "Ваше имя...",
     "avatar": "Аватар",
-    "avatarHint": "Видно другим участникам (48×48 JPEG)",
+    "avatarHint": "Видно другим участникам (128×128 JPEG)",
     "uploadPhoto": "Загрузить фото",
     "remove": "Удалить",
     "savedPasswords": "Сохранённые пароли",
