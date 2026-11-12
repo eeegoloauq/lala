@@ -89,6 +89,7 @@ export function TextChannelView({ channel, compact = false }: TextChannelViewPro
                     botCommands={false}
                     placeholder={t('chat.placeholderChannel', { name: info.name })}
                     notAllowedText={t('chat.adminsOnly')}
+                    focusOnType={!compact}
                     replyingTo={replyTo ? { name: presence?.get(replyTo.identity)?.name ?? replyTo.name, onCancel: () => setReplyTo(null) } : undefined}
                 />
             </div>

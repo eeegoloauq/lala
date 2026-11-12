@@ -40,9 +40,25 @@ interface ChatComposerProps {
     notAllowedText?: string;
     /** The message being answered: a bar above the box, Escape or ✕ drops it. */
     replyingTo?: { name: string; onCancel: () => void };
+    /**
+     * Typing while nothing else takes the keys (after clicking a message, say) writes here.
+     * Not in a call, where single keys are shortcuts.
+     */
+    focusOnType?: boolean;
 }
 
-export function ChatComposer({ send, isSending, mayChat, staged, allowSpoiler = false, mentions, botCommands = true, placeholder, notAllowedText, replyingTo }: ChatComposerProps) {
+/** Open over the page: what has the keys then, even if nothing in it is focused. */
+const OVERLAY = '.modal-overlay, .settings-overlay, .ctx-menu, [role="dialog"], .emoji-picker, .cp-lightbox-backdrop';
+
+/** Whether the key goes to whatever is focused: a field, or a button that Space and Enter press. */
+function keyBelongsElsewhere(e: KeyboardEvent): boolean {
+    const el = document.activeElement as HTMLElement | null;
+    if (el?.isContentEditable || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
+    if ((e.key === ' ' || e.key === 'Enter') && el && el !== document.body) return true;
+    return document.querySelector(OVERLAY) !== null;
+}
+
+export function ChatComposer({ send, isSending, mayChat, staged, allowSpoiler = false, mentions, botCommands = true, placeholder, notAllowedText, replyingTo, focusOnType = false }: ChatComposerProps) {
     const { t } = useTranslation();
     const [text, setText] = useState('');
     const [showEmoji, setShowEmoji] = useState(false);
@@ -61,6 +77,19 @@ export function ChatComposer({ send, isSending, mayChat, staged, allowSpoiler = 
     // Answering a message: the box is where the answer goes.
     const replyName = replyingTo?.name;
     useEffect(() => { if (replyName) inputRef.current?.focus(); }, [replyName]);
+
+    // Focused on keydown, the box gets the character (or the paste) that follows.
+    useEffect(() => {
+        if (!focusOnType || !mayChat) return;
+        const onKey = (e: KeyboardEvent) => {
+            const paste = (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'v';
+            const printable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+            if (e.defaultPrevented || e.isComposing || !(printable || paste) || keyBelongsElsewhere(e)) return;
+            inputRef.current?.focus();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [focusOnType, mayChat]);
 
     // A command picked on a bot's profile lands here, unsent.
     const draft = useChatDraft();

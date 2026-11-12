@@ -79,6 +79,12 @@ test('text chats: a message with a picture reaches others, admins pin, deletes r
     const picture = message.locator('img[alt="square.png"]');
     await expect.poll(() => picture.evaluate((img: HTMLImageElement) => `${img.naturalWidth}x${img.naturalHeight}`), { timeout: 10_000 }).toBe('48x32');
 
+    // After a click on a message, typing still goes into the box.
+    await message.locator('.tc-msg-text').click();
+    await admin.page.keyboard.type('typed after a click');
+    await expect(admin.page.getByPlaceholder('Message #general')).toHaveValue('typed after a click');
+    await admin.page.getByPlaceholder('Message #general').fill('');
+
     // Only admins post in #announcements.
     await alice.page.getByRole('button', { name: 'announcements' }).click();
     await expect(alice.page.getByPlaceholder('Message #announcements')).toBeHidden();
