@@ -21,7 +21,7 @@ import { useRoomKeyboard } from '../../hooks/useRoomKeyboard';
 import { useLocalControls } from './hooks/useLocalControls';
 import { useScreenShare, getScreenShareQuality, screenShareFailure } from './hooks/useScreenShare';
 import type { ScreenShareQuality, ScreenShareFailure } from './hooks/useScreenShare';
-import { useAvatarCache } from './hooks/useAvatarCache';
+import { useAvatarMap } from '../../lib/roomStatusStore';
 import { useRoomStatusSync } from './hooks/useRoomStatusSync';
 import { useChatEntries } from './hooks/useChatEntries';
 import { useRoomAnnouncements } from './hooks/useRoomAnnouncements';
@@ -44,7 +44,6 @@ const SCREEN_SHARE_TRACKS = [Track.Source.ScreenShare];
 interface RoomShellProps {
     canModerate: boolean;
     name: string;  // display name — used to call setName on join/change
-    myAvatarUrl?: string | null;
     onOpenSettings?: () => void;
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
@@ -52,7 +51,7 @@ interface RoomShellProps {
     onVolumeChange: (identity: string, vol: number) => void;
 }
 
-export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
+export function RoomShell({ canModerate, name, onOpenSettings, settings, onUpdateSettings, volumes, onVolumeChange }: RoomShellProps) {
     const { t } = useTranslation();
     const [chatOpen, setChatOpen] = useState(false);
     const [audioMuted, setAudioMuted] = useState(false);
@@ -94,12 +93,7 @@ export function RoomShell({ canModerate, name, myAvatarUrl, onOpenSettings, sett
         localParticipant.setName(name);
     }, [name, localParticipant]);
 
-    const avatarCache = useAvatarCache({
-        room,
-        participants,
-        localParticipant,
-        myAvatarUrl,
-    });
+    const avatarCache = useAvatarMap();
 
     useRoomStatusSync({
         room,

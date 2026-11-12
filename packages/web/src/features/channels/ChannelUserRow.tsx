@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getCachedAvatar, avatarColorForIdentity } from '../../lib/avatarUtils';
+import { avatarColorForIdentity } from '../../lib/avatarUtils';
 import { MicOffIcon, SpeakerOffIcon, ScreenShareStatusIcon } from '../room/icons/Icons';
 import { isBotIdentity } from '../../lib/bots';
 import { BotBadge, ListensMark } from '../../ui/BotBadge';
@@ -58,7 +58,7 @@ export const ChannelUserRow = memo(function ChannelUserRow({
 
     const isMuted = isActiveRoom ? liveMuted : staticMuted;
     const isDeafened = isActiveRoom ? liveDeafened : staticDeafened;
-    const avatarUrl = liveAvatar || getCachedAvatar(identity) || undefined;
+    const avatarUrl = liveAvatar;
     const isBot = isBotIdentity(identity);
 
     return (

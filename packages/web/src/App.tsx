@@ -17,7 +17,9 @@ import { usePersistedVolumes } from './hooks/usePersistedVolumes';
 import type { NewRoom } from './lib/types';
 import { deriveRoomKeys, newRoomSalt } from './lib/roomKeys';
 import { MAX_NAME_LENGTH } from './lib/constants';
-import { getMyAvatar, saveMyAvatar, clearMyAvatar } from './lib/avatarUtils';
+import { getMyAvatar, saveMyAvatar, clearMyAvatar, dropLegacyAvatarCache } from './lib/avatarUtils';
+import { deleteAvatar, uploadAvatar } from './lib/api';
+import { usePublishAvatars } from './hooks/usePublishAvatars';
 import { saveRoomPassword, getRoomPassword } from './lib/passwords';
 import { getTemplates, saveTemplate } from './lib/roomTemplates';
 import { resetRoomSession } from './lib/roomStatusStore';
@@ -50,11 +52,26 @@ export default function App() {
     }, [sidebarOpen]);
     const { volumes, handleVolumeChange } = usePersistedVolumes();
     const [myAvatar, setMyAvatar] = useState(getMyAvatar);
-    const handleAvatarChange = useCallback((dataUrl: string | null) => {
+    // The server is where others get the avatar from; this device's copy is the original.
+    // Rejected (offline, too large) means nothing changed, and the caller shows the error.
+    const handleAvatarChange = useCallback(async (dataUrl: string | null) => {
+        if (dataUrl) await uploadAvatar(dataUrl);
+        else await deleteAvatar();
         if (dataUrl) saveMyAvatar(dataUrl);
         else clearMyAvatar();
         setMyAvatar(dataUrl);
     }, []);
+    // The server drops an avatar unused for 90 days (or loses Redis); this device then
+    // uploads its copy again. Also moves avatars set before they were kept on the server.
+    const avatarChecked = useRef(false);
+    useEffect(() => {
+        if (!me || avatarChecked.current) return;
+        avatarChecked.current = true;
+        dropLegacyAvatarCache();
+        const local = getMyAvatar();
+        if (local && !me.avatar) uploadAvatar(local).catch(err => console.warn('[App] Uploading the avatar failed:', err));
+    }, [me]);
+    usePublishAvatars(rooms, me?.identity, myAvatar);
 
 
     // The server's default theme and the user's accent reach the theme from here.
@@ -211,7 +228,6 @@ export default function App() {
                             roomName={activeRoom}
                             name={displayName}
                             hashPassword={route.hashPassword}
-                            myAvatarUrl={myAvatar}
                             settings={settings}
                             onUpdateSettings={updateSettings}
                             onLeave={handleLeave}

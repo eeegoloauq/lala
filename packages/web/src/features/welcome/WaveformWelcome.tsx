@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { RoomInfo } from '../../lib/types';
 import { IS_DEMO } from '../../lib/env';
-import { getCachedAvatar } from '../../lib/avatarUtils';
+import { useAvatarMap } from '../../lib/roomStatusStore';
 import { Avatar } from '../room/VideoGrid/Avatar';
 import { EarIcon } from '../room/icons/Icons';
 import './waveform-welcome.css';
@@ -27,6 +27,7 @@ export function WaveformWelcome({ rooms, onJoinRoom }: WaveformWelcomeProps) {
   const { t } = useTranslation();
   const room = busiestRoom(rooms);
   const people = room?.participants ?? [];
+  const avatars = useAvatarMap();
   const listening = room?.listeningParticipants.length ?? 0;
 
   return (
@@ -44,7 +45,7 @@ export function WaveformWelcome({ rooms, onJoinRoom }: WaveformWelcomeProps) {
         <div className="welcome-room">
           <div className="welcome-faces" aria-hidden="true">
             {people.slice(0, FACES).map(p => (
-              <Avatar key={p.identity} name={p.name} identity={p.identity} size={28} avatarUrl={getCachedAvatar(p.identity) ?? undefined} />
+              <Avatar key={p.identity} name={p.name} identity={p.identity} size={28} avatarUrl={avatars.get(p.identity)} />
             ))}
           </div>
           <button className="btn btn-primary welcome-join" onClick={() => onJoinRoom(room.id)}>

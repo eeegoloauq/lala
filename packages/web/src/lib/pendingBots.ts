@@ -13,7 +13,7 @@ export interface PendingBot {
     key: string;
     identity: string;
     name: string;
-    avatar?: string;
+    avatar?: string;  // version, as in RoomBot
     state: 'joining' | 'failed';
 }
 

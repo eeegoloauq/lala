@@ -7,6 +7,7 @@ import type { RoomBot } from '../../lib/types';
 import { useDismiss } from '../../hooks/useDismiss';
 import { ListensMark } from '../../ui/BotBadge';
 import { Avatar } from '../room/VideoGrid/Avatar';
+import { avatarUrl } from '../../lib/avatarUtils';
 import { CheckIcon, EarIcon, LockIcon } from '../room/icons/Icons';
 // The same themed menu as the room and participant menus; a bottom sheet on phones.
 import '../room/VideoGrid/participant-context-menu.css';
@@ -65,7 +66,7 @@ export function AddBotMenu({ roomId, locked, x, y, onClose }: AddBotMenuProps) {
             <div className="ctx-menu add-bot-menu" style={style} ref={ref} role="dialog" aria-label={t('addBot.confirmTitle', { name: confirming.name })}>
                 <div className="add-bot-confirm">
                     <div className="add-bot-confirm-who">
-                        <Avatar name={confirming.name} identity={confirming.identity} size={32} avatarUrl={confirming.avatar} />
+                        <Avatar name={confirming.name} identity={confirming.identity} size={32} avatarUrl={avatarUrl(confirming.identity, confirming.avatar)} />
                         <strong>{t('addBot.confirmTitle', { name: confirming.name })}</strong>
                     </div>
                     <p className="add-bot-warn"><EarIcon size={15} strokeWidth={2} /><span>{t('addBot.confirmListens')}</span></p>
@@ -90,7 +91,7 @@ export function AddBotMenu({ roomId, locked, x, y, onClose }: AddBotMenuProps) {
                 const disabled = locked || bot.added || !bot.online || busy;
                 return (
                     <button key={bot.key} className="ctx-menu-item add-bot-item" disabled={disabled} onClick={() => choose(bot)}>
-                        <Avatar name={bot.name} identity={bot.identity} size={24} avatarUrl={bot.avatar} />
+                        <Avatar name={bot.name} identity={bot.identity} size={24} avatarUrl={avatarUrl(bot.identity, bot.avatar)} />
                         <span className="add-bot-name">{bot.name}</span>
                         {bot.listens && <ListensMark size={12} />}
                         {bot.added

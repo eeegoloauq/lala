@@ -9,6 +9,7 @@ import { callerIdentity } from '../lib/identity';
 import { isModerator, mayAddBot } from '../lib/rights';
 import { getRoom, isBanned, type RoomState } from '../lib/rooms';
 import { broadcastSse } from '../lib/sse';
+import { botAvatarVersion } from '../lib/avatars';
 import { invalidateRoomsCache } from './rooms';
 
 type RoomRequest = Request<{ id: string }>;
@@ -98,7 +99,7 @@ export function createRoomBotsRouter(): Router {
                 key: bot.key,
                 identity: bot.identity,
                 name: bot.name,
-                avatar: bot.avatar,
+                avatar: botAvatarVersion(bot.identity),
                 listens: bot.rights.listen,
                 online: isBotOnline(bot.identity),
                 added: added.has(bot.identity),

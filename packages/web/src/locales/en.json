@@ -225,6 +225,7 @@
     "namePlaceholder": "Your name...",
     "avatar": "Avatar",
     "avatarHint": "128×128 JPEG",
+    "avatarFailed": "The picture could not be saved. Check your connection and try again.",
     "uploadPhoto": "Upload photo",
     "remove": "Remove",
     "savedPasswords": "Saved room passwords",

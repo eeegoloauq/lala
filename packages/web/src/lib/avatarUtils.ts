@@ -34,75 +34,6 @@ export function avatarColorForIdentity(identity: string): string {
 const AVATAR_SIZE = 128;
 const AVATAR_QUALITY = 0.72;
 const MY_AVATAR_KEY = 'lala_my_avatar';
-const CACHED_PREFIX = 'lala_av_';
-// Bounded: an entry for every participant ever seen would fill the localStorage quota.
-const MAX_CACHED_AVATARS = 60;
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days, same as volume cache
-
-interface CachedEntry { d: string; t: number }
-
-function isCacheKey(key: string): boolean {
-    return key.startsWith(CACHED_PREFIX);
-}
-
-/** Read a cache entry; supports the legacy raw-dataURL format (treated as stale). */
-function readEntry(key: string): CachedEntry | null {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    if (raw.startsWith('data:')) return { d: raw, t: 0 };
-    try {
-        const parsed = JSON.parse(raw) as CachedEntry;
-        return typeof parsed?.d === 'string' ? parsed : null;
-    } catch { return null; }
-}
-
-function cacheKeys(): string[] {
-    const keys: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)!;
-        if (isCacheKey(key)) keys.push(key);
-    }
-    return keys;
-}
-
-/** Drop expired entries, then oldest-first down to the cap. */
-function evictCache(): void {
-    const cutoff = Date.now() - CACHE_TTL_MS;
-    const entries = cacheKeys().map(key => ({ key, t: readEntry(key)?.t ?? 0 }));
-    const alive: typeof entries = [];
-    for (const e of entries) {
-        if (e.t <= cutoff) localStorage.removeItem(e.key);
-        else alive.push(e);
-    }
-    if (alive.length > MAX_CACHED_AVATARS) {
-        alive.sort((a, b) => a.t - b.t);
-        for (const e of alive.slice(0, alive.length - MAX_CACHED_AVATARS)) {
-            localStorage.removeItem(e.key);
-        }
-    }
-}
-
-let sweptThisSession = false;
-
-function writeEntry(key: string, dataUrl: string): void {
-    const value = JSON.stringify({ d: dataUrl, t: Date.now() });
-    try {
-        localStorage.setItem(key, value);
-    } catch {
-        // Quota exceeded — evict and retry once
-        try {
-            evictCache();
-            localStorage.setItem(key, value);
-        } catch { /* still full — skip caching */ }
-    }
-    // Full eviction parses every entry, so only run it when needed:
-    // once per session (TTL sweep) or when the key count exceeds the cap.
-    if (!sweptThisSession || cacheKeys().length > MAX_CACHED_AVATARS) {
-        sweptThisSession = true;
-        evictCache();
-    }
-}
-
 /** Compress and center-crop an image file to a 128×128 JPEG data URL. */
 export async function compressAvatar(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -138,15 +69,24 @@ export function clearMyAvatar(): void {
     localStorage.removeItem(MY_AVATAR_KEY);
 }
 
-/** Cached by identity only: a name can be anyone's. */
-export function getCachedAvatar(identity: string): string | null {
-    return readEntry(CACHED_PREFIX + identity)?.d ?? null;
+const VERSION = /^[0-9a-f]{16}$/;
+
+/**
+ * Where the server serves someone's avatar. The version is a hash of the image, so the
+ * browser keeps each URL for good and a new picture is a new URL.
+ */
+export function avatarUrl(identity: string, version: string | undefined): string | undefined {
+    return version && VERSION.test(version) ? `/api/avatars/${encodeURIComponent(identity)}?v=${version}` : undefined;
 }
 
-export function setCachedAvatar(identity: string, dataUrl: string): void {
-    writeEntry(CACHED_PREFIX + identity, dataUrl);
-}
-
-export function clearCachedAvatar(identity: string): void {
-    localStorage.removeItem(CACHED_PREFIX + identity);
+/** Avatars used to be cached here as `lala_av_<identity>`; the browser's HTTP cache does that now. */
+export function dropLegacyAvatarCache(): void {
+    try {
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key?.startsWith('lala_av_')) keys.push(key);
+        }
+        for (const key of keys) localStorage.removeItem(key);
+    } catch { /* storage unavailable: nothing to drop */ }
 }

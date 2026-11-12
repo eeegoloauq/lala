@@ -2,6 +2,7 @@
 // API and this client typecheck against the same shapes. Re-exported here so
 // existing imports keep working.
 export type {
+    AvatarResponse,
     RoomInfo,
     CreateRoomRequest,
     TokenRequest,

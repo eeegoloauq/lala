@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'path';
 import { parse } from 'yaml';
 import type { ServerTheme, ThemeColor, ThemeId, ThemeSize } from '@lala/shared';
 import { parseSecretHash, type SecretHash } from './secrets';
+import { imageType } from './images';
 
 /**
  * The optional server config (LALA_CONFIG, see config/lala.example.yaml): who is an admin
@@ -95,14 +96,6 @@ export const configRoomId = (name: string) =>
     createHash('sha256').update(`lala-config-room:${name.trim().toLowerCase()}`).digest('hex').slice(0, 16);
 
 type Raw = Record<string, unknown>;
-
-/** The image type from the file's first bytes, so a renamed file can't pass for an image. */
-function imageType(data: Buffer): string | undefined {
-    if (data.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return 'jpeg';
-    if (data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
-    if (data.subarray(0, 4).toString('latin1') === 'RIFF' && data.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp';
-    return undefined;
-}
 
 /**
  * Parses the config. `readFile` reads a file named in it (a bot avatar) from the config's

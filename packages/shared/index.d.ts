@@ -16,7 +16,7 @@ export interface RoomInfo {
     maxParticipants: number; // 0 = unlimited
     passwordSalt?: string;   // present when the room has a password; input to the client-side key derivation
     creationTime: number;    // ms since epoch
-    participants: Array<{ identity: string; name: string }>;
+    participants: Array<{ identity: string; name: string; avatar?: string }>; // avatar: version, see avatarUrl in the web client
     adminIdentity?: string;          // creator's identity, shown as crown in UI
     permanent: boolean;              // listed in the server config; exists even when empty, can't be deleted
     canModerate: boolean;            // whether the caller (X-Lala-Device) may kick, ban, mute and delete
@@ -42,7 +42,7 @@ export interface RoomBot {
     key: string;          // for POST and DELETE /api/rooms/:id/bots/:key
     identity: string;
     name: string;
-    avatar?: string;      // image data URL from the server config
+    avatar?: string;      // avatar version (GET /api/avatars/<identity>?v=<version>)
     listens: boolean;     // it would hear and see everyone in the call
     online: boolean;      // the bot is connected to the server and can be added now
     added: boolean;       // someone already added it to this room
@@ -117,7 +117,11 @@ export interface Me {
     canCreateRooms: boolean;
     serverName: string; // `name` in the server config, "Lala" without one
     theme?: ServerTheme; // the server's default theme, when the config sets one
+    avatar?: string;     // version of the caller's avatar; none stored when absent
 }
+
+/** POST /api/me/avatar: the version of the image just stored. */
+export interface AvatarResponse { avatar: string; }
 
 /** Payload for POST /api/token; the identity comes from the X-Lala-Device header. */
 export interface TokenRequest {

@@ -5,8 +5,9 @@ import { clearPendingBots } from './pendingBots';
 
 /**
  * External store for volatile, high-frequency room status: speaking, muted and deafened
- * identities, live participants and the live avatar cache. Room-lifetime hooks deep in
- * RoomShell (useRoomStatusSync, useAvatarCache) write it; ChannelSidebar rows read it.
+ * identities, live participants, and everyone's avatar URL. Room-lifetime hooks deep in
+ * RoomShell (useRoomStatusSync) write the call's slices and App the avatars (usePublishAvatars);
+ * ChannelSidebar rows, tiles and profile cards read it.
  *
  * Not React state passed down: an active-speaker change would re-render App and
  * everything under it for one avatar dot. With useSyncExternalStore and a per-identity
@@ -18,8 +19,8 @@ const speakingStore = createStore<Set<string>>(new Set());
 const mutedStore = createStore<Set<string>>(new Set());
 const deafenedStore = createStore<Set<string>>(new Set());
 const liveParticipantsStore = createStore<Map<string, string>>(new Map());
-// In memory only; useAvatarSync and useAvatarCache persist avatars to localStorage.
-const avatarCacheStore = createStore<Map<string, string>>(new Map());
+// Avatar URL by identity, for everyone in any listed room; not room-scoped.
+const avatarStore = createStore<Map<string, string>>(new Map());
 // Bots in the active room, by identity.
 const botsStore = createStore<Map<string, BotDetails>>(new Map());
 // Text a profile card asks the chat composer to take (a bot command); the composer clears it.
@@ -52,41 +53,21 @@ export function requestChatDraft(text: string | null): void {
     chatDraftStore.set(text);
 }
 
-/** Records a received/local avatar (or removes it, when `dataUrl` is null) in the
- *  in-memory cache. Does NOT touch localStorage — callers that need persistence
- *  (useAvatarSync's data-channel receive handler, useAvatarCache's own-avatar effect)
- *  keep doing that themselves, unchanged. */
-export function setAvatarCacheEntry(identity: string, dataUrl: string | null): void {
-    const current = avatarCacheStore.get();
-    if (dataUrl) {
-        if (current.get(identity) === dataUrl) return;
-        const next = new Map(current);
-        next.set(identity, dataUrl);
-        avatarCacheStore.set(next);
-    } else {
-        if (!current.has(identity)) return;
-        const next = new Map(current);
-        next.delete(identity);
-        avatarCacheStore.set(next);
-    }
-}
-
-/** Pre-seeds the in-memory cache (e.g. from localStorage) without clobbering a value
- *  already present — used once per newly-seen participant on room join. */
-export function seedAvatarCacheIfMissing(identity: string, dataUrl: string): void {
-    if (avatarCacheStore.get().has(identity)) return;
-    setAvatarCacheEntry(identity, dataUrl);
+/** Replaces the avatar map; a map with the same entries keeps the old one, so nothing re-renders. */
+export function setAvatars(next: Map<string, string>): void {
+    const current = avatarStore.get();
+    if (current.size === next.size && [...next].every(([id, url]) => current.get(id) === url)) return;
+    avatarStore.set(next);
 }
 
 /** Resets every room-scoped slice — mirrors the previous App.handleLeave resets
- *  (speakingUsers/mutedInRoom/deafenedInRoom/liveParticipants/liveAvatarCache all
+ *  (speakingUsers/mutedInRoom/deafenedInRoom/liveParticipants all
  *  cleared together when the user explicitly leaves a room). */
 export function resetRoomSession(): void {
     speakingStore.set(new Set());
     mutedStore.set(new Set());
     deafenedStore.set(new Set());
     liveParticipantsStore.set(new Map());
-    avatarCacheStore.set(new Map());
     botsStore.set(new Map());
     chatDraftStore.set(null);
     clearPendingBots();
@@ -110,12 +91,12 @@ export function useLiveParticipants(): Map<string, string> {
     return useSyncExternalStore(liveParticipantsStore.subscribe, liveParticipantsStore.get);
 }
 
-export function useAvatarCacheMap(): Map<string, string> {
-    return useSyncExternalStore(avatarCacheStore.subscribe, avatarCacheStore.get);
+export function useAvatarMap(): Map<string, string> {
+    return useSyncExternalStore(avatarStore.subscribe, avatarStore.get);
 }
 
 export function useAvatarForIdentity(identity: string): string | undefined {
-    return useSyncExternalStore(avatarCacheStore.subscribe, () => avatarCacheStore.get().get(identity));
+    return useSyncExternalStore(avatarStore.subscribe, () => avatarStore.get().get(identity));
 }
 
 export function useBotsInRoom(): Map<string, BotDetails> {

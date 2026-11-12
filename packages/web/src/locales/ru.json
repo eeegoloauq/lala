@@ -231,6 +231,7 @@
     "namePlaceholder": "Ваше имя...",
     "avatar": "Аватар",
     "avatarHint": "128×128 JPEG",
+    "avatarFailed": "Не удалось сохранить фото. Проверьте соединение и попробуйте снова.",
     "uploadPhoto": "Загрузить фото",
     "remove": "Удалить",
     "savedPasswords": "Сохранённые пароли",

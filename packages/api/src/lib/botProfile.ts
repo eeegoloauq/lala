@@ -68,7 +68,8 @@ export async function dropProfilesExcept(identities: Set<string>): Promise<void>
 /** The attributes a bot participant carries; empty values clear them. */
 export function botAttributes(bot: BotConfig, profile: BotProfile): Record<string, string> {
     return {
-        'lala.avatar': bot.avatar ?? '',
+        // Clients take avatars from the room list now; this clears what older servers set.
+        'lala.avatar': '',
         'lala.bot-status': profile.status,
         'lala.bot-commands': profile.commands.length > 0 ? JSON.stringify(profile.commands) : '',
     };

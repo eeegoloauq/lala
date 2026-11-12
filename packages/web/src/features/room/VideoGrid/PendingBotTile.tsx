@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Avatar } from './Avatar';
+import { avatarUrl } from '../../../lib/avatarUtils';
 import { BotBadge } from '../../../ui/BotBadge';
 import { dismissBot, retryBot, type PendingBot } from '../../../lib/pendingBots';
 
@@ -20,7 +21,7 @@ export function PendingBotTile({ bot }: { bot: PendingBot }) {
     return (
         <div className="p-tile p-tile-pending" aria-label={t('addBot.joining', { name: bot.name })}>
             <div className="p-tile-avatar">
-                <Avatar name={bot.name} identity={bot.identity} size="fluid" avatarUrl={bot.avatar} />
+                <Avatar name={bot.name} identity={bot.identity} size="fluid" avatarUrl={avatarUrl(bot.identity, bot.avatar)} />
             </div>
             <div className="p-tile-meta">
                 <span className="p-tile-name">

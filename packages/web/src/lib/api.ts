@@ -1,4 +1,4 @@
-import type { RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse } from './types';
+import type { AvatarResponse, RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
 import { IS_DEMO } from './env';
@@ -37,7 +37,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
         throw new ApiError(body.error ?? 'server_error', res.status);
     }
 
-    return res.json() as Promise<T>;
+    return (res.status === 204 ? undefined : res.json()) as Promise<T>;
 }
 
 const send = (method: string, body: object): RequestInit => ({
@@ -64,6 +64,20 @@ export async function createAccessInvite(): Promise<string> {
 
 export function getMe(): Promise<Me> {
     return request<Me>('/me');
+}
+
+/** Stores the caller's avatar (an image data URL) on the server; returns its version. */
+export async function uploadAvatar(dataUrl: string): Promise<string> {
+    // Decoded here: fetching a data: URL is a connection the CSP doesn't allow.
+    const [head, base64 = ''] = dataUrl.split(',', 2);
+    const type = /^data:([^;]+);base64$/.exec(head)?.[1] ?? 'image/jpeg';
+    const image = new Blob([Uint8Array.from(atob(base64), c => c.charCodeAt(0))], { type });
+    const res = await request<AvatarResponse>('/me/avatar', { method: 'POST', headers: { 'Content-Type': image.type }, body: image });
+    return res.avatar;
+}
+
+export function deleteAvatar(): Promise<void> {
+    return request<void>('/me/avatar', { method: 'DELETE' });
 }
 
 export function getToken(req: TokenRequest): Promise<TokenResponse> {

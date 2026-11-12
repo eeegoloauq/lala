@@ -8,6 +8,7 @@ import { createWebhookRouter } from './routes/webhook';
 import { createEventsRouter } from './routes/events';
 import { createAccessRouter, requireAccess } from './routes/access';
 import { createMeRouter } from './routes/me';
+import { createAvatarsRouter } from './routes/avatars';
 import { createServerAdminRouter } from './routes/server-admin';
 import { createBotRouter } from './routes/bot';
 import { createRoomBotsRouter } from './routes/roomBots';
@@ -88,7 +89,11 @@ app.use('/api/rooms',
     limiter(30, req => req.method === 'GET'),   // 120/min
     createRoomsRouter());
 app.use('/api/events', limiter(5), createEventsRouter());
+// Each change makes every client refetch the room list, so changes get a small budget.
+app.use('/api/me/avatar', limiter(5, req => req.method === 'GET'));
 app.use('/api/me', limiter(30), createMeRouter());
+// A client loads each avatar once per version; the rest comes from its cache.
+app.use('/api/avatars', limiter(150), createAvatarsRouter());
 app.use('/api/admin', limiter(20), createServerAdminRouter());
 app.use('/api/bot', limiter(20), createBotRouter());
 

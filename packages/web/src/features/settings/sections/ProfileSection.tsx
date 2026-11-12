@@ -9,13 +9,20 @@ interface ProfileSectionProps {
   displayName?: string;
   onRename?: (name: string) => void;
   myAvatar?: string | null;
-  onAvatarChange?: (dataUrl: string | null) => void;
+  onAvatarChange?: (dataUrl: string | null) => Promise<void>;
 }
 
 export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange }: ProfileSectionProps) {
   const { t } = useTranslation();
   const identity = useMeContext()?.identity;
   const [copied, showCopied] = useTimedValue<true>(1500);
+  const [avatarFailed, showAvatarFailed] = useTimedValue<true>(6000);
+  const changeAvatar = (dataUrl: string | null) => {
+    onAvatarChange?.(dataUrl).catch((err) => {
+      console.warn('[ProfileSection] Changing the avatar failed:', err);
+      showAvatarFailed(true);
+    });
+  };
 
   const copyIdentity = () => {
     if (!identity) return;
@@ -29,9 +36,10 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
     if (!file) return;
     try {
       const dataUrl = await compressAvatar(file);
-      onAvatarChange?.(dataUrl);
+      changeAvatar(dataUrl);
     } catch (err) {
       console.warn('Avatar compression failed', err);
+      showAvatarFailed(true);
     }
     e.target.value = '';
   };
@@ -60,6 +68,7 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
           <div>
             <div className="settings-row-label">{t('settings.avatar')}</div>
             <div className="settings-row-desc">{t('settings.avatarHint')}</div>
+            {avatarFailed && <div className="settings-row-desc" role="alert" style={{ color: 'var(--color-danger)' }}>{t('settings.avatarFailed')}</div>}
           </div>
           <div className="avatar-upload-controls">
             {myAvatar ? (
@@ -69,7 +78,7 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
                   alt={t('settings.avatar')}
                   style={{ width: 40, height: 40, borderRadius: 'var(--avatar-radius, 50%)', objectFit: 'cover', border: '1px solid var(--border-color)' }}
                 />
-                <button className="accent-reset-btn" onClick={() => onAvatarChange?.(null)}>
+                <button className="accent-reset-btn" onClick={() => changeAvatar(null)}>
                   {t('settings.remove')}
                 </button>
               </div>

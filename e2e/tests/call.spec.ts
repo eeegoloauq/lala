@@ -77,18 +77,40 @@ test('two people talk in a password room', async ({ browser }) => {
     expect(bob.errors).toEqual([]);
 });
 
-test('someone who joins later sees the avatar of a person already in the call', async ({ browser }) => {
-    // A 1x1 PNG: any image data URL is an avatar.
+test('avatars come from the server: in the room list before joining, then in the call', async ({ browser }) => {
+    // A 1x1 PNG: any JPEG, PNG or WebP is an avatar.
     const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    // Set before avatars were kept on the server: the app uploads it on its own.
     const alice = await enter(browser, 'Alice');
     await alice.page.evaluate(url => localStorage.setItem('lala_my_avatar', url), avatar);
     await alice.page.reload();
     await createRoom(alice.page, 'Avatar room');
+    const roomId = new URL(alice.page.url()).pathname.split('/').pop();
 
-    // Bob has never seen Alice, so nothing is cached: the avatar must come from the call.
+    // Bob has never seen Alice. Her picture is in the room list before he joins, and loads.
     const bob = await enter(browser, 'Bob');
+    const row = bob.page.locator(`.channel-user-card[data-participant-room="${roomId}"]`, { hasText: 'Alice' }).locator('img');
+    await expect(row).toHaveAttribute('src', /^\/api\/avatars\/[0-9a-f]{36}\?v=[0-9a-f]{16}$/, { timeout: 10_000 });
+    await expect.poll(() => row.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+    const src = await row.getAttribute('src');
+
+    // The URL never changes its content, so browsers keep it; it is only ever an image.
+    const headers = await bob.page.evaluate(async url => {
+        const res = await fetch(url);
+        return { type: res.headers.get('content-type'), cache: res.headers.get('cache-control'), sniff: res.headers.get('x-content-type-options') };
+    }, src!);
+    expect(headers).toEqual({ type: 'image/png', cache: 'private, max-age=31536000, immutable', sniff: 'nosniff' });
+    // Anything that isn't an image is refused.
+    const upload = await bob.page.evaluate(async () => (await fetch('/api/me/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/png', 'X-Lala-Device': localStorage.getItem('lala-device-id') ?? '' },
+        body: '<svg onload="alert(1)"/>',
+    })).status);
+    expect(upload).toBe(400);
+    expect(bob.errors.splice(0)).toEqual([expect.stringContaining('status of 400')]);
+
     await bob.page.goto(alice.page.url());
-    await expect(bob.page.locator('.p-tile', { hasText: 'Alice' }).locator(`img[src="${avatar}"]`)).toBeVisible({ timeout: 20_000 });
+    await expect(bob.page.locator('.p-tile', { hasText: 'Alice' }).locator(`img[src="${src}"]`)).toBeVisible({ timeout: 20_000 });
 
     expect(alice.errors).toEqual([]);
     expect(bob.errors).toEqual([]);

@@ -11,6 +11,7 @@ import { claimRoom, dropRoom, findRoomByName, generateRoomId, getRoom, listMuted
 import { sanitizeDisplayText } from '../lib/sanitize';
 import { isShutOut } from '../lib/bans';
 import { botOf } from '../lib/bots';
+import { avatarVersions } from '../lib/avatars';
 
 type ListedRoom = Omit<RoomInfo, 'canModerate' | 'canJoin' | 'canAddBots'> & { state: RoomState };
 
@@ -41,6 +42,7 @@ async function describe(state: RoomState): Promise<ListedRoom> {
         listMuted(state.id),
         listAddedBots(state.id),
     ]);
+    const avatars = await avatarVersions(participants.map((p) => p.identity));
     const withTrack = (source: TrackSource, muted?: boolean) => participants
         .filter((p) => p.tracks.some((t) => t.source === source && (muted === undefined || t.muted === muted)))
         .map((p) => p.identity);
@@ -52,7 +54,7 @@ async function describe(state: RoomState): Promise<ListedRoom> {
         maxParticipants: state.maxParticipants,
         passwordSalt: state.password?.salt,
         creationTime: state.createdAt,
-        participants: participants.map((p) => ({ identity: p.identity, name: p.name || p.identity })),
+        participants: participants.map((p) => ({ identity: p.identity, name: p.name || p.identity, avatar: avatars.get(p.identity) })),
         adminIdentity: state.creator,
         permanent: state.permanent !== undefined,
         screenSharingParticipants: withTrack(TrackSource.SCREEN_SHARE),

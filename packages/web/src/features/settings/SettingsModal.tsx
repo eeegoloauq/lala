@@ -28,7 +28,7 @@ interface SettingsModalProps {
   displayName?: string;
   onRename?: (name: string) => void;
   myAvatar?: string | null;
-  onAvatarChange?: (dataUrl: string | null) => void;
+  onAvatarChange?: (dataUrl: string | null) => Promise<void>;
 }
 
 

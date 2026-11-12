@@ -26,7 +26,6 @@ interface RoomViewProps {
     roomName: string;  // opaque room ID
     name: string;      // display name
     hashPassword?: string | null;  // password from URL hash fragment (#pw=...)
-    myAvatarUrl?: string | null;
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onLeave: () => void;
@@ -45,7 +44,7 @@ const ERROR_SCREENS: Record<string, { title: string; desc: string }> = {
     e2ee_failed: { title: 'room.e2eeFailed', desc: 'room.e2eeFailedDesc' },
 };
 
-export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, onUpdateSettings, onLeave, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
+export function RoomView({ roomName, name, hashPassword, settings, onUpdateSettings, onLeave, onOpenSettings, volumes, onVolumeChange }: RoomViewProps) {
     const { t } = useTranslation();
     const [connection, setConnection] = useState<{ token: string; url: string; canModerate: boolean } | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -465,7 +464,7 @@ export function RoomView({ roomName, name, hashPassword, myAvatarUrl, settings, 
                 onDisconnected={handleDisconnected}
                 style={{ height: '100%' }}
             >
-                <RoomShell canModerate={connection.canModerate} name={name} myAvatarUrl={myAvatarUrl} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
+                <RoomShell canModerate={connection.canModerate} name={name} onOpenSettings={onOpenSettings} settings={settings} onUpdateSettings={onUpdateSettings} volumes={volumes} onVolumeChange={onVolumeChange} />
             </LiveKitRoom>
         </div>
     );

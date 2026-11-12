@@ -219,6 +219,7 @@ function startActivity() {
 }
 
 type Body = Record<string, unknown>;
+let myAvatarVersion: string | undefined;
 const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const ok = () => json(200, { ok: true });
@@ -232,7 +233,16 @@ export async function handle(path: string, init: RequestInit = {}): Promise<Resp
     await new Promise(resolve => setTimeout(resolve, 120));
 
     if (path === '/access' && method === 'GET') return json(200, { required: false, granted: true } satisfies AccessStatus);
-    if (path === '/me') return json(200, { identity: ME, role: 'admin', allowed: true, canCreateRooms: true, serverName: 'Lala' } satisfies Me);
+    if (path === '/me') return json(200, { identity: ME, role: 'admin', allowed: true, canCreateRooms: true, serverName: 'Lala', avatar: myAvatarVersion } satisfies Me);
+    // The picture stays on the page (DemoCall shows the visitor's own copy); only its version is kept.
+    if (path === '/me/avatar' && method === 'POST') {
+        myAvatarVersion = Math.random().toString(16).slice(2, 10).padEnd(16, '0');
+        return json(200, { avatar: myAvatarVersion });
+    }
+    if (path === '/me/avatar' && method === 'DELETE') {
+        myAvatarVersion = undefined;
+        return new Response(null, { status: 204 });
+    }
     if (path === '/rooms' && method === 'GET') return json(200, { rooms: rooms.map(describe) });
     if (path === '/rooms' && method === 'POST') return createRoom(body);
     if (path === '/token' && method === 'POST') return token(body);

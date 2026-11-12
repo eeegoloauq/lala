@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDismiss } from '../../hooks/useDismiss';
-import { avatarColorForIdentity, getCachedAvatar } from '../../lib/avatarUtils';
+import { avatarColorForIdentity } from '../../lib/avatarUtils';
 import { isBotIdentity } from '../../lib/bots';
 import { useMeContext } from '../../lib/meContext';
 import { openProfile, useOpenProfile } from '../../lib/profileCard';
@@ -92,7 +92,7 @@ function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps
             <div className="profile-cover" style={{ '--profile-color': color } as React.CSSProperties} />
             <div className="profile-body">
                 <div className="profile-avatar">
-                    <Avatar name={name} identity={identity} size={64} avatarUrl={liveAvatar ?? getCachedAvatar(identity) ?? undefined} />
+                    <Avatar name={name} identity={identity} size={64} avatarUrl={liveAvatar} />
                 </div>
                 <div>
                     <h3 className="profile-name">
