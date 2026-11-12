@@ -51,27 +51,29 @@ export function useAvatarSync({ room, myAvatarUrl, onAvatarReceived }: UseAvatar
             applyAvatar(participant.identity, parseAvatar(changed[AVATAR_ATTR_KEY]));
         };
 
-        room.on(RoomEvent.ParticipantAttributesChanged, onAttrsChanged);
-
-        // Catch peers who already set their avatar attribute before we joined —
-        // the server delivers current attributes on join, so this is a plain read.
-        for (const p of room.remoteParticipants.values()) {
-            const avatar = parseAvatar(p.attributes[AVATAR_ATTR_KEY]);
-            if (avatar) applyAvatar(p.identity, avatar);
-        }
-
-        // Publish our own avatar once the signaling connection is up. No
-        // resend-on-join dance needed anymore — the server delivers our
-        // attributes to late joiners automatically.
-        if (room.state === ConnectionState.Connected) {
+        // A participant arrives with its attributes already set, and livekit-client emits no
+        // ParticipantAttributesChanged for those, so they are read here: for the people already
+        // in the room once we are connected (this hook mounts before the connection is up,
+        // when the list is still empty), and for each later arrival.
+        const readAvatar = (participant: Participant) => {
+            const avatar = parseAvatar(participant.attributes[AVATAR_ATTR_KEY]);
+            if (avatar) applyAvatar(participant.identity, avatar);
+        };
+        const onConnected = () => {
+            for (const p of room.remoteParticipants.values()) readAvatar(p);
+            // The server hands our attributes to everyone who joins later.
             sendAvatar();
-        } else {
-            room.once(RoomEvent.Connected, sendAvatar);
-        }
+        };
+
+        room.on(RoomEvent.ParticipantAttributesChanged, onAttrsChanged);
+        room.on(RoomEvent.ParticipantConnected, readAvatar);
+        room.on(RoomEvent.Connected, onConnected);
+        if (room.state === ConnectionState.Connected) onConnected();
 
         return () => {
             room.off(RoomEvent.ParticipantAttributesChanged, onAttrsChanged);
-            room.off(RoomEvent.Connected, sendAvatar);
+            room.off(RoomEvent.ParticipantConnected, readAvatar);
+            room.off(RoomEvent.Connected, onConnected);
         };
     }, [room, sendAvatar, onAvatarReceived]);
 

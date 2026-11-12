@@ -72,6 +72,23 @@ test('two people talk in a password room', async ({ browser }) => {
     expect(bob.errors).toEqual([]);
 });
 
+test('someone who joins later sees the avatar of a person already in the call', async ({ browser }) => {
+    // A 1x1 PNG: any image data URL is an avatar.
+    const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const alice = await enter(browser, 'Alice');
+    await alice.page.evaluate(url => localStorage.setItem('lala_my_avatar', url), avatar);
+    await alice.page.reload();
+    await createRoom(alice.page, 'Avatar room');
+
+    // Bob has never seen Alice, so nothing is cached: the avatar must come from the call.
+    const bob = await enter(browser, 'Bob');
+    await bob.page.goto(alice.page.url());
+    await expect(bob.page.locator('.p-tile', { hasText: 'Alice' }).locator(`img[src="${avatar}"]`)).toBeVisible({ timeout: 20_000 });
+
+    expect(alice.errors).toEqual([]);
+    expect(bob.errors).toEqual([]);
+});
+
 test('on a phone, a tap beside the open sidebar closes it', async ({ browser }) => {
     const alice = await enter(browser, 'Alice');
     await alice.page.setViewportSize({ width: 390, height: 844 });

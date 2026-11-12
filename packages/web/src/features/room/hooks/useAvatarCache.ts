@@ -16,9 +16,8 @@ export interface UseAvatarCacheOptions {
  * Feeds the identity -> avatar cache in the room-status store (lib/roomStatusStore.ts),
  * which tiles and ChannelSidebar both read. Three sources:
  *  1. Pre-population from localStorage for participants already in the room on mount
-
- *  2. `useAvatarSync`, which broadcasts our own avatar and receives others' over the
- *     data channel.
+ *  2. `useAvatarSync`, which publishes our own avatar and receives others' as
+ *     participant attributes.
  *  3. The local participant's own avatar (from `myAvatarUrl`), persisted to
  *     localStorage so ChannelSidebar can find it by identity too.
  */
