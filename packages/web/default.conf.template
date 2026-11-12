@@ -83,8 +83,8 @@ server {
         proxy_hide_header  X-Powered-By;
     }
 
-    # Chat file uploads: the API enforces the size from the server config (chatFiles.maxFile)
-    # and reads the body as it arrives, so nginx neither limits nor buffers it.
+    # Chat file uploads: the API refuses one over the server's limit (chatFiles.space or
+    # chatFiles.maxFile) and reads the body as it arrives, so nginx neither limits nor buffers it.
     location ~ ^/api/chats/[^/]+/files$ {
         limit_req               zone=api burst=20 nodelay;
         client_max_body_size    0;

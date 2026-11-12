@@ -615,6 +615,7 @@
   "rules": {
     "title": "Rules",
     "agree": "I agree",
+    "agreed": "Agreed",
     "failed": "That didn't go through, try again",
     "roomsLocked": "Rooms and chats open once you agree to the rules."
   }

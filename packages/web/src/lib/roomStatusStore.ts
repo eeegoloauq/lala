@@ -4,6 +4,8 @@ import { createStore } from './store';
 import { clearPendingBots } from './pendingBots';
 import { floorAction } from './floor';
 import type { RoomInfo } from './types';
+import { IS_DEMO } from './env';
+import { avatarUrl } from './avatarUtils';
 
 /**
  * External store for volatile, high-frequency room status: speaking, muted and deafened
@@ -131,8 +133,13 @@ export function useAvatarMap(): Map<string, string> {
     return useSyncExternalStore(avatarStore.subscribe, avatarStore.get);
 }
 
+/**
+ * Someone's avatar URL. The lists fill the store; in the demo, someone no list names (Lala,
+ * who posts in #announcements) still gets the picture the demo has for them.
+ */
 export function useAvatarForIdentity(identity: string): string | undefined {
-    return useSyncExternalStore(avatarStore.subscribe, () => avatarStore.get().get(identity));
+    const listed = useSyncExternalStore(avatarStore.subscribe, () => avatarStore.get().get(identity));
+    return listed ?? (IS_DEMO ? avatarUrl(identity, undefined) : undefined);
 }
 
 export function useBotsInRoom(): Map<string, BotDetails> {

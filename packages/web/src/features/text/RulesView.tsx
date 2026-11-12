@@ -44,7 +44,10 @@ export function RulesView({ onAgreed, compact = false }: { onAgreed?: () => void
             <div className="tc-list tc-rules-list">
                 <div className="tc-msg">
                     <div className="tc-msg-gutter">
-                        <span className="tc-avatar tc-avatar-server" aria-hidden>{server[0]?.toUpperCase()}</span>
+                        {/* Lala's own icon: the server has no picture of its own. */}
+                        <span className="tc-avatar tc-avatar-server" aria-hidden>
+                            <img src={`${import.meta.env.BASE_URL}icons/icon-maskable.svg`} alt="" />
+                        </span>
                     </div>
                     <div className="tc-msg-body">
                         <div className="tc-msg-head">
@@ -55,9 +58,12 @@ export function RulesView({ onAgreed, compact = false }: { onAgreed?: () => void
                             </time>
                         </div>
                         <div className="tc-msg-text"><ChatText text={rules.text} /></div>
-                        {pending && (
+                        {/* After agreeing, the same button stays, marked as done. */}
+                        {rules.required && (
                             <div className="tc-rules-agree">
-                                <button type="button" className="btn btn-primary" onClick={agree} disabled={busy}>{t('rules.agree')}</button>
+                                <button type="button" className="btn btn-primary" onClick={agree} disabled={busy || !pending}>
+                                    {t(pending ? 'rules.agree' : 'rules.agreed')}
+                                </button>
                                 {failed && <span className="tc-rules-error" role="alert">{t('rules.failed')}</span>}
                             </div>
                         )}

@@ -46,6 +46,8 @@ const BOTS: Record<string, { bg: string; head: string; extra: string }> = {
 const cache = new Map<string, string>();
 
 export function demoAvatar(identity: string): string | undefined {
+    // Lala posts the release notes in #announcements, under the app's own icon.
+    if (identity === 'bot-lala') return `${import.meta.env.BASE_URL}icons/icon-maskable.svg`;
     const bot = BOTS[identity];
     if (!bot) return undefined;
     let url = cache.get(identity);

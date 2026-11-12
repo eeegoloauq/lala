@@ -69,14 +69,15 @@ chats:
 #     1. Be kind.
 #     2. No spam or ads.
 
-# How long chat history is kept; pinned messages stay. Defaults below.
+# How much chat history is kept; pinned messages stay. By default the newest 10,000
+# messages per chat, however old. Redis keeps history in memory: 0 keeps every message.
 # chatHistory:
-#   days: 30
-#   messages: 10000       # per chat
+#   messages: 10000       # per chat; 0 for no limit
+#   days: 365             # optional: also remove messages older than this
 # Files sent in chats, kept in the chat_files volume. When space runs out the oldest go first.
 # chatFiles:
-#   space: 1GB
-#   maxFile: 100MB        # one file; also raise your reverse proxy's upload limit to this
+#   space: 1GB            # also raise your reverse proxy's upload limit to this
+#   maxFile: 25MB         # optional: the most one file may be; without it, the space
 
 # Programs that join calls (see docs/api.md). Make a credential with
 # `docker compose exec api node dist/bot-secret.js <key>`: the bot gets the credential, this

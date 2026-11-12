@@ -118,7 +118,7 @@ test('text chat files: the server names the type, and only pictures and media sh
     expect(served.headers['content-disposition']).toMatch(/^attachment; filename="pic\.svg"/);
     expect(served.headers['content-security-policy']).toContain("default-src 'none'");
 
-    // Over the server's limit for one file (2MB in lala-e2e.yaml).
+    // Bigger than all the server's file space (2MB in lala-e2e.yaml).
     const big = await alice.page.evaluate(async (deviceId) => {
         const res = await fetch('/api/chats/general/files', {
             method: 'POST',

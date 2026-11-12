@@ -53,8 +53,7 @@ rules:
     # House rules
     Be kind.
 chatFiles:
-  space: 10MB
-  maxFile: 2MB
+  space: 2MB
 
 # The default theme for anyone who hasn't picked one (tests/appearance.spec.ts).
 theme:

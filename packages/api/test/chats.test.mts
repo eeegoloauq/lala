@@ -151,7 +151,7 @@ describe('chats in the config', () => {
             chats: [{ name: 'General Chat', topic: ' Anything ' }, { id: 'news', name: 'Announcements', post: 'admins' }],
             rules: { text: '# Rules\nBe kind.', required: true },
             chatHistory: { days: 7 },
-            chatFiles: { space: '2GB', maxFile: '5GB' },
+            chatFiles: { space: '2GB' },
         });
         assert.deepEqual(config.chats, [
             { id: 'general-chat', name: 'General Chat', topic: 'Anything', post: 'everyone' },
@@ -159,20 +159,22 @@ describe('chats in the config', () => {
         ]);
         assert.deepEqual(config.rules, { text: '# Rules\nBe kind.', version: rulesVersion('# Rules\nBe kind.'), required: true });
         assert.deepEqual(config.chatHistory, { days: 7, messages: 10_000 });
-        // One file can't be bigger than all of them together.
-        assert.deepEqual(config.chatFiles, { space: 2 * 1024 ** 3, maxFile: 2 * 1024 ** 3 });
+        // Nothing ever deleted: no age limit and no count limit.
+        assert.deepEqual(parseConfig({ chatHistory: { messages: 0 } }).chatHistory, { days: undefined, messages: 0 });
+        assert.deepEqual(config.chatFiles, { space: 2 * 1024 ** 3, maxFile: undefined });
+        assert.equal(parseConfig({ chatFiles: { maxFile: '25MB' } }).chatFiles.maxFile, 25 * 1024 ** 2);
     });
 
     test('an edit to the rules makes a new version', () => {
         assert.notEqual(rulesVersion('Be kind.'), rulesVersion('Be kind!'));
     });
 
-    test('defaults: no chats, no rules, 30 days, 1 GB', () => {
+    test('defaults: no chats, no rules, 10,000 messages a chat with no age limit, 1 GB', () => {
         const config = parseConfig({});
         assert.deepEqual(config.chats, []);
         assert.equal(config.rules, undefined);
-        assert.deepEqual(config.chatHistory, { days: 30, messages: 10_000 });
-        assert.equal(config.chatFiles.space, 1024 ** 3);
+        assert.deepEqual(config.chatHistory, { days: undefined, messages: 10_000 });
+        assert.deepEqual(config.chatFiles, { space: 1024 ** 3, maxFile: undefined });
     });
 
     test('mistakes stop the server with the line they are on', () => {
@@ -185,6 +187,7 @@ describe('chats in the config', () => {
         assert.throws(() => parseConfig({ rules: { text: 'x', required: 'yes' } }), /rules\.required/);
         assert.throws(() => parseConfig({ chatFiles: { space: '1000' } }), /chatFiles\.space/);
         assert.throws(() => parseConfig({ chatFiles: { space: '100KB' } }), /at least 1MB/);
+        assert.throws(() => parseConfig({ chatFiles: { maxFile: 'big' } }), /chatFiles\.maxFile/);
         assert.throws(() => parseConfig({ chatHistory: { days: 0 } }), /chatHistory\.days/);
     });
 });

@@ -166,9 +166,11 @@ export function drainRequest(req: Request, limit = 64 * 1024 * 1024): Promise<vo
 
 /** Stores the request body as a file waiting for a message. */
 export async function storeUpload(req: Request, channel: string, uploader: string, name: string): Promise<UploadResult> {
-    const { maxFile } = config().chatFiles;
+    // Without a limit per file, one may take all the space and push every older one out.
+    const { space, maxFile } = config().chatFiles;
+    const limit = Math.min(space, maxFile ?? space);
     const declared = Number(req.header('content-length'));
-    if (Number.isFinite(declared) && declared > maxFile) {
+    if (Number.isFinite(declared) && declared > limit) {
         await drainRequest(req);
         return { error: 'payload_too_large' };
     }
@@ -180,8 +182,8 @@ export async function storeUpload(req: Request, channel: string, uploader: strin
     const counter = new Transform({
         transform(chunk: Buffer, _encoding, done) {
             size += chunk.length;
-            if (size <= maxFile) done(null, chunk);
-            else if (size > maxFile + 64 * 1024 * 1024) done(new Error('too large'));
+            if (size <= limit) done(null, chunk);
+            else if (size > limit + 64 * 1024 * 1024) done(new Error('too large'));
             else done();
         },
     });
@@ -189,11 +191,11 @@ export async function storeUpload(req: Request, channel: string, uploader: strin
         await pipeline(req, counter, createWriteStream(temp, { flags: 'wx' }));
     } catch {
         await unlink(temp).catch(() => undefined);
-        return { error: size > maxFile ? 'payload_too_large' : 'invalid_input' };
+        return { error: size > limit ? 'payload_too_large' : 'invalid_input' };
     }
-    if (size === 0 || size > maxFile) {
+    if (size === 0 || size > limit) {
         await unlink(temp).catch(() => undefined);
-        return { error: size > maxFile ? 'payload_too_large' : 'invalid_input' };
+        return { error: size > limit ? 'payload_too_large' : 'invalid_input' };
     }
 
     try {

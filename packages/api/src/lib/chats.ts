@@ -124,11 +124,15 @@ export async function lastMessageIds(chats: string[]): Promise<Map<string, strin
 /** Stores a message; returns its ID. Mentions go into each mentioned person's list. */
 export async function addMessage(chat: string, message: StoredMessage): Promise<string> {
     const { messages } = config().chatHistory;
-    const id = await redis().xadd(streamKey(chat), 'MAXLEN', messages, '*', 'm', JSON.stringify(message));
+    const body = JSON.stringify(message);
+    const id = messages > 0
+        ? await redis().xadd(streamKey(chat), 'MAXLEN', messages, '*', 'm', body)
+        : await redis().xadd(streamKey(chat), '*', 'm', body);
     if (!id) throw new Error('XADD returned no ID');
     const mentioned = mentionedIn(message.text).filter((identity) => identity !== message.identity);
     if (mentioned.length) {
-        const ttl = config().chatHistory.days * 24 * 60 * 60;
+        // A mention outlives its message's age limit only a little; without one, 90 days.
+        const ttl = (config().chatHistory.days ?? 90) * 24 * 60 * 60;
         const tx = redis().multi();
         for (const identity of mentioned) {
             tx.rpush(mentionsKey(identity), `${chat} ${id}`).ltrim(mentionsKey(identity), -MAX_MENTIONS, -1).expire(mentionsKey(identity), ttl);
@@ -221,13 +225,14 @@ export async function unpin(chat: string, id: string): Promise<boolean> {
 }
 
 /**
- * Trims each chat to its age limit and drops reactions of messages gone with the trimming.
- * A chat taken out of the config ages out the same way, so putting it back within that
- * time brings its history back; once its stream is empty its pins go too.
+ * Trims each chat to its age limit, when the config sets one, and drops reactions of
+ * messages gone with the trimming (by count too). A chat taken out of the config keeps its
+ * history the same way, so putting it back brings it back; once its stream is empty its
+ * pins go too.
  */
 export async function sweepChats(): Promise<void> {
     const { days } = config().chatHistory;
-    const oldest = Date.now() - days * 24 * 60 * 60 * 1000;
+    const oldest = days === undefined ? undefined : Date.now() - days * 24 * 60 * 60 * 1000;
     const chats = new Set(config().chats.map((c) => c.id));
     for await (const keys of redis().scanStream({ match: 'lala:chat:*', count: 100 }) as AsyncIterable<string[]>) {
         for (const key of keys) {
@@ -236,7 +241,7 @@ export async function sweepChats(): Promise<void> {
         }
     }
     for (const chat of chats) {
-        await redis().xtrim(streamKey(chat), 'MINID', oldest);
+        if (oldest !== undefined) await redis().xtrim(streamKey(chat), 'MINID', oldest);
         const [first] = await redis().xrange(streamKey(chat), '-', '+', 'COUNT', 1) as Entry[];
         if (!first && !config().chats.some((c) => c.id === chat)) {
             await redis().del(streamKey(chat), reactionsKey(chat), pinsKey(chat));

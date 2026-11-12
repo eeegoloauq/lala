@@ -84,9 +84,9 @@ export interface Config {
     chats: ConfigChat[];
     rules?: ConfigRules;
     /** How long and how much text chat history Redis keeps; pinned messages stay. */
-    chatHistory: { days: number; messages: number };
-    /** Bytes: all chat files together (the oldest go first) and one file. */
-    chatFiles: { space: number; maxFile: number };
+    chatHistory: { days?: number; messages: number };
+    /** Bytes: all chat files together (the oldest go first), and one file when the config sets it. */
+    chatFiles: { space: number; maxFile?: number };
 }
 
 const RIGHTS: Right[] = ['join', 'speak', 'video', 'screen', 'chat'];
@@ -118,8 +118,8 @@ const OPEN: Config = {
     rooms: [],
     bots: new Map(),
     chats: [],
-    chatHistory: { days: 30, messages: 10_000 },
-    chatFiles: { space: 1024 ** 3, maxFile: 100 * 1024 ** 2 },
+    chatHistory: { messages: 10_000 },
+    chatFiles: { space: 1024 ** 3 },
 };
 
 /** A chat's ID when the config gives none: its name in lowercase, other characters as dashes. */
@@ -311,13 +311,12 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
 
     const historyRaw = object(top.chatHistory ?? {}, 'chatHistory');
     known(historyRaw, 'chatHistory', ['days', 'messages']);
-    const whole = (value: unknown, path: string, fallback: number, max: number): number => {
-        if (value === undefined) return fallback;
-        return Number.isInteger(value) && (value as number) >= 1 && (value as number) <= max ? value as number : fail(path, `expected a whole number from 1 to ${max}`);
-    };
+    const whole = (value: unknown, path: string, min: number, max: number): number =>
+        Number.isInteger(value) && (value as number) >= min && (value as number) <= max ? value as number : fail(path, `expected a whole number from ${min} to ${max}`);
+    // Without days nothing ages out; messages: 0 is no limit on the count either.
     const chatHistory = {
-        days: whole(historyRaw.days, 'chatHistory.days', OPEN.chatHistory.days, 3650),
-        messages: whole(historyRaw.messages, 'chatHistory.messages', OPEN.chatHistory.messages, 1_000_000),
+        days: historyRaw.days === undefined ? undefined : whole(historyRaw.days, 'chatHistory.days', 1, 36500),
+        messages: historyRaw.messages === undefined ? OPEN.chatHistory.messages : whole(historyRaw.messages, 'chatHistory.messages', 0, 10_000_000),
     };
 
     const filesRaw = object(top.chatFiles ?? {}, 'chatFiles');
@@ -329,7 +328,7 @@ export function parseConfig(raw: unknown, readFile: (name: string) => Buffer = (
         return result >= 1024 * 1024 ? result : fail(path, 'expected a size such as 500MB or 2GB, at least 1MB');
     };
     const space = bytes(filesRaw.space, 'chatFiles.space', OPEN.chatFiles.space);
-    const maxFile = Math.min(bytes(filesRaw.maxFile, 'chatFiles.maxFile', OPEN.chatFiles.maxFile), space);
+    const maxFile = filesRaw.maxFile === undefined ? undefined : bytes(filesRaw.maxFile, 'chatFiles.maxFile', space);
 
     return {
         name: serverName, theme, users, guests: (top.guests as boolean | undefined) ?? true, createRooms, defaults, rooms, bots,
