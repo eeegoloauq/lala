@@ -72,7 +72,6 @@ export function AppearanceSection({ headerRef, settings, onUpdate }: AppearanceS
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.accentColor')}</div>
-            <div className="settings-row-desc">{t('settings.accentColorHint')}</div>
           </div>
           <div className="accent-picker-row">
             <label className="accent-swatch-label">

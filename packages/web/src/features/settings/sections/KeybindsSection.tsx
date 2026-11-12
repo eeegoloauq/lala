@@ -18,7 +18,6 @@ export function KeybindsSection({ headerRef, settings, onUpdate }: KeybindsSecti
         <div className="settings-row" style={{ marginBottom: 8 }}>
           <div>
             <div className="settings-row-label">{t('settings.enableShortcuts')}</div>
-            <div className="settings-row-desc">{t('settings.shortcutsHint')}</div>
           </div>
           <label className="toggle">
             <input type="checkbox" className="toggle-input"

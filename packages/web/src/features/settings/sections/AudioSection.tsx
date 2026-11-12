@@ -37,7 +37,6 @@ export function AudioSection({ headerRef, settings, onUpdate }: AudioSectionProp
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.micPreset')}</div>
-            <div className="settings-row-desc">{t('settings.micPresetHint')}</div>
           </div>
           <Select label={t('settings.micPreset')} value={settings.audioQuality} onChange={(v) => onUpdate({ audioQuality: v as AudioQualityPreset })} options={QUALITY_OPTIONS} className="lala-select-wide" />
         </div>
@@ -48,7 +47,6 @@ export function AudioSection({ headerRef, settings, onUpdate }: AudioSectionProp
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.agc')}</div>
-            <div className="settings-row-desc">{t('settings.agcHint')}</div>
           </div>
           <label className="toggle">
             <input type="checkbox" className="toggle-input" checked={settings.autoGainControl} onChange={(e) => onUpdate({ autoGainControl: e.target.checked })} />
@@ -58,7 +56,6 @@ export function AudioSection({ headerRef, settings, onUpdate }: AudioSectionProp
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.noiseSuppression')}</div>
-            <div className="settings-row-desc">{t('settings.noiseSuppressionHint')}</div>
           </div>
           <Select
             label={t('settings.noiseSuppression')}
@@ -85,7 +82,6 @@ export function AudioSection({ headerRef, settings, onUpdate }: AudioSectionProp
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.enablePTT')}</div>
-            <div className="settings-row-desc">{t('settings.pttHint')}</div>
           </div>
           <label className="toggle">
             <input type="checkbox" className="toggle-input" checked={settings.pushToTalk} onChange={(e) => onUpdate({ pushToTalk: e.target.checked })} />

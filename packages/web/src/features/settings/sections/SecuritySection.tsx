@@ -24,7 +24,6 @@ export function SecuritySection({ headerRef }: SecuritySectionProps) {
       <h2 className="settings-header" ref={headerRef}>{t('settings.security')}</h2>
       <div className="settings-section">
         <div className="settings-section-title">{t('settings.savedPasswords')}</div>
-        <p className="settings-row-desc" style={{ marginBottom: '16px' }}>{t('settings.savedPasswordsHint')}</p>
         {savedPasswords.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{t('settings.noPasswords')}</p>
         ) : (<>

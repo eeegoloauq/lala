@@ -50,9 +50,7 @@ export function VideoSection({ headerRef, settings, onUpdate }: VideoSectionProp
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.cameraEffect')}</div>
-            <div className="settings-row-desc">
-              {cameraEffectSupported ? t('settings.cameraEffectHint') : t('settings.cameraEffectUnsupported')}
-            </div>
+            {!cameraEffectSupported && <div className="settings-row-desc">{t('settings.cameraEffectUnsupported')}</div>}
           </div>
           <Select
             label={t('settings.cameraEffect')}

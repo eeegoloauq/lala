@@ -35,7 +35,6 @@ export function ChatSection({ headerRef, settings, onUpdate }: ChatSectionProps)
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.ttsRead')}</div>
-            <div className="settings-row-desc">{t('settings.ttsReadHint')}</div>
           </div>
           <label className="toggle">
             <input type="checkbox" className="toggle-input" checked={settings.chatTTS} onChange={(e) => onUpdate({ chatTTS: e.target.checked })} />
@@ -47,7 +46,6 @@ export function ChatSection({ headerRef, settings, onUpdate }: ChatSectionProps)
           <div className="settings-row">
             <div>
               <div className="settings-row-label">{t('settings.ttsReadOwn')}</div>
-              <div className="settings-row-desc">{t('settings.ttsReadOwnHint')}</div>
             </div>
             <label className="toggle">
               <input type="checkbox" className="toggle-input" checked={settings.ttsReadOwn} onChange={(e) => onUpdate({ ttsReadOwn: e.target.checked })} />

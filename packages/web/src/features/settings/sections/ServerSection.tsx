@@ -35,7 +35,6 @@ export function ServerSection({ headerRef }: ServerSectionProps) {
       <h2 className="settings-header" ref={headerRef}>{t('settings.server')}</h2>
       <div className="settings-section">
         <div className="settings-section-title">{t('settings.serverBans')}</div>
-        <p className="settings-row-desc" style={{ marginBottom: '16px' }}>{t('settings.serverBansHint')}</p>
         {error && <p className="settings-row-desc" style={{ color: 'var(--color-danger)' }}>{error}</p>}
         {bans?.length === 0 && <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{t('roomAdmin.noBans')}</p>}
         {bans?.map(ban => (

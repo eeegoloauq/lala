@@ -33,7 +33,6 @@ export function DesktopSection({ headerRef, settings, onUpdate }: DesktopSection
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t('settings.autoJoinLastRoom')}</div>
-            <div className="settings-row-desc">{t('settings.autoJoinLastRoomHint')}</div>
           </div>
           <label className="toggle">
             <input
@@ -66,7 +65,6 @@ function AutoLaunchToggle() {
     <div className="settings-row">
       <div>
         <div className="settings-row-label">{t('settings.launchOnStartup')}</div>
-        <div className="settings-row-desc">{t('settings.launchOnStartupHint')}</div>
       </div>
       <label className="toggle">
         <input
@@ -123,10 +121,7 @@ function UpdateSection() {
       <div className="settings-row">
         <div>
           <div className="settings-row-label">{t('settings.checkUpdates')}</div>
-          <div className="settings-row-desc">
-            {appVersion && t('settings.currentVersion', { version: appVersion })}
-            {!appVersion && t('settings.checkUpdatesHint')}
-          </div>
+          {appVersion && <div className="settings-row-desc">{t('settings.currentVersion', { version: appVersion })}</div>}
         </div>
         <button
           className="btn"
