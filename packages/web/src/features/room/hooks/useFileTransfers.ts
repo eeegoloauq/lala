@@ -5,6 +5,7 @@ import {
     MAX_FILE_SIZE,
     STALL_TIMEOUT_MS,
     sanitizeFileName,
+    receivedFileType,
     type FileTransferItem,
 } from '../../../lib/fileTransfer';
 
@@ -70,8 +71,7 @@ export function useFileTransfers(room: Room, localParticipant: LocalParticipant)
             const id = `${participantInfo.identity}:${info.id}`;
             const sender = room.getParticipantByIdentity(participantInfo.identity);
             const displayName = sender?.name || participantInfo.identity;
-            const mimeType = info.mimeType || 'application/octet-stream';
-            const isImage = mimeType.startsWith('image/');
+            const { mimeType, isImage } = receivedFileType(info.mimeType);
             const fileName = sanitizeFileName(info.name || 'file');
             const timestamp = info.timestamp || Date.now();
             const base = { id, direction: 'in' as const, identity: participantInfo.identity, displayName, fileName, size: info.size, mimeType, timestamp, isImage };

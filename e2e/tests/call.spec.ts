@@ -555,8 +555,16 @@ test('a file sent in the chat arrives whole', async ({ browser }) => {
     await bob.page.getByRole('button', { name: 'Chat' }).click();
     const download = bob.page.getByTitle('Download');
     await expect(download).toBeVisible({ timeout: 20_000 });
-    const [file] = await Promise.all([bob.page.waitForEvent('download'), download.click()]);
+    const [file] = await Promise.all([bob.page.waitForEvent('download'), download.first().click()]);
     expect(readFileSync(await file.path(), 'utf8')).toBe(content);
+
+    // The sender names the type: an SVG (which can carry script) arrives as a download, not a picture.
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
+    await alice.page.locator('input[type="file"]').setInputFiles({ name: 'pic.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) });
+    await expect(download).toHaveCount(2, { timeout: 20_000 });
+    await expect(bob.page.locator('.cp-file-thumb')).toHaveCount(0);
+    const [svgFile] = await Promise.all([bob.page.waitForEvent('download'), download.nth(1).click()]);
+    expect(readFileSync(await svgFile.path(), 'utf8')).toBe(svg);
     expect(alice.errors).toEqual([]);
     expect(bob.errors).toEqual([]);
 });

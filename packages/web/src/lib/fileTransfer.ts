@@ -24,6 +24,21 @@ export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 export type FileTransferStatus = 'queued' | 'active' | 'done' | 'error' | 'canceled';
 export type FileTransferErrorReason = 'tooLarge' | 'other';
 
+/**
+ * Raster formats a received file may be shown as. The type is the sender's claim; SVG can
+ * carry script and anything else could render as a page, so every other file becomes an
+ * opaque download (`application/octet-stream`) no matter what the sender declared.
+ */
+const INLINE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif']);
+
+/** The type a received file's blob gets, and whether it shows inline as an image. */
+export function receivedFileType(declared: string | undefined): { mimeType: string; isImage: boolean } {
+    const type = (declared ?? '').toLowerCase().split(';')[0].trim();
+    return INLINE_IMAGE_TYPES.has(type)
+        ? { mimeType: type, isImage: true }
+        : { mimeType: 'application/octet-stream', isImage: false };
+}
+
 /** No incoming-transfer progress for this long -> treat the stream as stalled and fail it. */
 export const STALL_TIMEOUT_MS = 30_000;
 
