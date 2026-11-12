@@ -69,10 +69,11 @@ The app's text is in `packages/web/src/locales/`, one JSON file per language. To
 2. Plurals follow the language's own forms: English has `_one` and `_other`, Russian adds
    `_few` and `_many` (see `ru.json`). [i18next](https://www.i18next.com/translation-function/plurals)
    lists the forms per language.
-3. Run `npm run lint` in `packages/web`. It reports missing or unknown keys and placeholders
-   that differ from English.
-4. Add a block for the language to `packages/desktop/strings.js` for the desktop app's own
-   text: the connection page, tray and edit menu.
+3. Run `npm run lint` in `packages/web` (and `node scripts/check-locales.mjs ../desktop/locales`
+   for the desktop files). It reports missing or unknown keys and placeholders that differ
+   from English.
+4. Do the same in `packages/desktop/locales/` for the desktop app's own text: the connection
+   page, tray and edit menu.
 
 The language appears in Settings → Appearance under its own name, with no code change.
 A key missing from a file shows in English. Right-to-left languages switch the page direction.
