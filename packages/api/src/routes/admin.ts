@@ -5,6 +5,7 @@ import { callerIdentity } from '../lib/identity';
 import { attributesFor, isModerator, permissionFor } from '../lib/rights';
 import { addBan, flagsOf, getRoom, listBans, removeBan, setMuted, setVoice, type RoomState } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
+import { broadcastSse } from '../lib/sse';
 import { isBotIdentity } from '../lib/bots';
 import { removeBot } from '../lib/botInvites';
 
@@ -108,7 +109,10 @@ export function createAdminRouter(): Router {
         // Stored first: the token for a reconnect is built from it.
         await setMuted(ctx.room.id, ctx.target, muted);
         await applyFlags(ctx);
+        // The room list carries server mutes, and nothing else tells clients it changed:
+        // LiveKit sends no webhook for a permission change.
         invalidateRoomsCache();
+        broadcastSse('rooms_updated', { trigger: 'mute' });
         await announce(ctx, muted ? 'muted' : 'unmuted', await nameOf(ctx.room.id, ctx.target));
         res.json({ ok: true });
     });
