@@ -8,7 +8,7 @@ services:
     command:
       - |
         # These values are spliced into the config with sed; |, & and \ would corrupt it.
-        for v in "$$LIVEKIT_API_KEY" "$$LIVEKIT_API_SECRET" "$$REDIS_PASSWORD" "$$NODE_IP" "$$LIVEKIT_DOMAIN"; do
+        for v in "$$LIVEKIT_API_KEY" "$$LIVEKIT_API_SECRET" "$$NODE_IP" "$$LIVEKIT_DOMAIN"; do
           case "$$v" in *[\|\&\\]*) echo "LiveKit settings in .env must not contain |, & or \\" >&2; exit 1 ;; esac
         done
         # Media goes to the container address on the network that holds the default route:
@@ -22,7 +22,6 @@ services:
           -e 's|$${LIVEKIT_DOMAIN}|'"$$LIVEKIT_DOMAIN"'|g' \
           -e 's|$${LIVEKIT_API_KEY}|'"$$LIVEKIT_API_KEY"'|g' \
           -e 's|$${LIVEKIT_API_SECRET}|'"$$LIVEKIT_API_SECRET"'|g' \
-          -e 's|$${REDIS_PASSWORD}|'"$$REDIS_PASSWORD"'|g' \
           /etc/livekit-template.yaml > /etc/livekit.yaml \
         && /livekit-server --config /etc/livekit.yaml --node-ip $$NODE_IP
     environment:
@@ -30,7 +29,6 @@ services:
       - LIVEKIT_DOMAIN=${LIVEKIT_DOMAIN}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY in .env}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET in .env}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
     mem_limit: 2g
     security_opt:
       - no-new-privileges:true
@@ -49,11 +47,8 @@ services:
       - edge
     volumes:
       - ./livekit.yaml.example:/etc/livekit-template.yaml:ro
-    depends_on:
-      redis:
-        condition: service_healthy
 
-  # ─── Redis (LiveKit state) ───
+  # ─── Redis (API state) ───
   redis:
     image: redis:7-alpine
     container_name: lala-redis
