@@ -14,8 +14,23 @@ as that device. The server turns it into a public identity (an HMAC under the Li
 which is what other participants see and what the [server config](self-hosting.md) lists.
 `GET /api/me` returns the caller's identity and role, and the server's name.
 
-Without the header, `/api/token` issues a one-off identity, and creating rooms fails with
-`identity_required`.
+Without the header, `/api/token` and creating rooms fail with `identity_required`. A room ban
+also covers the address the banned person last came from, for the room's lifetime, so a new
+device ID doesn't lift it; moderators and bots are exempt from the address check.
+
+### Avatars
+
+| Request | Body | Result |
+|---|---|---|
+| `POST /api/me/avatar` | the image, `Content-Type: image/jpeg`, `image/png` or `image/webp`, at most 24 KB | `{ avatar: <version> }`; `400 invalid_image` for anything else |
+| `DELETE /api/me/avatar` | | `204` |
+| `GET /api/avatars/:identity?v=<version>` | | The image; `404` without one |
+
+The version is a hash of the image, so a URL with it never changes its content and is cached
+for good. `GET /api/me` (as `avatar`) and `RoomInfo.participants` carry each person's version.
+A bot's avatar comes from the config and is served the same way. The server drops an avatar
+nobody has used for 90 days; a client keeps its own copy and uploads it again when `/api/me`
+has none. Every change sends `rooms_updated`.
 
 ## Bots
 
@@ -77,7 +92,7 @@ use. Clients show cards only from `bot-` identities and never load remote images
 edited or deleted; put what changes in the status line.
 
 The server sets the bot's attributes when it joins and on every profile change:
-`lala.avatar` (from the config), `lala.bot-status` (at most 100 characters) and
+`lala.bot-status` (at most 100 characters) and
 `lala.bot-commands` (JSON `BotCommand[]`: at most 20, each named `!` plus 1 to 24 of `a-z`,
 `0-9`, `_`, `-`, with a description of at most 80 characters). Clients read these and mark a
 participant as a bot only for identities starting with `bot-`. `RoomInfo.listeningParticipants`
@@ -124,7 +139,9 @@ The password never leaves the client. Derive two keys from it and the room's `pa
 3. `e2eeKey` = HKDF-SHA256(master, empty salt, info `lala room e2ee`, 32 bytes)
 
 Send `authKey` as `passwordKey`. Use `e2eeKey` as the LiveKit shared E2EE key; the server
-never sees it. The reference implementation is
+never sees it. Turn encryption on before connecting: with livekit-client, pass the key provider
+as `encryption` (which also covers chat and files) and call `room.setE2EEEnabled(true)`; a key
+provider alone publishes unencrypted. The reference implementation is
 [`packages/web/src/lib/roomKeys.ts`](../packages/web/src/lib/roomKeys.ts). Wrong keys are
 limited to 30 per 15 minutes per IP and room.
 
@@ -132,10 +149,9 @@ limited to 30 per 15 minutes per IP and room.
 
 | Channel | Name | Set by | Content |
 |---|---|---|---|
-| Attribute | `lala.avatar` | the participant | JPEG data URL, at most 32 KB; empty clears it |
 | Attribute | `lala.hand` | the participant | `1` while asking for the floor |
 | Attribute | `lala.server-muted`, `lala.voice` | server | `1` or empty |
-| Attribute | `lala.avatar`, `lala.bot-status`, `lala.bot-commands` | server, on bots | See [Bots](#bots) |
+| Attribute | `lala.bot-status`, `lala.bot-commands` | server, on bots | See [Bots](#bots) |
 | Metadata | `{ "deafened": true }` | the participant | JSON |
 | Text stream | `lk.chat` | the participant | Chat message, as sent by LiveKit's `useChat`; a bot's may carry `lala.card` (see [Cards](#cards)) |
 | Byte stream | `files` | the participant | File transfer |

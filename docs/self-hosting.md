@@ -81,7 +81,7 @@ With `invite:` (`everyone`, `members` or `admins`) people can add the bot to any
 password from "Add bot" under the room's people, and it needs no `rooms:`. The bot must be
 running and connected for that; [`examples/bots`](../examples/bots) has one to start from.
 
-The bot's avatar, status line and commands reach the call through the LiveKit webhook
+The bot's status line and commands reach the call through the LiveKit webhook
 (`/api/webhook`), which `livekit.yaml.example` already configures.
 
 ## Private server
