@@ -5,7 +5,7 @@ import type { TokenResponse } from '@lala/shared';
 import { getRoomService } from '../lib/livekit';
 import { callerIdentity } from '../lib/identity';
 import { verifyRoomKey } from '../lib/passwords';
-import { attributesFor, can, grantFor, isModerator } from '../lib/rights';
+import { attributesFor, can, grantFor, isModerator, roleOf } from '../lib/rights';
 import { botOf, isBotIdentity } from '../lib/bots';
 import { flagsOf, getRoom, isBanned } from '../lib/rooms';
 import { isShutOut, recordIp } from '../lib/bans';
@@ -57,8 +57,9 @@ export function createTokenRouter(): Router {
             res.status(403).json({ error: 'not_allowed' });
             return;
         }
-        // Moderators share an address with whoever they ban often enough (one router at home).
-        const banIp = isBotIdentity(identity) || isModerator(identity, room) ? undefined : req.ip;
+        // Moderators share an address with whoever they ban often enough (one router at home);
+        // people the config lists are known by their ID.
+        const banIp = isBotIdentity(identity) || isModerator(identity, room) || roleOf(identity) ? undefined : req.ip;
         if (await isShutOut(identity, req.ip) || await isBanned(room.id, identity, banIp)) {
             res.status(403).json({ error: 'banned' });
             return;

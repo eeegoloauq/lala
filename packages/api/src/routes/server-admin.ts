@@ -49,7 +49,7 @@ export function createServerAdminRouter(): Router {
             if (found) present.push({ roomId: room.id, name: found.name, byName: participants.find((p) => p.identity === caller)?.name ?? 'Admin' });
         }
         const name = present[0]?.name || target;
-        await banFromServer(target, name);
+        await banFromServer(target, name, req.ip);
         const revokeTokenTs = BigInt(Math.floor(Date.now() / 1000) + 1);
         for (const { roomId, byName } of present) {
             await service.removeParticipant(roomId, target, { revokeTokenTs }).catch((err) => { if (!isNotFound(err)) throw err; });

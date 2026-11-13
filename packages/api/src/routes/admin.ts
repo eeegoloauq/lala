@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import type { BansResponse, ModerationEvent } from '@lala/shared';
 import { announceModeration, getRoomService, isNotFound } from '../lib/livekit';
 import { callerIdentity } from '../lib/identity';
-import { attributesFor, can, isModerator, permissionFor } from '../lib/rights';
+import { attributesFor, can, isModerator, permissionFor, roleOf } from '../lib/rights';
 import { addBan, flagsOf, getRoom, isBanned, listBans, removeBan, setMuted, setVoice, type RoomState } from '../lib/rooms';
 import { invalidateRoomsCache } from './rooms';
 import { broadcastSse } from '../lib/sse';
@@ -99,11 +99,13 @@ export function createAdminRouter(): Router {
         res.json({ ok: true });
     });
 
-    router.post('/ban', async (_req, res: Response) => {
+    router.post('/ban', async (req, res: Response) => {
         const ctx = res.locals.ctx as Context;
         const targetName = await nameOf(ctx.room.id, ctx.target);
-        // A bot's address is its host's, which others may share.
-        await addBan(ctx.room.id, ctx.target, targetName, isBotIdentity(ctx.target) ? null : await lastIpOf(ctx.target));
+        // A bot's address is its host's, which others may share; so is the moderator's own,
+        // and people the config lists are known by their ID.
+        const last = isBotIdentity(ctx.target) || roleOf(ctx.target) ? null : await lastIpOf(ctx.target);
+        await addBan(ctx.room.id, ctx.target, targetName, last && last !== req.ip ? last : null);
         await endInvitation(ctx);
         // Revoking tokens issued up to now keeps the banned client from reconnecting
         // with the one it already holds.

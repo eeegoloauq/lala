@@ -1,9 +1,12 @@
 import { redis } from './redis';
+import { roleOf } from './rights';
 
 /**
  * Server bans, set by admins. The identity stays banned until lifted; the address it
  * last joined from is banned for a day, which stops the easy way around (a new device
- * ID) without shutting a shared or reassigned address out for good.
+ * ID) without shutting a shared or reassigned address out for good. People the config
+ * lists are known by their ID and are never shut out by an address, and an address the
+ * banning admin is on (one router at home, an office) is not banned at all.
  */
 
 const BANS = 'lala:server-bans';                              // identity -> name
@@ -17,8 +20,9 @@ export const recordIp = (identity: string, ip: string) => redis().set(lastIpKey(
 /** The address an identity last asked for a token from, within the last day. */
 export const lastIpOf = (identity: string) => redis().get(lastIpKey(identity));
 
-export async function banFromServer(identity: string, name: string): Promise<void> {
-    const ip = await redis().get(lastIpKey(identity));
+export async function banFromServer(identity: string, name: string, adminIp?: string): Promise<void> {
+    const last = await redis().get(lastIpKey(identity));
+    const ip = last && last !== adminIp ? last : null;
     const tx = redis().multi().hset(BANS, identity, name);
     if (ip) tx.set(ipBanKey(ip), identity, 'EX', IP_DAY).set(bannedIpKey(identity), ip, 'EX', IP_DAY);
     await tx.exec();
@@ -34,7 +38,7 @@ export async function unbanFromServer(identity: string): Promise<void> {
 export async function isShutOut(identity: string, ip: string | undefined): Promise<boolean> {
     const [banned, ipBanned] = await Promise.all([
         redis().hexists(BANS, identity),
-        ip ? redis().exists(ipBanKey(ip)) : Promise.resolve(0),
+        ip && !roleOf(identity) ? redis().exists(ipBanKey(ip)) : Promise.resolve(0),
     ]);
     return banned === 1 || ipBanned === 1;
 }
@@ -56,11 +60,12 @@ export async function listServerBans(): Promise<Array<{ identity: string; name: 
 /** Of these people, those banned from the server by identity or by the address they use. */
 export async function shutOutAmong(people: Array<{ identity: string; ip?: string }>): Promise<Set<string>> {
     const banned = await serverBannedIdentities();
-    const ips = [...new Set(people.map((p) => p.ip).filter((ip): ip is string => !!ip))];
+    const strangers = people.filter((p) => !roleOf(p.identity));
+    const ips = [...new Set(strangers.map((p) => p.ip).filter((ip): ip is string => !!ip))];
     if (ips.length) {
         const results = (await redis().pipeline(ips.map((ip) => ['exists', ipBanKey(ip)])).exec()) ?? [];
         const bannedIps = new Set(ips.filter((_, i) => results[i]?.[1] === 1));
-        for (const p of people) if (p.ip && bannedIps.has(p.ip)) banned.add(p.identity);
+        for (const p of strangers) if (p.ip && bannedIps.has(p.ip)) banned.add(p.identity);
     }
     return banned;
 }
