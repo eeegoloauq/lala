@@ -429,11 +429,8 @@
     "aboutMe": "About me",
     "aboutMeHint": "On your profile card, up to 190 characters.",
     "shareLocalTime": "Show my local time",
-    "shareLocalTimeDesc": "Others see what time it is for you; your time zone goes with your profile.",
-    "shareActivity": "Show what I play and listen to",
-    "shareActivityDesc": "Lala sees running games and the music your players report to the system. Only the name, the picture and the time go to the server.",
-    "shareBrowserMedia": "Include browsers",
-    "shareBrowserMediaDesc": "Music in a browser tab, but also the titles of videos you watch there."
+    "shareActivity": "Show games and music",
+    "shareBrowserMedia": "Include browser tabs"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",
@@ -642,10 +639,7 @@
     "roomsLocked": "Rooms and chats open once you agree to the rules."
   },
   "activityPrompt": {
-    "title": "Show what you play and listen to?",
-    "seenGame": "Lala noticed {{what}}.",
-    "seenSong": "Lala noticed {{what}} playing.",
-    "note": "Others would see the name, the picture and how long. You can change this in Settings, Profile.",
+    "title": "Show on your profile?",
     "yes": "Show",
     "no": "Don't show"
   }

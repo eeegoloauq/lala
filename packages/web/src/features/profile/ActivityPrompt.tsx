@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useDetectedActivity } from '../../lib/activity';
-import { GamepadIcon, MusicIcon } from '../room/icons/Icons';
+import { CrossIcon, GamepadIcon, MusicIcon } from '../room/icons/Icons';
 import './activity-prompt.css';
 
 /**
@@ -11,21 +11,23 @@ export function ActivityPrompt({ onAnswer }: { onAnswer: (choice: 'on' | 'off') 
     const { t } = useTranslation();
     const detected = useDetectedActivity();
     if (!detected) return null;
-    const what = detected.kind === 'playing' ? detected.name : detected.title;
+    const game = detected.kind === 'playing';
+    const what = game ? detected.name : [detected.title, detected.artist].filter(Boolean).join(' · ');
     return (
         <div className="activity-prompt" role="dialog" aria-labelledby="activity-prompt-title">
-            <div className="activity-prompt-head">
-                <span className="activity-prompt-icon">
-                    {detected.kind === 'playing' ? <GamepadIcon size={18} strokeWidth={2} /> : <MusicIcon size={17} strokeWidth={2} />}
-                </span>
-                <h3 id="activity-prompt-title">{t('activityPrompt.title')}</h3>
+            <div className="activity-prompt-image">
+                {detected.image
+                    ? <img src={detected.image} alt="" />
+                    : game ? <GamepadIcon size={18} strokeWidth={2} /> : <MusicIcon size={18} strokeWidth={2} />}
             </div>
-            <p>{t(detected.kind === 'playing' ? 'activityPrompt.seenGame' : 'activityPrompt.seenSong', { what })}</p>
-            <p className="activity-prompt-note">{t('activityPrompt.note')}</p>
-            <div className="activity-prompt-actions">
-                <button className="btn" onClick={() => onAnswer('off')}>{t('activityPrompt.no')}</button>
-                <button className="btn btn-primary" onClick={() => onAnswer('on')} autoFocus>{t('activityPrompt.yes')}</button>
+            <div className="activity-prompt-text">
+                <strong id="activity-prompt-title">{t('activityPrompt.title')}</strong>
+                <span title={what}>{what}</span>
             </div>
+            <button className="activity-prompt-show" onClick={() => onAnswer('on')}>{t('activityPrompt.yes')}</button>
+            <button className="activity-prompt-close" onClick={() => onAnswer('off')} title={t('activityPrompt.no')} aria-label={t('activityPrompt.no')}>
+                <CrossIcon size={14} strokeWidth={2.2} />
+            </button>
         </div>
     );
 }

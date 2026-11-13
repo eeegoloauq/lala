@@ -144,7 +144,7 @@ test('desktop asks once, then shows what plays to everyone', async ({ browser })
         await win.getByRole('button', { name: 'Continue' }).click();
 
         // Nothing leaves before the answer.
-        const prompt = win.getByRole('dialog', { name: 'Show what you play and listen to?' });
+        const prompt = win.getByRole('dialog', { name: 'Show on your profile?' });
         await expect(prompt).toContainText(title, { timeout: 20_000 });
         await prompt.getByRole('button', { name: 'Show', exact: true }).click();
 
@@ -161,7 +161,7 @@ test('desktop asks once, then shows what plays to everyone', async ({ browser })
 
         // Turned off in Settings, it goes away for the viewer.
         await win.getByRole('button', { name: 'Settings' }).first().click();
-        const toggle = win.getByRole('checkbox', { name: 'Show what I play and listen to' });
+        const toggle = win.getByRole('checkbox', { name: 'Show games and music' });
         await win.locator('label.toggle', { has: toggle }).click();
         await expect(toggle).not.toBeChecked();
         await expect(row).not.toContainText(title, { timeout: 20_000 });

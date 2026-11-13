@@ -116,9 +116,10 @@ function Title({ text, url }: { text: string; url?: string }) {
 
 function ActivityImage({ src, music }: { src?: string; music?: boolean }) {
     const url = activityImageUrl(src);
+    const [failed, setFailed] = useState<string>();
     return (
         <div className="profile-activity-image">
-            {url ? <img src={url} alt="" /> : music ? <MusicIcon size={22} /> : null}
+            {url && failed !== url ? <img src={url} alt="" onError={() => setFailed(url)} /> : music ? <MusicIcon size={22} /> : null}
         </div>
     );
 }

@@ -136,21 +136,18 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
         </div>
         <Toggle
           label={t('settings.shareLocalTime')}
-          desc={t('settings.shareLocalTimeDesc')}
           checked={settings.shareLocalTime}
           onChange={(on) => onUpdate({ shareLocalTime: on })}
         />
         {IS_ELECTRON && window.electronAPI?.watchActivity && (<>
           <Toggle
             label={t('settings.shareActivity')}
-            desc={t('settings.shareActivityDesc')}
             checked={settings.shareActivity === 'on'}
             onChange={(on) => onUpdate({ shareActivity: on ? 'on' : 'off' })}
           />
           {settings.shareActivity === 'on' && (
             <Toggle
               label={t('settings.shareBrowserMedia')}
-              desc={t('settings.shareBrowserMediaDesc')}
               checked={settings.shareBrowserMedia}
               onChange={(on) => onUpdate({ shareBrowserMedia: on })}
             />
