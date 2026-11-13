@@ -53,7 +53,7 @@ async function allowedCaller(req: Request, res: Response): Promise<string | unde
 /**
  * GET /api/presence: everyone online and the config's members who aren't (PresenceResponse).
  * PUT /api/presence: the caller's status, name and profile; also the heartbeat that keeps them online.
- * POST /api/presence/images, GET /api/presence/images/:version: covers and game icons of activities.
+ * POST /api/presence/images: uploads a cover or game icon of an activity.
  * POST /api/presence/ticket: a ticket for the event stream, which can't send the device header.
  */
 export function createPresenceRouter(): Router {
@@ -110,8 +110,18 @@ export function createPresenceRouter(): Router {
         res.json(response);
     });
 
+    return router;
+}
+
+/**
+ * GET /api/presence/images/:version: a cover or game icon. An <img> can't send the device
+ * header, so like avatars this sits behind the instance password only, not the rules.
+ */
+export function createActivityImagesRouter(): Router {
+    const router = Router();
+
     // Like an avatar: the version is the content's hash, so the URL is cached for good.
-    router.get('/images/:version', async (req, res) => {
+    router.get('/:version', async (req, res) => {
         const image = IMAGE_VERSION.test(req.params.version) ? await getActivityImage(req.params.version) : undefined;
         if (!image) {
             res.status(404).json({ error: 'not_found' });

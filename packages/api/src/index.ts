@@ -12,7 +12,7 @@ import { createAvatarsRouter } from './routes/avatars';
 import { createServerAdminRouter } from './routes/server-admin';
 import { createBotRouter } from './routes/bot';
 import { createRoomBotsRouter } from './routes/roomBots';
-import { createPresenceRouter } from './routes/presence';
+import { createActivityImagesRouter, createPresenceRouter } from './routes/presence';
 import { createChatsRouter } from './routes/chats';
 import { createClaimRouter } from './routes/claim';
 import { loadClaimedAdmins } from './lib/adminClaim';
@@ -84,6 +84,9 @@ app.use('/api', botAuth);
 // health, webhook and the access endpoint itself stay open.
 app.use('/api/access', limiter(30), createAccessRouter());
 app.use('/api', requireAccess);
+
+// Covers load as <img>, which can't send the device header the rules check needs.
+app.use('/api/presence/images', limiter(150, req => req.method !== 'GET'), createActivityImagesRouter());
 
 // Rules the config requires come first: until someone agrees, rooms, tokens, presence and
 // chats refuse them (GET /api/chats still shows the rules).
