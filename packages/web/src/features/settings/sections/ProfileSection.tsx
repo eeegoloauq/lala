@@ -5,6 +5,7 @@ import { MAX_NAME_LENGTH } from '../../../lib/constants';
 import { useTimedValue } from '../../../hooks/useTimedValue';
 import { IS_ELECTRON } from '../../../lib/env';
 import type { AppSettings } from '../types';
+import { AddedGames } from './AddedGames';
 
 /** As the server keeps it (packages/api/src/lib/profile.ts). */
 const ABOUT_MAX = 190;
@@ -145,13 +146,14 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
             checked={settings.shareActivity === 'on'}
             onChange={(on) => onUpdate({ shareActivity: on ? 'on' : 'off' })}
           />
-          {settings.shareActivity === 'on' && (
+          {settings.shareActivity === 'on' && (<>
             <Toggle
               label={t('settings.shareBrowserMedia')}
               checked={settings.shareBrowserMedia}
               onChange={(on) => onUpdate({ shareBrowserMedia: on })}
             />
-          )}
+            <AddedGames />
+          </>)}
         </>)}
         {identity && (
           // Only an admin setting up the server config needs it.

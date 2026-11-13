@@ -19,10 +19,12 @@
         "build:mac": "electron-builder --mac",
         "build": "electron-builder --linux --win",
         "publish:win": "electron-builder --win --publish always",
-        "publish:linux": "electron-builder --linux --publish always"
+        "publish:linux": "electron-builder --linux --publish always",
+        "test": "node --test"
     },
     "dependencies": {
-        "electron-updater": "^6.3.9"
+        "electron-updater": "^6.3.9",
+        "js-yaml": "^4.3.2"
     },
     "devDependencies": {
         "electron": "^44.7.1",

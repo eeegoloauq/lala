@@ -16,6 +16,10 @@ const IPC = {
     SET_IN_CALL: 'lala:set-in-call',
     GET_IDLE_TIME: 'lala:get-idle-time',
     WATCH_ACTIVITY: 'lala:watch-activity',
+    GET_GAMES: 'lala:get-games',
+    ADD_GAME: 'lala:add-game',
+    RENAME_GAME: 'lala:rename-game',
+    REMOVE_GAME: 'lala:remove-game',
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',
     GET_STRINGS: 'lala:get-strings',
@@ -77,6 +81,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** Start ({ browsers }) or stop (null) looking at what plays on this computer */
     watchActivity: (options) => ipcRenderer.send(IPC.WATCH_ACTIVITY, options ? { browsers: !!options.browsers } : null),
+
+    /** Games added by hand: [{ id, name }] */
+    getGames: () => ipcRenderer.invoke(IPC.GET_GAMES),
+
+    /** A native menu of running programs; the one picked becomes a game. Resolves { id, name } or null */
+    addGame: () => ipcRenderer.invoke(IPC.ADD_GAME),
+
+    /** Rename an added game; resolves whether it changed */
+    renameGame: (id, name) => ipcRenderer.invoke(IPC.RENAME_GAME, String(id), String(name)),
+
+    /** Remove an added game; resolves whether it was there */
+    removeGame: (id) => ipcRenderer.invoke(IPC.REMOVE_GAME, String(id)),
 
     /** What plays now (a game or a song), or null; on each change. Returns unsubscribe function. */
     onActivity: (callback) => {

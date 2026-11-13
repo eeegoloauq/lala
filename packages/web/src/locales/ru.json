@@ -436,7 +436,10 @@
     "aboutMeHint": "В карточке профиля, до 190 символов.",
     "shareLocalTime": "Показывать моё время",
     "shareActivity": "Показывать игры и музыку",
-    "shareBrowserMedia": "Учитывать вкладки браузера"
+    "shareBrowserMedia": "Учитывать вкладки браузера",
+    "games": "Игры",
+    "addGame": "Добавить игру",
+    "gameName": "Название игры"
   },
   "update": {
     "available": "Обновление {{version}} доступно — загрузка...",
@@ -607,6 +610,9 @@
       "copy": "Копировать",
       "paste": "Вставить",
       "selectAll": "Выделить всё"
+    },
+    "games": {
+      "nothingRunning": "Сначала запустите игру"
     },
     "crash": {
       "reloadedTitle": "Lala перезагрузилась после сбоя",

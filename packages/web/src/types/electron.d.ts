@@ -71,6 +71,12 @@ export interface ElectronAPI {
      * versions before activities. Detection stays in the main process; only the summary comes here.
      */
     watchActivity?: (options: { browsers: boolean } | null) => void;
+    /** Games added by hand, stored only in the desktop app. Absent before "Add game". */
+    getGames?: () => Promise<AddedGame[]>;
+    /** Shows a native menu of running programs; the one picked becomes a game, or null. */
+    addGame?: () => Promise<AddedGame | null>;
+    renameGame?: (id: string, name: string) => Promise<boolean>;
+    removeGame?: (id: string) => Promise<boolean>;
     /** What the app sees now, or null; called on each change. Returns unsubscribe function. */
     onActivity?: (callback: (activity: DetectedActivity | null) => void) => () => void;
 
@@ -94,6 +100,12 @@ declare global {
  * A game or song as the desktop app saw it. Times are this computer's clock (ms); the web
  * client turns them into durations for the server. `image` is a small JPEG data URL.
  */
+/** A game added by hand; the desktop app keeps which program it is. */
+export interface AddedGame {
+    id: string;
+    name: string;
+}
+
 export type DetectedActivity =
     | { kind: 'playing'; name: string; startedAt: number; image?: string; url?: string }
     | { kind: 'listening'; title: string; artist?: string; album?: string; player: string; image?: string; url?: string; durationMs?: number; positionMs: number; positionAt: number; paused?: boolean };

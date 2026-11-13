@@ -430,7 +430,10 @@
     "aboutMeHint": "On your profile card, up to 190 characters.",
     "shareLocalTime": "Show my local time",
     "shareActivity": "Show games and music",
-    "shareBrowserMedia": "Include browser tabs"
+    "shareBrowserMedia": "Include browser tabs",
+    "games": "Games",
+    "addGame": "Add game",
+    "gameName": "Game name"
   },
   "update": {
     "available": "Update {{version}} available — downloading...",
@@ -595,6 +598,9 @@
       "copy": "Copy",
       "paste": "Paste",
       "selectAll": "Select all"
+    },
+    "games": {
+      "nothingRunning": "Start the game first"
     },
     "crash": {
       "reloadedTitle": "Lala reloaded after a crash",

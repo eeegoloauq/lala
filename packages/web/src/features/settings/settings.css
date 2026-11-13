@@ -772,6 +772,17 @@
   gap: 10px;
 }
 
+.added-game {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.added-game .input {
+  flex: 1;
+  min-width: 0;
+}
+
 .settings-css-input {
   width: 100%;
   min-height: 120px;

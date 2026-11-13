@@ -3,17 +3,40 @@
 // IPC for the connection page and the loaded web app. Screen share and the
 // updater register their own channels.
 
-const { app, ipcMain, net, powerMonitor, powerSaveBlocker } = require('electron');
-const { IS_WAYLAND, IPC } = require('./constants');
+const path = require('path');
+const { app, ipcMain, Menu, net, powerMonitor, powerSaveBlocker } = require('electron');
+const { IS_WAYLAND, IPC, USER_DATA } = require('./constants');
 const { state, sendToRenderer } = require('./state');
 const { isUrlAllowed, isFileSender, isTrustedSender, isFileOrTrustedSender } = require('./trust');
 const { loadServer, navigateToConnectionPage } = require('./window');
 const { setBadgeCount } = require('./tray');
-const { stringsFor } = require('../strings');
+const { stringsFor, translate } = require('../strings');
 const { ActivityWatcher } = require('./activity');
+const { AddedGames, runningPrograms } = require('./activity/added');
+const { exeKey } = require('./activity/procs');
 
 // What plays on this computer, while the web app asks for it (main/activity).
-const activity = new ActivityWatcher((summary) => sendToRenderer(IPC.ACTIVITY, summary));
+const addedGames = new AddedGames(path.join(USER_DATA, 'games.json'));
+const activity = new ActivityWatcher((summary) => sendToRenderer(IPC.ACTIVITY, summary), addedGames);
+const MENU_PROGRAMS = 40;
+let pickingGame = null;
+
+/**
+ * The running programs in a native menu at the pointer; resolves the one picked, or null.
+ * Native so that the list of programs never reaches the page, which the server provides.
+ */
+async function pickProgram() {
+    const window = state.mainWindow;
+    if (!window) return null;
+    const programs = (await runningPrograms(new Set([exeKey(process.execPath)]))).slice(0, MENU_PROGRAMS);
+    return new Promise((resolve) => {
+        const template = programs.length
+            ? programs.map(p => ({ label: p.label, click: () => resolve(p) }))
+            : [{ label: translate(app.getLocale(), 'games.nothingRunning'), enabled: false }];
+        // Some platforms close the menu before delivering the click: wait a moment for one.
+        Menu.buildFromTemplate(template).popup({ window, callback: () => setTimeout(() => resolve(null), 300) });
+    });
+}
 let watchingNavigation = false;
 
 function registerIpcHandlers() {
@@ -120,6 +143,31 @@ function registerIpcHandlers() {
             state.mainWindow.on('closed', () => { activity.stop(); watchingNavigation = false; });
         }
         activity.start({ browsers: options.browsers === true });
+    });
+
+    // Games added by hand (main/activity/added.js): the page sees ids and names only.
+    ipcMain.handle(IPC.GET_GAMES, (event) => (isTrustedSender(event) ? addedGames.list() : []));
+    ipcMain.handle(IPC.ADD_GAME, async (event) => {
+        if (!isTrustedSender(event)) return null;
+        if (pickingGame) return pickingGame; // one menu at a time
+        pickingGame = pickProgram().then((program) => {
+            const game = program ? addedGames.add(program.key, program.name) : null;
+            if (game) activity.gamesChanged();
+            return game;
+        }).finally(() => { pickingGame = null; });
+        return pickingGame;
+    });
+    ipcMain.handle(IPC.RENAME_GAME, (event, id, name) => {
+        if (!isTrustedSender(event) || typeof id !== 'string' || typeof name !== 'string') return false;
+        const changed = addedGames.rename(id, name);
+        if (changed) activity.gamesChanged();
+        return changed;
+    });
+    ipcMain.handle(IPC.REMOVE_GAME, (event, id) => {
+        if (!isTrustedSender(event) || typeof id !== 'string') return false;
+        const removed = addedGames.remove(id);
+        if (removed) activity.gamesChanged();
+        return removed;
     });
 
     ipcMain.on(IPC.SET_IN_CALL, (event, inCall) => {

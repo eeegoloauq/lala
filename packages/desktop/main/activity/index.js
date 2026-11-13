@@ -5,8 +5,10 @@
 // (a game or a song, a small picture, times on this computer's clock) when it changes. The
 // process list and players' raw metadata never leave this module.
 //
-// A game wins over music: one activity is shown. Steam games come from Steam's files
-// (steam.js); others from a short list of process names (KNOWN_GAMES). Music from MPRIS on
+// A game wins over music: one activity is shown. Steam games come from Steam's launch line
+// and files (steam.js); on Linux, games from Bottles, Heroic and Lutris by what those
+// launchers installed (launchers.js); others the person added by hand (added.js), then a
+// short list of process names (KNOWN_GAMES). Music from MPRIS on
 // Linux (mpris.js) and the media session on Windows (windows.js); macOS offers no public way
 // to read what plays, so there only games are seen.
 
@@ -14,6 +16,9 @@ const fs = require('fs');
 const { app, nativeImage, net } = require('electron');
 const { readPlayers, BROWSERS: LINUX_BROWSERS } = require('./mpris');
 const { runningSteamGame } = require('./steam');
+const { launcherGames } = require('./launchers');
+const { linuxProcesses, hasName, exeKey } = require('./procs');
+const { macExecutables } = require('./added');
 const { startWindowsWatch, playerName, BROWSERS: WINDOWS_BROWSERS } = require('./windows');
 
 const POLL_MS = 5000;
@@ -81,20 +86,10 @@ function imageOnce(key, make) {
 
 // ─── Games outside Steam ───
 
-/** Linux: names of this user's processes; wine games show their exe there (15 characters at most). */
-function linuxProcessNames() {
-    const names = new Set();
-    for (const pid of fs.readdirSync('/proc').filter(p => /^\d+$/.test(p))) {
-        try {
-            names.add(fs.readFileSync(`/proc/${pid}/comm`, 'utf8').trim().toLowerCase().replace(/\.exe$/, ''));
-        } catch { /* gone, or another user's */ }
-    }
-    return names;
-}
-
-function knownGameIn(names) {
-    for (const [proc, name] of Object.entries(KNOWN_GAMES)) {
-        if (names.has(proc) || names.has(proc.slice(0, 15))) return { proc, name };
+/** The first game in `games` (exe key -> value) that one of the processes runs, as [key, value]. */
+function gameIn(games, procs) {
+    for (const entry of games) {
+        if (procs.some(p => hasName(p, entry[0]))) return entry;
     }
     return null;
 }
@@ -102,8 +97,10 @@ function knownGameIn(names) {
 // ─── The watcher ───
 
 class ActivityWatcher {
-    constructor(emit) {
+    /** `added` is the AddedGames store: games the person picked, which win over launchers. */
+    constructor(emit, added) {
         this.emit = emit;
+        this.added = added;
         this.options = null;
         this.timer = null;
         this.stopWindows = null;
@@ -117,11 +114,24 @@ class ActivityWatcher {
     start(options) {
         this.options = options;
         if (this.timer) return;
-        if (process.platform === 'win32') {
-            this.stopWindows = startWindowsWatch(Object.keys(KNOWN_GAMES), (snap) => { this.windowsSnapshot = snap; });
-        }
+        this.startWindows();
         this.tick();
         this.timer = setInterval(() => this.tick(), POLL_MS);
+    }
+
+    /** Windows: the script looks for a fixed list of process names, so a changed list restarts it. */
+    startWindows() {
+        if (process.platform !== 'win32') return;
+        this.stopWindows?.();
+        const names = [...new Set([...Object.keys(KNOWN_GAMES), ...(this.added?.byKey().keys() || [])])];
+        this.stopWindows = startWindowsWatch(names, (snap) => { this.windowsSnapshot = snap; });
+    }
+
+    /** The added games changed: look again now. */
+    gamesChanged() {
+        if (!this.timer) return;
+        this.startWindows();
+        this.tick();
     }
 
     stop() {
@@ -154,15 +164,29 @@ class ActivityWatcher {
     async currentGame() {
         const win = process.platform === 'win32' ? this.windowsSnapshot : null;
         if (process.platform === 'win32' && !win) return null;
+        const linux = process.platform === 'linux';
+        const procs = win ? win.procs.map(p => ({ names: new Set([p.name]), path: p.path }))
+            : linux ? linuxProcesses()
+                : process.platform === 'darwin' ? (await macExecutables()).map(f => ({ names: new Set([exeKey(f)]) })) : [];
+        const procPath = (key) => procs.find(p => p.names.has(key))?.path;
+        const exeIcon = (exe) => exe ? imageOnce(exe, async () => toDataUrl(await app.getFileIcon(exe, { size: 'large' }), true)) : undefined;
+        const fileImage = (file, png) => file && imageOnce(file, async () => toDataUrl(nativeImage.createFromPath(file), png));
         let found = null;
-        const steam = runningSteamGame(win ? win.steam : undefined);
+        const steam = runningSteamGame({ windows: win?.steam, procs });
+        const added = !steam && this.added ? gameIn(this.added.byKey(), procs) : null;
+        const launched = !steam && !added && linux ? gameIn(launcherGames(), procs) : null;
+        const known = !steam && !added && !launched ? gameIn(Object.entries(KNOWN_GAMES), procs) : null;
         if (steam) {
-            found = { key: `steam:${steam.appId}`, name: steam.name, url: steam.url, image: steam.iconPath && imageOnce(steam.iconPath, async () => toDataUrl(nativeImage.createFromPath(steam.iconPath))) };
-        } else {
-            const names = win ? new Set(win.procs.map(p => p.name)) : process.platform === 'linux' ? linuxProcessNames() : new Set();
-            const known = knownGameIn(names);
-            const exe = known && win ? win.procs.find(p => p.name === known.proc)?.path : undefined;
-            if (known) found = { key: `proc:${known.proc}`, name: known.name, image: exe ? imageOnce(exe, async () => toDataUrl(await app.getFileIcon(exe, { size: 'large' }), true)) : undefined };
+            found = { key: `steam:${steam.appId}`, name: steam.name, url: steam.url, image: fileImage(steam.iconPath) };
+        } else if (added) {
+            const [exe, name] = added;
+            found = { key: `added:${exe}`, name, image: exeIcon(procPath(exe)) };
+        } else if (launched) {
+            const [exe, game] = launched;
+            found = { key: `launcher:${exe}`, name: game.name, image: fileImage(game.icon, true) };
+        } else if (known) {
+            const [proc, name] = known;
+            found = { key: `proc:${proc}`, name, image: exeIcon(procPath(proc)) };
         }
         if (!found) {
             this.game = null;

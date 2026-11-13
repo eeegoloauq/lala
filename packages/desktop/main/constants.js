@@ -43,6 +43,10 @@ const IPC = {
     SET_IN_CALL: 'lala:set-in-call',
     GET_IDLE_TIME: 'lala:get-idle-time',
     WATCH_ACTIVITY: 'lala:watch-activity',
+    GET_GAMES: 'lala:get-games',
+    ADD_GAME: 'lala:add-game',
+    RENAME_GAME: 'lala:rename-game',
+    REMOVE_GAME: 'lala:remove-game',
 
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',

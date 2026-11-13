@@ -58,10 +58,24 @@ Wire types: `PresenceProfile`, `PresenceActivity` and the `…Update` forms a cl
   runs only while sharing is on or not yet decided; the first thing it sees brings one question
   (`ActivityPrompt`), and nothing leaves the computer before the answer. A game wins over
   music. It uses what the systems ship, no native modules:
-  - Steam games from Steam's own files: `RunningAppID` in `registry.vdf` (Linux, macOS) or
-    `HKCU\Software\Valve\Steam` (Windows), the name from the game's appmanifest, the icon from
-    Steam's library cache. That covers Proton games, whose processes are all wine. Other games
-    from a short list of process names in `main/activity/index.js`.
+  - Games, first match wins:
+    1. Steam. On Linux the ID comes from the launch line of Steam's `reaper`
+       (`SteamLaunch AppId=<id>`), which covers Proton and Flatpak Steam; Steam for Linux
+       stopped writing `RunningAppID` to `registry.vdf` in 2023, so that file is only a
+       fallback. macOS reads `registry.vdf`, Windows `HKCU\Software\Valve\Steam`. The name comes
+       from the appmanifest, the icon from the library cache; a non-Steam game added to Steam
+       gets its name from `shortcuts.vdf`.
+    2. Games the person added (Settings, "Add game"): the desktop app shows its own menu of
+       running programs (Wine `.exe`s and programs from the home folder, `/opt` or a drive;
+       windowed programs on Windows; apps on macOS) and stores the pick in
+       `userData/games.json`. The page gets ids and names only, never the list of programs:
+       the page comes from the server.
+    3. Linux launchers that list what they installed: Bottles (`bottle.yml`), Heroic (Epic
+       through Legendary, GOG, added by hand) and Lutris (`pga.db` through `node:sqlite`),
+       native and Flatpak, matched by executable name.
+    4. A short list of process names in `main/activity/index.js`.
+    No online game database: a Wine game outside these, such as one unpacked from an archive,
+    is added once by hand.
   - Music on Linux from MPRIS through `busctl --json` (systemd), on Windows from the system
     media session through one long-running Windows PowerShell. macOS has no public way to read
     what plays, so it shows games only.
