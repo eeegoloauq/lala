@@ -31,7 +31,7 @@ body {
   user-select: none;
 }
 
-input, textarea, [contenteditable], .cp-bubble, .cp-system {
+input, textarea, [contenteditable], .tc-msg-text, .cp-system {
   -webkit-user-select: text;
   user-select: text;
 }

@@ -239,15 +239,6 @@
   width: 22px;
   height: 22px;
 }
-[data-theme="winxp"] .cp-bubble {
-  border: 1px solid #d4d0c8;
-  background: #ffffff;
-  color: #000000;
-}
-[data-theme="winxp"] .cp-group-own .cp-bubble {
-  background: #e8f0ff;
-  border-color: #b0c4e8;
-}
 [data-theme="winxp"] .cp-input {
   /* border keeps !important: .cp-input:focus (equal specificity, tie broken
      by stylesheet order) sets border-color and could otherwise win on focus.

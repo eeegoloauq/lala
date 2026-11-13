@@ -113,7 +113,7 @@ test('someone adds a bot to their own room, others use it, and it is removed or 
     await bob.page.getByPlaceholder('Send a message...').press('Enter');
     for (const page of [alice.page, bob.page]) {
         await expect(page.locator('.cp-card')).toContainText('Bob rolled 3d6', { timeout: 15_000 });
-        await expect(page.locator('.cp-bubble', { hasText: /^Bob rolled 3d6: \d+ \+ \d+ \+ \d+ = \d+$/ })).toBeVisible();
+        await expect(page.locator('.cp-text', { hasText: /^Bob rolled 3d6: \d+ \+ \d+ \+ \d+ = \d+$/ })).toBeVisible();
     }
     await expect(tile(alice.page, 'Dice').locator('.p-tile-bot-status')).toHaveText(/^Last roll: \d+ \(3d6\)$/, { timeout: 10_000 });
 

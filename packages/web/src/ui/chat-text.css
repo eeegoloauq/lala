@@ -119,6 +119,6 @@
 }
 
 /* The call's side chat is narrow: big, but not as big. */
-.cp-bubble .md-jumbo {
+.cp-text .md-jumbo {
     font-size: 2em;
 }

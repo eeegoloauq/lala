@@ -197,12 +197,6 @@
   border-top: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
 }
 
-/* Message bubbles get slight extra contrast in overlay mode */
-.cp-panel.cp-overlay .cp-bubble {
-  background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
-}
-
-
 /* ─── Header ─── */
 .cp-header {
   padding: 16px 14px;
@@ -278,58 +272,30 @@
   user-select: none;
 }
 
-/* ─── Message group ─── */
-.cp-group {
-  padding: 4px 14px 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+/* ─── Messages: the text chat's rows (text-chat.css) at the side panel's size ─── */
+.cp-msg {
+  padding: 4px 12px 2px;
+  gap: 9px;
+  margin-top: 6px;
 }
 
-.cp-group-header {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  margin-bottom: 1px;
+.cp-msg .tc-msg-gutter,
+.cp-msg .tc-avatar {
+  width: 30px;
 }
 
-.cp-sender {
+.cp-msg .tc-avatar {
+  height: 30px;
   font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
 }
 
-.cp-time {
-  font-size: 10px;
-  color: var(--text-muted);
-  line-height: 1;
-}
-
-/* ─── Individual bubble ─── */
-.cp-bubble {
+.cp-msg .tc-msg-name,
+.cp-msg .tc-msg-text {
   font-size: 13.5px;
-  color: var(--text-primary);
-  line-height: 1.5;
-  word-break: break-word;
-  padding: 5px 9px;
-  border-radius: var(--bubble-radius);
-  background: var(--bg-primary);
-  max-width: 100%;
-  align-self: flex-start;
 }
 
-/* Own messages: right-aligned, accent tinted */
-.cp-group-own {
-  align-items: flex-end;
-}
-
-.cp-group-own .cp-group-header {
-  flex-direction: row-reverse;
-}
-
-.cp-group-own .cp-bubble {
-  background: color-mix(in srgb, var(--accent) 18%, var(--bg-primary));
-  align-self: flex-end;
+.cp-msg .bot-badge {
+  align-self: center;
 }
 
 /* ─── Rate limit warning ─── */
@@ -516,17 +482,6 @@
   color: var(--text-primary);
 }
 
-.cp-group-own .cp-file {
-  background: color-mix(in srgb, var(--accent) 18%, var(--bg-primary));
-  align-self: flex-end;
-}
-
-/* Image thumbnails are a separate element (.cp-file-thumb-link, not .cp-file) —
-   own messages need the same right-alignment the text/chip bubbles get above. */
-.cp-group-own .cp-file-thumb-link {
-  align-self: flex-end;
-}
-
 .cp-file-error {
   color: var(--text-muted);
 }
@@ -679,10 +634,6 @@
 .cp-lightbox-btn:hover {
   background: color-mix(in srgb, #000 65%, transparent);
 }
-.cp-group-header .bot-badge {
-  align-self: center;
-}
-
 /* ─── Bot command suggestions, above the input ─── */
 .cp-suggest {
   margin: 0 12px 6px;
