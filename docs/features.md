@@ -7,6 +7,7 @@ call's chat goes over data channels, and room state and text chat history live i
 - Voice and video with configurable audio quality (speech / music / high-quality stereo)
 - End-to-end encryption for password-protected rooms in browsers that support it (AES-GCM)
 - Screen sharing with quality/FPS controls; the desktop app also shares system audio
+  (in Chromium on Linux with Wayland and an NVIDIA GPU the shared picture can flicker black, a Chromium capture issue; Firefox and the desktop app share cleanly)
 - Chat over data channels with emoji picker and TTS
 - Text chats with server rules, mentions, replies, reactions, pins and files
 - Room admin: kick, ban, mute; passwords hashed with scrypt
