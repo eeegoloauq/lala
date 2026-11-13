@@ -42,6 +42,7 @@ const IPC = {
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
     SET_IN_CALL: 'lala:set-in-call',
     GET_IDLE_TIME: 'lala:get-idle-time',
+    WATCH_ACTIVITY: 'lala:watch-activity',
 
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',
@@ -49,6 +50,7 @@ const IPC = {
     // Main → Renderer
     LOAD_URL_ERROR: 'lala:load-url-error',
     UPDATE_STATUS: 'lala:update-status',
+    ACTIVITY: 'lala:activity',
 };
 
 module.exports = { IS_MAC, IS_LINUX, IS_WAYLAND, HAS_SYSTEM_TRAY, INSTALL_CHANNEL, USER_DATA, IPC };

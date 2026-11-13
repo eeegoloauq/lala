@@ -10,6 +10,11 @@ const { isUrlAllowed, isFileSender, isTrustedSender, isFileOrTrustedSender } = r
 const { loadServer, navigateToConnectionPage } = require('./window');
 const { setBadgeCount } = require('./tray');
 const { stringsFor } = require('../strings');
+const { ActivityWatcher } = require('./activity');
+
+// What plays on this computer, while the web app asks for it (main/activity).
+const activity = new ActivityWatcher((summary) => sendToRenderer(IPC.ACTIVITY, summary));
+let watchingNavigation = false;
 
 function registerIpcHandlers() {
     // Ping a server (health check from connection page, bypasses CORS).
@@ -99,6 +104,24 @@ function registerIpcHandlers() {
     // Power save blocker for active calls. Trusted-origin-only: this is only
     // meaningful while the web app is in a call — the connection page never
     // needs it, and it controls a real OS-level side effect (blocking sleep).
+    // { browsers } starts or updates detection, null stops it. Only the server page asks; any
+    // navigation of the window stops it too, and the next page starts it again if it wants.
+    ipcMain.on(IPC.WATCH_ACTIVITY, (event, options) => {
+        if (!isTrustedSender(event)) return;
+        if (!options || typeof options !== 'object') {
+            activity.stop();
+            return;
+        }
+        if (!watchingNavigation && state.mainWindow) {
+            watchingNavigation = true;
+            state.mainWindow.webContents.on('did-start-navigation', (details) => {
+                if (details.isMainFrame && !details.isSameDocument) activity.stop();
+            });
+            state.mainWindow.on('closed', () => { activity.stop(); watchingNavigation = false; });
+        }
+        activity.start({ browsers: options.browsers === true });
+    });
+
     ipcMain.on(IPC.SET_IN_CALL, (event, inCall) => {
         if (!isTrustedSender(event)) return;
         if (inCall && state.powerSaveBlockerId === null) {

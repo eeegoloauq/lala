@@ -53,9 +53,24 @@ Wire types: `PresenceProfile`, `PresenceActivity` and the `…Update` forms a cl
   a pause, a new game or a restart (start moved over a minute), or any other field.
 - **What others see.** Everything while they see the person around; about and time zone only
   when they see them offline or invisible; the caller always sees all of their own.
-- **Detection stays on the device.** The desktop app reads the running processes and the
-  system media session and sends only the summary: never the process list or a player's raw
-  metadata. A link passes only as https on a known public service (Spotify, YouTube Music,
+- **Detection stays on the device.** The desktop app (`packages/desktop/main/activity/`)
+  sends the web app only the summary: never the process list or a player's raw metadata. It
+  runs only while sharing is on or not yet decided; the first thing it sees brings one question
+  (`ActivityPrompt`), and nothing leaves the computer before the answer. A game wins over
+  music. It uses what the systems ship, no native modules:
+  - Steam games from Steam's own files: `RunningAppID` in `registry.vdf` (Linux, macOS) or
+    `HKCU\Software\Valve\Steam` (Windows), the name from the game's appmanifest, the icon from
+    Steam's library cache. That covers Proton games, whose processes are all wine. Other games
+    from a short list of process names in `main/activity/index.js`.
+  - Music on Linux from MPRIS through `busctl --json` (systemd), on Windows from the system
+    media session through one long-running Windows PowerShell. macOS has no public way to read
+    what plays, so it shows games only.
+  - Browsers are left out unless the person turns them on: their tabs report video titles too.
+  - A song is sent on a new track, a pause or a seek; a paused one stays a minute, so a pause
+  between tracks doesn't blink. Spotify on Linux reports position 0, so the app counts on itself.
+  - `e2e/tests/desktop.spec.ts` drives the whole path with a fake MPRIS player
+    (`e2e/tests/fixtures/fake-mpris.py`); it skips without a session bus or python3-dbus. The
+    Windows script needs a manual check on Windows. A link passes only as https on a known public service (Spotify, YouTube Music,
   Apple Music, SoundCloud, Tidal, Deezer, Bandcamp, the Steam store); anything else, such as a
   private Navidrome or a file, is dropped on the server and again in the web client.
 - **Images come from this server.** Covers and game icons are uploaded by the person's own app

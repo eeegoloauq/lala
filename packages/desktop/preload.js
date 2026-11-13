@@ -15,11 +15,13 @@ const IPC = {
     SET_AUTO_LAUNCH: 'lala:set-auto-launch',
     SET_IN_CALL: 'lala:set-in-call',
     GET_IDLE_TIME: 'lala:get-idle-time',
+    WATCH_ACTIVITY: 'lala:watch-activity',
     PING_SERVER: 'lala:ping-server',
     NAVIGATE_BACK: 'lala:navigate-back',
     GET_STRINGS: 'lala:get-strings',
     LOAD_URL_ERROR: 'lala:load-url-error',
     UPDATE_STATUS: 'lala:update-status',
+    ACTIVITY: 'lala:activity',
 };
 
 // ─── Exposed API ─────────────────────────────────────────────────────────────
@@ -72,6 +74,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** Seconds since the last keyboard or mouse input anywhere on the computer */
     getSystemIdleTime: () => ipcRenderer.invoke(IPC.GET_IDLE_TIME),
+
+    /** Start ({ browsers }) or stop (null) looking at what plays on this computer */
+    watchActivity: (options) => ipcRenderer.send(IPC.WATCH_ACTIVITY, options ? { browsers: !!options.browsers } : null),
+
+    /** What plays now (a game or a song), or null; on each change. Returns unsubscribe function. */
+    onActivity: (callback) => {
+        const handler = (_event, activity) => callback(activity);
+        ipcRenderer.on(IPC.ACTIVITY, handler);
+        return () => ipcRenderer.removeListener(IPC.ACTIVITY, handler);
+    },
 
     /** Ping a server (health check, bypasses CORS) */
     pingServer: (url) => ipcRenderer.invoke(IPC.PING_SERVER, url),

@@ -1,10 +1,12 @@
 import { test, expect, _electron as electron } from '@playwright/test';
+import { execFileSync, spawn } from 'child_process';
 import { mkdtempSync } from 'fs';
 import { createServer } from 'http';
 import type { AddressInfo } from 'net';
 import { tmpdir } from 'os';
 import path from 'path';
 import { SERVER_PASSWORD } from '../playwright.config';
+import { enter } from './helpers';
 
 // Runs the desktop app from packages/desktop (npm ci there first) on an X11 display.
 function launch() {
@@ -111,5 +113,60 @@ test('desktop reloads after a renderer crash and falls back to the connection pa
         // A fourth would close the app behind a native error box, which the test cannot dismiss.
     } finally {
         await app.close();
+    }
+});
+
+/** A session bus and Python's D-Bus bindings, which the fake player needs. */
+function canFakePlayer(): boolean {
+    try {
+        execFileSync('busctl', ['--user', 'list'], { stdio: 'ignore' });
+        execFileSync('python3', ['-c', 'import dbus, gi'], { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+test('desktop asks once, then shows what plays to everyone', async ({ browser }) => {
+    test.skip(process.platform !== 'linux' || !canFakePlayer(), 'needs a D-Bus session and python3-dbus');
+    const run = Date.now().toString(36);
+    const title = `Night Drive ${run}`;
+    const cover = path.join(mkdtempSync(path.join(tmpdir(), 'lala-cover-')), 'cover.png');
+    const player = spawn('python3', [path.join(__dirname, 'fixtures/fake-mpris.py'), `e2eplayer${run}`, 'E2E Player', title, cover], { stdio: 'ignore' });
+    const app = await launch();
+    try {
+        const win = await app.firstWindow();
+        await win.locator('#urlInput').fill('http://127.0.0.1:3000');
+        await win.locator('#connectBtn').click();
+        await win.getByLabel('Server password').fill(SERVER_PASSWORD, { timeout: 30_000 });
+        await win.getByRole('button', { name: 'Continue' }).click();
+        await win.getByPlaceholder('Your name...').fill(`Desk ${run}`);
+        await win.getByRole('button', { name: 'Continue' }).click();
+
+        // Nothing leaves before the answer.
+        const prompt = win.getByRole('dialog', { name: 'Show what you play and listen to?' });
+        await expect(prompt).toContainText(title, { timeout: 20_000 });
+        await prompt.getByRole('button', { name: 'Show', exact: true }).click();
+
+        // Someone in a browser sees the song in the list and on the card, with the cover from this server.
+        const viewer = await enter(browser, `Viewer ${run}`);
+        const row = viewer.page.locator('.people-row', { hasText: `Desk ${run}` });
+        await expect(row).toContainText(title, { timeout: 20_000 });
+        await row.click();
+        const card = viewer.page.getByRole('dialog', { name: `Profile of Desk ${run}` });
+        await expect(card).toContainText('E2E Player');
+        await expect(card).toContainText('by Coastal Lines');
+        await expect(card.locator('.profile-activity-image img')).toHaveAttribute('src', /^\/api\/presence\/images\/[0-9a-f]{16}$/);
+        expect(await card.locator('.profile-activity-image img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+
+        // Turned off in Settings, it goes away for the viewer.
+        await win.getByRole('button', { name: 'Settings' }).first().click();
+        const toggle = win.getByRole('checkbox', { name: 'Show what I play and listen to' });
+        await win.locator('label.toggle', { has: toggle }).click();
+        await expect(toggle).not.toBeChecked();
+        await expect(row).not.toContainText(title, { timeout: 20_000 });
+    } finally {
+        await app.close();
+        player.kill();
     }
 });
