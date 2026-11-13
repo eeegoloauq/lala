@@ -109,6 +109,8 @@ app.use('/api/events', limiter(5), createEventsRouter());
 // Every client refetches the list on each change (batched to one event a second) and sends
 // its status every 30 seconds per tab; a ticket is needed only when the stream (re)opens.
 app.use('/api/presence/ticket', limiter(10));
+// The desktop app uploads a cover or game icon when the song or game changes.
+app.use('/api/presence/images', limiter(10, req => req.method !== 'POST'));
 app.use('/api/presence', limiter(120), createPresenceRouter());
 // Each change makes every client refetch the room list, so changes get a small budget.
 app.use('/api/me/avatar', limiter(5, req => req.method === 'GET'));

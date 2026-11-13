@@ -77,4 +77,16 @@ describe('the people list', () => {
         assert.deepEqual(people.get(G), { identity: G, name: 'Guest', status: 'online' });
         assert.equal(people.has(C), false);
     });
+
+    test('invisible or offline people show only the lasting part of their profile; the caller sees all of theirs', () => {
+        const profile = { about: 'hi', timeZone: 'Asia/Tokyo', device: 'desktop' as const, activity: { kind: 'playing' as const, name: 'G', startedAt: 1 } };
+        const people = byId(buildPresenceList({
+            online: new Set([A, C, G]),
+            states: states([[A, { name: 'Alex', status: 'invisible', profile }], [C, { name: 'Sam', profile }], [G, { name: 'Me', status: 'invisible', profile }]]),
+            users, banned: new Set(), caller: G,
+        }));
+        assert.deepEqual(people.get(A)?.profile, { about: 'hi', timeZone: 'Asia/Tokyo' });
+        assert.deepEqual(people.get(C)?.profile, profile);
+        assert.deepEqual(people.get(G)?.profile, profile);
+    });
 });

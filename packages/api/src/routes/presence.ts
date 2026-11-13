@@ -1,5 +1,5 @@
-import { Router, type Request, type Response } from 'express';
-import type { PresenceChoice, PresenceResponse, PresenceTicketResponse } from '@lala/shared';
+import express, { Router, type Request, type Response } from 'express';
+import type { ActivityImageResponse, PresenceChoice, PresenceResponse, PresenceTicketResponse, PresenceUpdateResponse } from '@lala/shared';
 import { callerIdentity } from '../lib/identity';
 import { isBotIdentity } from '../lib/bots';
 import { mayEnter } from '../lib/rights';
@@ -8,6 +8,10 @@ import { config } from '../lib/config';
 import { avatarVersions } from '../lib/avatars';
 import { sanitizeDisplayText } from '../lib/sanitize';
 import { PRESENCE_CHOICES, beat, buildPresenceList, issueTicket, loadPresence } from '../lib/presence';
+import { parseProfile } from '../lib/profile';
+import { MAX_ACTIVITY_IMAGE_BYTES, getActivityImage, putActivityImage, touchActivityImage } from '../lib/activityImages';
+
+const IMAGE_VERSION = /^[0-9a-f]{16}$/;
 
 /**
  * What the list is built from, shared for a second: every client refetches on the same
@@ -48,7 +52,8 @@ async function allowedCaller(req: Request, res: Response): Promise<string | unde
 
 /**
  * GET /api/presence: everyone online and the config's members who aren't (PresenceResponse).
- * PUT /api/presence: the caller's status and name; also the heartbeat that keeps them online.
+ * PUT /api/presence: the caller's status, name and profile; also the heartbeat that keeps them online.
+ * POST /api/presence/images, GET /api/presence/images/:version: covers and game icons of activities.
  * POST /api/presence/ticket: a ticket for the event stream, which can't send the device header.
  */
 export function createPresenceRouter(): Router {
@@ -71,7 +76,7 @@ export function createPresenceRouter(): Router {
     });
 
     router.put('/', async (req, res) => {
-        const { status, idle, name } = (req.body ?? {}) as Record<string, unknown>;
+        const { status, idle, name, profile: sent } = (req.body ?? {}) as Record<string, unknown>;
         const clean = typeof name === 'string' ? sanitizeDisplayText(name, 50) : '';
         if (!PRESENCE_CHOICES.includes(status as PresenceChoice) || typeof idle !== 'boolean' || !clean) {
             res.status(400).json({ error: 'invalid_input' });
@@ -79,8 +84,47 @@ export function createPresenceRouter(): Router {
         }
         const identity = await allowedCaller(req, res);
         if (!identity) return;
-        await beat(identity, { status: status as PresenceChoice, idle, name: clean });
+        const profile = parseProfile(sent);
+        // An image that expired (or never came) is left out, and the app is told to send it again.
+        const image = profile?.activity?.image;
+        const missing = image && !await touchActivityImage(image);
+        if (missing && profile?.activity) delete profile.activity.image;
+        await beat(identity, { status: status as PresenceChoice, idle, name: clean, profile });
+        if (missing) {
+            const response: PresenceUpdateResponse = { missing: ['image'] };
+            res.json(response);
+            return;
+        }
         res.status(204).end();
+    });
+
+    router.post('/images', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: MAX_ACTIVITY_IMAGE_BYTES }), async (req, res) => {
+        const identity = await allowedCaller(req, res);
+        if (!identity) return;
+        const version = Buffer.isBuffer(req.body) ? await putActivityImage(req.body) : undefined;
+        if (!version) {
+            res.status(400).json({ error: 'invalid_image' });
+            return;
+        }
+        const response: ActivityImageResponse = { image: version };
+        res.json(response);
+    });
+
+    // Like an avatar: the version is the content's hash, so the URL is cached for good.
+    router.get('/images/:version', async (req, res) => {
+        const image = IMAGE_VERSION.test(req.params.version) ? await getActivityImage(req.params.version) : undefined;
+        if (!image) {
+            res.status(404).json({ error: 'not_found' });
+            return;
+        }
+        res.set({
+            'Content-Type': `image/${image.type}`,
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': "default-src 'none'",
+            'Cross-Origin-Resource-Policy': 'same-origin',
+            'Cache-Control': 'private, max-age=31536000, immutable',
+        });
+        res.send(image.data);
     });
 
     return router;

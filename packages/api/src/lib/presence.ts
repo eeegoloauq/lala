@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import type { PresenceChoice, PresencePerson, PresenceStatus } from '@lala/shared';
+import type { PresenceChoice, PresencePerson, PresenceProfile, PresenceStatus } from '@lala/shared';
+import { profileChanged, shownProfile } from './profile';
 import { redis } from './redis';
 import { broadcastSse } from './sse';
 import { config } from './config';
@@ -13,7 +14,7 @@ import { config } from './config';
  */
 
 const ONLINE = 'lala:presence:online';                       // identity -> expiry (ms)
-const stateKey = (identity: string) => `lala:presence:${identity}`; // hash: name, status, idle, at
+const stateKey = (identity: string) => `lala:presence:${identity}`; // hash: name, status, idle, at, profile (JSON)
 
 /** Clients send their status this often; a few missed beats in a throttled background tab still count. */
 export const BEAT_MS = 30_000;
@@ -33,6 +34,8 @@ export interface PresenceState {
     idle?: boolean;
     /** When the app last sent its status (ms), to pick a member's latest device. */
     at?: number;
+    /** What the person shares, already cleaned (lib/profile.ts). */
+    profile?: PresenceProfile;
 }
 
 // ─── Tickets ───
@@ -89,15 +92,15 @@ async function markOnline(identity: string): Promise<void> {
 }
 
 /** A heartbeat with the app's status; announces a change others would see. */
-export async function beat(identity: string, state: Required<Omit<PresenceState, 'at'>>): Promise<void> {
+export async function beat(identity: string, state: Required<Omit<PresenceState, 'at' | 'profile'>> & Pick<PresenceState, 'profile'>): Promise<void> {
     const key = stateKey(identity);
-    const [[, before]] = (await redis().multi()
-        .hgetall(key)
-        .hset(key, { name: state.name, status: state.status, idle: state.idle ? '1' : '0', at: String(Date.now()) })
-        .expire(key, STATE_TTL_S)
-        .exec()) as [[Error | null, Record<string, string>]];
+    const fields = { name: state.name, status: state.status, idle: state.idle ? '1' : '0', at: String(Date.now()) };
+    const write = redis().multi().hgetall(key);
+    if (state.profile) write.hset(key, { ...fields, profile: JSON.stringify(state.profile) });
+    else write.hset(key, fields).hdel(key, 'profile');
+    const [[, before]] = (await write.expire(key, STATE_TTL_S).exec()) as [[Error | null, Record<string, string>]];
     const previous = parseState(before);
-    if (previous.name !== state.name || shownStatus(previous) !== shownStatus(state)) announce();
+    if (previous.name !== state.name || shownStatus(previous) !== shownStatus(state) || profileChanged(previous.profile, state.profile)) announce();
     await markOnline(identity);
 }
 
@@ -140,7 +143,13 @@ function parseState(raw: Record<string, string> | undefined): PresenceState {
     if (!raw) return {};
     const status = PRESENCE_CHOICES.includes(raw.status as PresenceChoice) ? raw.status as PresenceChoice : undefined;
     const at = Number(raw.at);
-    return { name: raw.name || undefined, status, idle: raw.idle === '1', at: Number.isFinite(at) ? at : undefined };
+    let profile: PresenceProfile | undefined;
+    try {
+        profile = raw.profile ? JSON.parse(raw.profile) as PresenceProfile : undefined;
+    } catch {
+        profile = undefined;
+    }
+    return { name: raw.name || undefined, status, idle: raw.idle === '1', at: Number.isFinite(at) ? at : undefined, profile };
 }
 
 /** The online identities, and the stored state of those and of `also` (the config's members). */
@@ -188,12 +197,22 @@ export function buildPresenceList({ online, states, users, banned, caller }: Lis
         const shown = ids.filter(id => visible(id) && statusOf(id) !== 'offline');
         // The caller's own row stays theirs, even when another of their devices is online.
         const id = ids.includes(caller) ? caller : latest(shown.length > 0 ? shown : ids);
-        people.push({ identity: id, name: states.get(id)?.name ?? memberName, status: shown.includes(id) || id === caller ? statusOf(id) : 'offline' });
+        const status = shown.includes(id) || id === caller ? statusOf(id) : 'offline';
+        people.push(withProfile({ identity: id, name: states.get(id)?.name ?? memberName, status }, states.get(id)?.profile, id === caller));
     }
     for (const id of new Set([...online, caller])) {
         if (listed.has(id) || banned.has(id) || !visible(id)) continue;
         const name = states.get(id)?.name;
-        if (name) people.push({ identity: id, name, status: statusOf(id) });
+        if (name) people.push(withProfile({ identity: id, name, status: statusOf(id) }, states.get(id)?.profile, id === caller));
     }
     return people;
+}
+
+/**
+ * The profile on a row: all of it while others see the person around, the lasting part
+ * (about, time zone) when they see them offline or invisible. The caller sees all of their own.
+ */
+function withProfile(person: PresencePerson, profile: PresenceProfile | undefined, own: boolean): PresencePerson {
+    const shown = shownProfile(profile, own || person.status !== 'offline');
+    return shown ? { ...person, profile: shown } : person;
 }

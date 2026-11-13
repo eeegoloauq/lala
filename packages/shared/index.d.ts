@@ -137,17 +137,81 @@ export interface PresencePerson {
     name: string;       // the display name the person used last; the config key before they ever did
     avatar?: string;    // avatar version
     status: PresenceStatus;
+    profile?: PresenceProfile;
 }
+
+/** What a person shares about themselves; every field is opt-in on their own device. */
+export interface PresenceProfile {
+    about?: string;                     // a few lines, plain text
+    timeZone?: string;                  // IANA name such as "Europe/Berlin"; viewers format the time in their own locale
+    device?: 'desktop' | 'web' | 'phone';
+    activity?: PresenceActivity;
+}
+
+/**
+ * What the desktop app detected on its own device. Only this summary leaves it: never the
+ * process list or a player's raw metadata. `image` is a version the sender uploaded
+ * (cover or game icon), served by this server so viewers never reach a third party.
+ */
+export type PresenceActivity =
+    | { kind: 'playing'; name: string; startedAt: number; image?: string; url?: string } // startedAt: server clock (ms)
+    | {
+        kind: 'listening';
+        title: string;
+        artist?: string;
+        album?: string;
+        player: string;                 // "Spotify", "Legato", …
+        image?: string;
+        url?: string;                   // the track on a public service; https on an allowlisted host only
+        durationMs?: number;
+        positionMs: number;             // at `positionAt` (server clock, ms); viewers move it forward while playing
+        positionAt: number;
+        paused?: boolean;
+    };
 /** Response from GET /api/presence */
 export interface PresenceResponse { people: PresencePerson[]; }
 /** Response from POST /api/presence/ticket: opens GET /api/events?ticket=… as the caller, for about 5 minutes. */
 export interface PresenceTicketResponse { ticket: string; }
-/** Payload for PUT /api/presence: the caller's own status and the name to show; sent every 30 seconds as the heartbeat. */
+/**
+ * Payload for PUT /api/presence: the caller's own status and the name to show; sent every
+ * 30 seconds as the heartbeat and at once when something changes. Without `profile` the
+ * stored one is dropped.
+ */
 export interface PresenceUpdate {
     status: PresenceChoice;
     idle: boolean;      // no input for a while; shows as idle when the status is online
     name: string;
+    profile?: PresenceProfileUpdate;
 }
+
+/** The profile as a client sends it: times are relative to the request, so its clock doesn't matter. */
+export interface PresenceProfileUpdate {
+    about?: string;                     // at most 190 characters and 5 lines
+    timeZone?: string;
+    device?: 'desktop' | 'web' | 'phone';
+    activity?: PresenceActivityUpdate;
+}
+
+export type PresenceActivityUpdate =
+    | { kind: 'playing'; name: string; elapsedMs: number; image?: string; url?: string }
+    | {
+        kind: 'listening';
+        title: string;
+        artist?: string;
+        album?: string;
+        player: string;
+        image?: string;
+        url?: string;
+        durationMs?: number;
+        positionMs: number;             // now
+        paused?: boolean;
+    };
+
+/** PUT /api/presence answers 204, or 200 with this when an image it names is gone: upload it again. */
+export interface PresenceUpdateResponse { missing: Array<'image'>; }
+
+/** POST /api/presence/images (the picture as the body): its version, for `image` in an activity. GET /api/presence/images/<version> serves it. */
+export interface ActivityImageResponse { image: string; }
 
 /** POST /api/me/avatar: the version of the image just stored. */
 export interface AvatarResponse { avatar: string; }

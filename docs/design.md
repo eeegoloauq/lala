@@ -36,6 +36,35 @@ changing either, run web lint and build, desktop packaging and the call tests.
   app (input in other programs counts) and from input in the page in a browser. Speaking in
   a call counts as input.
 
+## Profiles
+
+Wire types: `PresenceProfile`, `PresenceActivity` and the `…Update` forms a client sends, in
+`packages/shared`; validation in `packages/api/src/lib/profile.ts`.
+
+- **What someone shares rides on the heartbeat.** `PUT /api/presence` carries the whole
+  profile every 30 seconds (about me, time zone, device kind, activity), and the client sends
+  it at once when something changes. Without a profile the stored one is dropped, so an older
+  client clears it. It is stored as JSON in the presence hash (`profile`).
+- **The server's clock.** A client sends `elapsedMs` and `positionMs` relative to the request,
+  and the server turns them into `startedAt` and `positionAt`. Viewers then share one clock,
+  and a sender's wrong clock changes nothing. Viewers move a song's position on by themselves.
+- **Only visible changes announce.** Heartbeats re-send fresh times; `profileChanged` ignores
+  a song playing on and a game re-sent, and announces a new track, a seek (more than 3 s off),
+  a pause, a new game or a restart (start moved over a minute), or any other field.
+- **What others see.** Everything while they see the person around; about and time zone only
+  when they see them offline or invisible; the caller always sees all of their own.
+- **Detection stays on the device.** The desktop app reads the running processes and the
+  system media session and sends only the summary: never the process list or a player's raw
+  metadata. A link passes only as https on a known public service (Spotify, YouTube Music,
+  Apple Music, SoundCloud, Tidal, Deezer, Bandcamp, the Steam store); anything else, such as a
+  private Navidrome or a file, is dropped on the server and again in the web client.
+- **Images come from this server.** Covers and game icons are uploaded by the person's own app
+  (`POST /api/presence/images`, 48 KB) and stored by content hash (`lala:activity-image:<v>`),
+  so viewers never reach Spotify, Steam or a private server. An upload no heartbeat names goes
+  after 10 minutes, which bounds what a flood can hold; one in use lives an hour past the last
+  heartbeat naming it. A heartbeat naming an image that is gone gets `{ missing: ['image'] }`
+  and the app uploads it again.
+
 ## Text chats
 
 Wire types are in `packages/shared` (`TextChannel`, `ServerRules`, `ChatMessage`, `ChatEvent`,
