@@ -11,6 +11,8 @@ export interface ChannelHistory {
     /** Whether the server has older ones. */
     more: boolean;
     loading: boolean;
+    /** Why the newest page did not load: the server refused, or the request failed. */
+    error?: 'forbidden' | 'failed';
 }
 
 interface TextChatState {
@@ -83,10 +85,17 @@ export async function openChannel(channel: string): Promise<void> {
         setHistory(channel, { messages, more, loading: false });
     } catch (err) {
         console.warn('[textChat] Loading messages failed:', err);
-        const next = { ...store.get().history };
-        delete next[channel];
-        update({ history: next });
+        // Kept, not dropped: an empty entry would make the open chat ask again at once.
+        const error = err instanceof ApiError && err.status === 403 ? 'forbidden' : 'failed';
+        setHistory(channel, { messages: [], more: false, loading: false, error });
     }
+}
+
+/** Asks for a chat's newest page again after it failed to load. */
+export function retryChannel(channel: string): void {
+    const next = { ...store.get().history };
+    delete next[channel];
+    update({ history: next });
 }
 
 /** Pages being loaded, so a second call waits for the same one. */

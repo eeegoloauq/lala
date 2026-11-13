@@ -2,7 +2,7 @@ import { memo, useEffect, useLayoutEffect, useRef, useState, lazy, Suspense, use
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { ChatAttachment, ChatMessage } from '../../lib/types';
-import { jumpTo, loadOlder, markRead, mentionsOf, openChannel, removeMessage, toggleReaction, togglePin, useFocusTarget, useHistory } from '../../lib/textChat';
+import { jumpTo, loadOlder, markRead, mentionsOf, openChannel, removeMessage, retryChannel, toggleReaction, togglePin, useFocusTarget, useHistory } from '../../lib/textChat';
 import { plainText } from '../../lib/chatMarkup';
 import { setViewingChannel } from '../../lib/chatNotify';
 import { avatarColorForIdentity } from '../../lib/avatarUtils';
@@ -164,7 +164,13 @@ export function MessageFeed({ channel, myIdentity, isAdmin, compact = false, onR
                 <div ref={itemsRef}>
                 <div ref={topRef} className="tc-top">
                     {history?.loading && <div className="tc-loading" aria-label={t('chat.loading')} />}
-                    {history && !history.more && !history.loading && <div className="tc-start">{t('chat.channelStart')}</div>}
+                    {history?.error === 'forbidden' && <div className="tc-start">{t('chat.forbidden')}</div>}
+                    {history?.error === 'failed' && (
+                        <div className="tc-start">
+                            {t('chat.loadFailed')} <button type="button" className="tc-retry" onClick={() => retryChannel(channel)}>{t('chat.retry')}</button>
+                        </div>
+                    )}
+                    {history && !history.error && !history.more && !history.loading && <div className="tc-start">{t('chat.channelStart')}</div>}
                 </div>
                 {messages.map((m, i) => {
                     const prev = messages[i - 1];
