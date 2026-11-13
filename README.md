@@ -1,7 +1,6 @@
 # Lala
 
-Self-hosted voice, video and text chat for small groups, in the browser and as a desktop app for
-Windows and Linux.
+Lala is a lightweight self-hosted voice, video and text chat for small groups.
 
 [![Release](https://img.shields.io/github/v/release/eeegoloauq/lala?label=release)](https://github.com/eeegoloauq/lala/releases/latest)
 [![Images](https://github.com/eeegoloauq/lala/actions/workflows/images.yml/badge.svg?branch=main)](https://github.com/eeegoloauq/lala/actions/workflows/images.yml)
@@ -10,14 +9,14 @@ Windows and Linux.
 
 ![Screen sharing in Lala](screenshots/stream.png)
 
-- Voice rooms and text chats, like a small Discord
-- Screen sharing up to 4K at 60 fps
-- No accounts: people join with a name and a link
+- The whole server uses about 100 MiB of memory ([breakdown](docs/features.md#memory))
+- Web, Linux and Windows apps
+- Voice rooms, text chats and screen sharing up to 4K at 60 fps
+- People join with a link and a name, without signing up
 - Password rooms are end-to-end encrypted
 - Bots join calls through a small API
-- Set up with one script and Docker Compose
 
-[Try the demo](https://eeegoloauq.github.io/lala/) in your browser with simulated people · [All features](docs/features.md)
+[Try the demo](https://eeegoloauq.github.io/lala/) · [All features](docs/features.md)
 
 ## Download
 
@@ -40,7 +39,7 @@ git clone https://github.com/eeegoloauq/lala.git && cd lala
 docker compose up -d
 ```
 
-[Guide](docs/self-hosting.md): HTTPS, firewall, updates, admins and bots.
+[Guide](docs/self-hosting.md): firewall, HTTPS, server config, bots and updates.
 
 ## Development
 

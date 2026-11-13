@@ -15,6 +15,15 @@ docker compose up -d
 `.env` with new keys. At the end it prints a link that makes you the server's admin; it works
 once. To write `.env` by hand instead, start from [`.env.example`](../.env.example).
 
+## Firewall
+
+| Port | For |
+|---|---|
+| 80, 443/tcp | The reverse proxy |
+| 50000/udp | Call audio and video |
+| 3478/udp | TURN, for people behind strict networks |
+| 7881/tcp | Calls where UDP is blocked |
+
 ## HTTPS
 
 Lala serves plain HTTP on `127.0.0.1:3000` (the app) and `127.0.0.1:7880` (calls). Put a reverse
@@ -31,28 +40,20 @@ rtc.example.com {
 
 With nginx, raise `client_max_body_size` so files can be sent in text chats.
 
-## Firewall
+## Server config
 
-| Port | For |
-|---|---|
-| 80, 443/tcp | The reverse proxy |
-| 50000/udp | Call audio and video |
-| 3478/udp | TURN, for people behind strict networks |
-| 7881/tcp | Calls where UDP is blocked |
-
-## Update
+Optional. Without it anyone can create rooms and there are no text chats. Add it for text
+chats, rules, fixed rooms, more admins or limits on who may do what:
 
 ```bash
-git pull && docker compose pull && docker compose up -d
+cp config/lala.example.yaml config/lala.yaml
+nano config/lala.yaml
+docker compose restart api
 ```
 
-## Admins, rooms and text chats
-
-Copy [`config/lala.example.yaml`](../config/lala.example.yaml) to `config/lala.yaml`; every
-option is explained in it. More admins and members go under `users:`, by the ID from
-Settings → Profile. Apply changes with `docker compose restart api`; calls keep going.
-
-Without the file the server is open to everyone.
+Every option is explained in the file. People are listed by the ID from Settings → Profile.
+Calls keep going through the restart; if the API stops, `docker compose logs api` names the
+wrong line.
 
 ## Bots
 
@@ -63,6 +64,12 @@ docker compose exec api node dist/bot-secret.js radio
 The bot gets the printed credential, and the printed `secret:` line goes under `bots:` in
 `config/lala.yaml`. [`examples/bots`](../examples/bots) has a bot to start from; the
 [client API](api.md) has the rest.
+
+## Update
+
+```bash
+git pull && docker compose pull && docker compose up -d
+```
 
 ## `.env`
 

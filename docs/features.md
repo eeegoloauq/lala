@@ -1,7 +1,6 @@
 # Features
 
-Self-hosted voice, video and text chat inspired by Mumble and Discord, built on
-[LiveKit](https://livekit.io/). No accounts and no database server to run: rooms are ephemeral, a
+Self-hosted voice, video and text chat built on [LiveKit](https://livekit.io/). No accounts and no database server to run: rooms are ephemeral, a
 call's chat goes over data channels, and room state and text chat history live in Redis.
 
 - Voice and video with configurable audio quality (speech / music / high-quality stereo)
@@ -20,6 +19,20 @@ call's chat goes over data channels, and room state and text chat history live i
   <img src="../screenshots/home.png" width="49%" alt="Home screen" />
   <img src="../screenshots/call.png" width="49%" alt="Voice call" />
 </p>
+
+## Memory
+
+The four containers of a running server, as `docker stats` shows them:
+
+| Container | Memory |
+|---|---|
+| `lala-web` | 3.8 MiB |
+| `lala-api` | 43 MiB |
+| `lala-livekit` | 45 MiB |
+| `lala-redis` | 5.2 MiB |
+| Total | ≈ 97 MiB |
+
+Most of the API's share is the Node.js runtime itself.
 
 ## Desktop app
 
