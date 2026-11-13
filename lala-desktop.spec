@@ -68,6 +68,14 @@ done
 desktop-file-validate %{buildroot}%{_datadir}/applications/lala-desktop.desktop
 appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/app.lala.desktop.metainfo.xml
 
+%posttrans
+# The GitHub RPM (electron-builder, /opt/Lala) links /usr/bin/lala-desktop through
+# update-alternatives, and its %postun removes that alternative, which deletes our link when
+# this package replaces it (its %postun runs after our files are in). Drop what it left and
+# put the link back; %posttrans runs after every other scriptlet of the transaction.
+update-alternatives --remove lala-desktop /opt/Lala/lala-desktop >/dev/null 2>&1 || :
+[ -e %{_bindir}/lala-desktop ] || ln -sfn ../lib/lala/lala-desktop %{_bindir}/lala-desktop || :
+
 %files
 %license LICENSE
 %doc README.md
