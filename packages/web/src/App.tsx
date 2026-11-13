@@ -6,6 +6,7 @@ import { RoomView } from './features/room';
 import { WaveformWelcome } from './features/welcome/WaveformWelcome';
 import { RoomHeader } from './features/room/RoomHeader';
 import { ProfileCardHost } from './features/profile/ProfileCard';
+import { ActivityPrompt } from './features/profile/ActivityPrompt';
 import { useSettings } from './features/settings';
 import { useTheme } from './features/settings/ThemeProvider';
 import { useRooms } from './hooks/useRooms';
@@ -99,7 +100,12 @@ export default function App() {
     useTextChatSync(me?.identity, !!me?.textChats);
     // The server wants its rules agreed to first: until then the rules are all there is.
     const rulesPending = useRulesPending();
-    usePresenceSync(me?.identity, displayName, settings.presenceStatus, rulesPending);
+    usePresenceSync(me?.identity, displayName, settings.presenceStatus, rulesPending, {
+        about: settings.profileAbout,
+        shareLocalTime: settings.shareLocalTime,
+        shareActivity: settings.shareActivity,
+        shareBrowserMedia: settings.shareBrowserMedia,
+    });
     useEffect(() => {
         // Only a server with text chats has rules to ask for.
         const onRequired = () => loadChannels();
@@ -364,7 +370,8 @@ export default function App() {
                     </>
                 )}
 
-                <ProfileCardHost rooms={rooms} />
+                <ProfileCardHost rooms={rooms} onEditProfile={() => setSettingsOpen(true)} />
+                {settings.shareActivity === 'ask' && <ActivityPrompt onAnswer={shareActivity => updateSettings({ shareActivity })} />}
 
                 {settingsOpen && (
                     <Suspense fallback={null}>

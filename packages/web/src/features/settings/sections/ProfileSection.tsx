@@ -3,6 +3,11 @@ import { compressAvatar } from '../../../lib/avatarUtils';
 import { useMeContext } from '../../../lib/meContext';
 import { MAX_NAME_LENGTH } from '../../../lib/constants';
 import { useTimedValue } from '../../../hooks/useTimedValue';
+import { IS_ELECTRON } from '../../../lib/env';
+import type { AppSettings } from '../types';
+
+/** As the server keeps it (packages/api/src/lib/profile.ts). */
+const ABOUT_MAX = 190;
 
 interface ProfileSectionProps {
   headerRef: (el: HTMLElement | null) => void;
@@ -10,9 +15,26 @@ interface ProfileSectionProps {
   onRename?: (name: string) => void;
   myAvatar?: string | null;
   onAvatarChange?: (dataUrl: string | null) => Promise<void>;
+  settings: AppSettings;
+  onUpdate: (patch: Partial<AppSettings>) => void;
 }
 
-export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange }: ProfileSectionProps) {
+function Toggle({ label, desc, checked, onChange }: { label: string; desc?: string; checked: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <div className="settings-row">
+      <div>
+        <div className="settings-row-label">{label}</div>
+        {desc && <div className="settings-row-desc">{desc}</div>}
+      </div>
+      <label className="toggle">
+        <input type="checkbox" className="toggle-input" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+        <span className="toggle-slider" />
+      </label>
+    </div>
+  );
+}
+
+export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onAvatarChange, settings, onUpdate }: ProfileSectionProps) {
   const { t } = useTranslation();
   const identity = useMeContext()?.identity;
   const [copied, showCopied] = useTimedValue<true>(1500);
@@ -95,6 +117,45 @@ export function ProfileSection({ headerRef, displayName, onRename, myAvatar, onA
             )}
           </div>
         </div>
+        <div className="settings-row settings-row-stacked">
+          <div>
+            <label className="settings-row-label" htmlFor="profile-about">{t('settings.aboutMe')}</label>
+            <div className="settings-row-desc">{t('settings.aboutMeHint')}</div>
+          </div>
+          <textarea
+            id="profile-about"
+            className="input settings-about-input"
+            defaultValue={settings.profileAbout}
+            maxLength={ABOUT_MAX}
+            rows={3}
+            onBlur={(e) => {
+              const about = e.target.value.trim();
+              if (about !== settings.profileAbout) onUpdate({ profileAbout: about });
+            }}
+          />
+        </div>
+        <Toggle
+          label={t('settings.shareLocalTime')}
+          desc={t('settings.shareLocalTimeDesc')}
+          checked={settings.shareLocalTime}
+          onChange={(on) => onUpdate({ shareLocalTime: on })}
+        />
+        {IS_ELECTRON && window.electronAPI?.watchActivity && (<>
+          <Toggle
+            label={t('settings.shareActivity')}
+            desc={t('settings.shareActivityDesc')}
+            checked={settings.shareActivity === 'on'}
+            onChange={(on) => onUpdate({ shareActivity: on ? 'on' : 'off' })}
+          />
+          {settings.shareActivity === 'on' && (
+            <Toggle
+              label={t('settings.shareBrowserMedia')}
+              desc={t('settings.shareBrowserMediaDesc')}
+              checked={settings.shareBrowserMedia}
+              onChange={(on) => onUpdate({ shareBrowserMedia: on })}
+            />
+          )}
+        </>)}
         {identity && (
           // Only an admin setting up the server config needs it.
           <details className="settings-advanced">

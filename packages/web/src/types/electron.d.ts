@@ -66,6 +66,14 @@ export interface ElectronAPI {
     /** Seconds without input on the whole computer; absent in desktop versions before presence. */
     getSystemIdleTime?: () => Promise<number | null>;
 
+    /**
+     * Starts or stops looking at what plays on this computer (null stops). Absent in desktop
+     * versions before activities. Detection stays in the main process; only the summary comes here.
+     */
+    watchActivity?: (options: { browsers: boolean } | null) => void;
+    /** What the app sees now, or null; called on each change. Returns unsubscribe function. */
+    onActivity?: (callback: (activity: DetectedActivity | null) => void) => () => void;
+
     /** Ping a server (health check via Node.js, bypasses CORS) */
     pingServer: (url: string) => Promise<number | null>;
 
@@ -81,3 +89,11 @@ declare global {
         electronAPI?: ElectronAPI;
     }
 }
+
+/**
+ * A game or song as the desktop app saw it. Times are this computer's clock (ms); the web
+ * client turns them into durations for the server. `image` is a small JPEG data URL.
+ */
+export type DetectedActivity =
+    | { kind: 'playing'; name: string; startedAt: number; image?: string; url?: string }
+    | { kind: 'listening'; title: string; artist?: string; album?: string; player: string; image?: string; url?: string; durationMs?: number; positionMs: number; positionAt: number; paused?: boolean };

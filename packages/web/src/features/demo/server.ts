@@ -4,10 +4,10 @@
  * unchanged; state lives in memory and resets on reload. Nothing here goes over the
  * network, and the regular build never includes this module (see IS_DEMO).
  */
-import type { AccessStatus, AddedBot, Me, PresenceChoice, PresencePerson, PresenceStatus, RoomBan, RoomBot, RoomInfo, ServerBan, TokenResponse } from '../../lib/types';
+import type { AccessStatus, AddedBot, Me, PresenceChoice, PresencePerson, PresenceProfile, PresenceStatus, RoomBan, RoomBot, RoomInfo, ServerBan, TokenResponse } from '../../lib/types';
 import { shownStatus } from '../../lib/presence';
 import { setDemoAvatars } from '../../lib/avatarUtils';
-import { demoAvatar } from './avatars';
+import { DEMO_COVER, DEMO_COVER_2, DEMO_GAME, DEMO_GAME_2, demoAvatar } from './avatars';
 import { demoChat } from './chat';
 
 // Loaded with the first API request, before any list with avatars arrives.
@@ -112,10 +112,39 @@ export const onChatEvent = chat.onEvent;
 /** What answers before the rules are agreed to: the rules themselves and who you are. */
 const BEFORE_RULES = new Set(['/access', '/me', '/me/avatar', '/chats', '/rules/accept']);
 
+// What a few people share: what they play or listen to, a line about themselves, their time.
+const MIN = 60_000;
+const demoStart = Date.now();
+const PROFILES = new Map<string, PresenceProfile>([
+    [CROWD[0].identity, {
+        about: 'Sound person. Ask me about microphones.', timeZone: 'Europe/Lisbon', device: 'desktop',
+        activity: { kind: 'listening', title: 'Night Drive', artist: 'Coastal Lines', album: 'Harbor Lights', player: 'Legato', image: DEMO_COVER, durationMs: 232_000, positionMs: 70_000, positionAt: demoStart },
+    }],
+    [CROWD[1].identity, {
+        about: 'Streaming most evenings.', timeZone: 'America/New_York', device: 'desktop',
+        activity: { kind: 'playing', name: 'Hollow Depths', startedAt: demoStart - 80 * MIN, image: DEMO_GAME },
+    }],
+    [CROWD[4].identity, { timeZone: 'Africa/Accra', device: 'desktop', activity: { kind: 'playing', name: 'Orbital Freight', startedAt: demoStart - 12 * MIN, image: DEMO_GAME_2 } }],
+    [CROWD[7].identity, { about: 'Exam week, please be gentle.', timeZone: 'Asia/Tokyo', device: 'phone' }],
+    [LOBBY[0].identity, {
+        timeZone: 'Europe/Berlin', device: 'desktop',
+        activity: { kind: 'listening', title: 'Paper Suns', artist: 'Mono Garden', album: 'Low Tide', player: 'Spotify', image: DEMO_COVER_2, url: 'https://open.spotify.com/search/Paper%20Suns', durationMs: 198_000, positionMs: 15_000, positionAt: demoStart },
+    }],
+    [LOBBY[1].identity, { about: 'Usually around after 6.', timeZone: 'America/Los_Angeles', device: 'web' }],
+]);
+// The visitor's own: what Settings sends (about, time zone, device), and a song, since a
+// browser can't detect one, so the card shows what the desktop app would.
+let myProfile: PresenceProfile = {};
+const MY_ACTIVITY: PresenceProfile['activity'] =
+     { kind: 'listening', title: 'Night Drive', artist: 'Coastal Lines', album: 'Harbor Lights', player: 'Legato', image: DEMO_COVER, durationMs: 232_000, positionMs: 0, positionAt: demoStart };
+
 function describePresence(): PresencePerson[] {
     return [
-        ...EVERYONE.map(({ identity, name }) => ({ identity, name, status: presence.get(identity) ?? 'offline' })),
-        { identity: ME, name: mine.name, avatar: myAvatarVersion, status: shownStatus(mine.status, mine.idle) },
+        ...EVERYONE.map(({ identity, name }) => {
+            const status = presence.get(identity) ?? 'offline';
+            return { identity, name, status, profile: status === 'offline' ? undefined : PROFILES.get(identity) };
+        }),
+        { identity: ME, name: mine.name, avatar: myAvatarVersion, status: shownStatus(mine.status, mine.idle), profile: { ...myProfile, activity: MY_ACTIVITY } },
     ];
 }
 
@@ -304,6 +333,10 @@ export async function handle(path: string, init: RequestInit = {}): Promise<Resp
     if (path === '/presence' && method === 'GET') return json(200, { people: describePresence() });
     if (path === '/presence' && method === 'PUT') {
         mine = { status: body.status as PresenceChoice, idle: !!body.idle, name: String(body.name ?? '').slice(0, 50) || 'You' };
+        const sent = (body.profile ?? {}) as PresenceProfile;
+        const next: PresenceProfile = { about: typeof sent.about === 'string' ? sent.about.slice(0, 190) : undefined, timeZone: sent.timeZone, device: sent.device };
+        // Like the server: only a change others would see announces.
+        if (JSON.stringify(next) !== JSON.stringify(myProfile)) { myProfile = next; changed(); }
         return new Response(null, { status: 204 });
     }
     if (path === '/rooms' && method === 'GET') return json(200, { rooms: rooms.map(describe) });

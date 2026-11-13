@@ -13,8 +13,65 @@
 
 /* The avatar's own color, fading into the card. */
 .profile-cover {
-    height: 60px;
+    position: relative;
+    height: 72px;
     background: linear-gradient(120deg, var(--profile-color), color-mix(in srgb, var(--profile-color) 35%, var(--bg-sidebar)));
+}
+
+/* The avatar's three colors as soft blobs that drift, like Legato's player from a cover. */
+.profile-cover-palette {
+    overflow: hidden;
+    background: var(--profile-c1);
+}
+
+.profile-cover-palette::before {
+    content: '';
+    position: absolute;
+    inset: -60%;
+    background:
+        radial-gradient(closest-side at 30% 40%, var(--profile-c2), transparent),
+        radial-gradient(closest-side at 72% 60%, var(--profile-c3), transparent),
+        radial-gradient(closest-side at 50% 20%, var(--profile-c1), transparent);
+    filter: blur(10px);
+    animation: profile-drift 18s ease-in-out infinite alternate;
+}
+
+/* Fades into the card so the avatar's ring and the name sit on calm ground. */
+.profile-cover-palette::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 45%, color-mix(in srgb, var(--bg-sidebar) 35%, transparent));
+}
+
+@keyframes profile-drift {
+    from { transform: translate(-6%, -4%) rotate(0deg) scale(1); }
+    to { transform: translate(6%, 4%) rotate(25deg) scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-cover-palette::before { animation: none; }
+}
+
+.profile-edit {
+    position: absolute;
+    z-index: 1;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.45);
+    color: #fff;
+    cursor: pointer;
+}
+
+.profile-edit:hover,
+.profile-edit:focus-visible {
+    background: rgb(0 0 0 / 0.65);
 }
 
 .profile-body {
@@ -24,6 +81,8 @@
 }
 
 .profile-avatar {
+    position: relative;
+    z-index: 1;
     margin-top: -32px;
     justify-self: start;
 }
@@ -159,4 +218,129 @@
     margin-top: 4px;
     font-size: 12.5px;
     color: var(--text-secondary);
+}
+
+.profile-device {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+
+.profile-local-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+}
+
+.profile-local-time svg {
+    color: var(--text-muted);
+}
+
+.profile-bio {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.profile-label-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.profile-player {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+}
+
+.profile-activity {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+}
+
+.profile-activity-image {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: var(--bg-control);
+    color: var(--text-muted);
+}
+
+.profile-activity-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.profile-activity-text {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+}
+
+.profile-activity-text > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-activity-text strong {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.profile-activity-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.profile-activity-link:hover,
+.profile-activity-link:focus-visible {
+    text-decoration: underline;
+}
+
+.profile-album {
+    color: var(--text-muted);
+}
+
+.profile-progress {
+    margin-top: 8px;
+}
+
+.profile-progress progress {
+    display: block;
+    width: 100%;
+    height: 4px;
+    border: none;
+    border-radius: 2px;
+    background: var(--bg-control);
+    appearance: none;
+    overflow: hidden;
+}
+
+.profile-progress progress::-webkit-progress-bar { background: var(--bg-control); }
+.profile-progress progress::-webkit-progress-value { background: var(--text-primary); border-radius: 2px; }
+.profile-progress progress::-moz-progress-bar { background: var(--text-primary); border-radius: 2px; }
+
+.profile-progress-times {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
 }

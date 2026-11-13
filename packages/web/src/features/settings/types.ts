@@ -11,6 +11,9 @@ export type CameraEffect = typeof CAMERA_EFFECTS[number];
 
 export const PRESENCE_CHOICES = ['online', 'idle', 'dnd', 'invisible'] as const;
 
+/** Showing what the desktop app sees played: asked once, the first time it sees something. */
+export const SHARE_ACTIVITY_CHOICES = ['ask', 'on', 'off'] as const;
+
 export interface AppSettings {
   audioQuality: AudioQualityPreset;
   autoGainControl: boolean;
@@ -54,6 +57,10 @@ export interface AppSettings {
   sidebarHidden: boolean;  // desktop: the room list is hidden (phones use the drawer)
   peopleHidden: boolean;   // wide screens: the people list is hidden (narrower ones open it over the page)
   presenceStatus: typeof PRESENCE_CHOICES[number];
+  profileAbout: string;      // About me on the profile card, 190 characters
+  shareLocalTime: boolean;   // the time zone goes with the profile, so others see the local time
+  shareActivity: typeof SHARE_ACTIVITY_CHOICES[number]; // desktop: games and music
+  shareBrowserMedia: boolean; // desktop: also what plays in a browser (video titles too)
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -95,4 +102,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sidebarHidden: false,
   peopleHidden: false,
   presenceStatus: 'online',
+  profileAbout: '',
+  shareLocalTime: true,
+  shareActivity: 'ask',
+  shareBrowserMedia: false,
 };

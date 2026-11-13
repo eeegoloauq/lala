@@ -10,7 +10,8 @@ call's chat goes over data channels, and room state and text chat history live i
 - Chat over data channels with emoji picker and TTS
 - Text chats with server rules, mentions, replies, reactions, pins and files
 - Room admin: kick, ban, mute; passwords hashed with scrypt
-- People list: who is in a call, online or offline, with Online, Idle, Do Not Disturb and Invisible
+- People list: who is online or offline, with Online, Idle, Do Not Disturb and Invisible, and what they play or listen to
+- Profile cards: About me, local time, and the game or song with its picture; the desktop app sees Steam games and music players (MPRIS on Linux, the media session on Windows) after asking once, and sends only the name, the picture and the time
 - 5 themes: dark, light, AMOLED, Discord, Windows XP
 - RNNoise noise suppression (AudioWorklet)
 - Desktop app with auto-updates, tray, native screen share picker

@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PresenceStatus, RoomInfo } from '../../lib/types';
+import type { PresenceActivity, PresenceStatus, RoomInfo } from '../../lib/types';
 import { avatarColorForIdentity } from '../../lib/avatarUtils';
 import { isBotIdentity } from '../../lib/bots';
 import { openProfile } from '../../lib/profileCard';
@@ -9,7 +9,7 @@ import { useAvatarForIdentity } from '../../lib/roomStatusStore';
 import { useMeContext } from '../../lib/meContext';
 import { BotBadge } from '../../ui/BotBadge';
 import { WithStatus } from '../../ui/StatusDot';
-import { SpeakerIcon } from '../room/icons/Icons';
+import { GamepadIcon, MusicIcon, ScreenShareStatusIcon } from '../room/icons/Icons';
 import '../../ui/panel.css';
 import './people-panel.css';
 
@@ -18,7 +18,8 @@ interface Person {
     name: string;
     /** Absent for bots, which have no presence of their own. */
     status?: PresenceStatus;
-    room?: string;
+    activity?: PresenceActivity;
+    sharing?: boolean;
 }
 
 interface PeoplePanelProps {
@@ -31,9 +32,9 @@ interface PeoplePanelProps {
 const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
 
 /**
- * Everyone on the server, on the right: who is in a call (and where), who else has the app
- * open, and the config's members who don't. Calls come from the room list, the rest from
- * presence; one person appears once.
+ * Everyone on the server, on the right: who has the app open and the config's members who
+ * don't. Who is in which call is the room list's job; here a row says what the person is
+ * doing (playing, listening) and marks a screen share. One person appears once.
  */
 export const PeoplePanel = memo(function PeoplePanel({ rooms, displayName, onClose }: PeoplePanelProps) {
     const { t } = useTranslation();
@@ -43,28 +44,30 @@ export const PeoplePanel = memo(function PeoplePanel({ rooms, displayName, onClo
     const myIdentity = me?.identity;
 
     const groups = useMemo(() => {
-        const statusOf = (identity: string): PresenceStatus | undefined =>
-            identity === myIdentity ? myStatus : isBotIdentity(identity) ? undefined : presence?.get(identity)?.status ?? 'online';
         const nameOf = (identity: string, fallback: string) => identity === myIdentity ? displayName : fallback;
-        const seen = new Set<string>();
-        const inCall: Person[] = [];
-        // Rooms in the order of the room list, people by name inside each.
-        for (const room of rooms) {
-            const people = room.participants
-                .filter(p => !seen.has(p.identity))
-                .map(p => ({ identity: p.identity, name: nameOf(p.identity, p.name), status: statusOf(p.identity), room: room.displayName }))
-                .sort(byName);
-            for (const p of people) seen.add(p.identity);
-            inCall.push(...people);
-        }
+        const sharing = new Set(rooms.flatMap(r => r.screenSharingParticipants));
+        const people = new Map<string, Person>();
+        const add = (identity: string, name: string, inCall: boolean) => {
+            if (people.has(identity)) return;
+            const listed = presence?.get(identity);
+            const status = identity === myIdentity ? myStatus : isBotIdentity(identity) ? undefined : listed?.status ?? 'online';
+            // Someone in a call is around even when their status says otherwise (invisible).
+            const shown = inCall && status === 'offline' ? undefined : status;
+            people.set(identity, {
+                identity,
+                name: nameOf(identity, name),
+                status: shown,
+                // Nothing for people others see offline, even if their last state had something.
+                activity: status === 'offline' ? undefined : listed?.profile?.activity,
+                sharing: sharing.has(identity),
+            });
+        };
+        for (const room of rooms) for (const p of room.participants) add(p.identity, p.name, true);
+        for (const p of presence?.values() ?? []) add(p.identity, p.name, false);
         const online: Person[] = [];
         const offline: Person[] = [];
-        for (const p of presence?.values() ?? []) {
-            if (seen.has(p.identity)) continue;
-            const person = { identity: p.identity, name: nameOf(p.identity, p.name), status: statusOf(p.identity) };
-            (person.status === 'offline' ? offline : online).push(person);
-        }
-        return { inCall, online: online.sort(byName), offline: offline.sort(byName) };
+        for (const p of people.values()) (p.status === 'offline' ? offline : online).push(p);
+        return { online: online.sort(byName), offline: offline.sort(byName) };
     }, [rooms, presence, myIdentity, myStatus, displayName]);
 
     return (
@@ -76,7 +79,6 @@ export const PeoplePanel = memo(function PeoplePanel({ rooms, displayName, onClo
                 )}
             </div>
             <div className="people-list">
-                <Group title={t('people.inCall')} people={groups.inCall} myIdentity={myIdentity} />
                 <Group title={t('people.online')} people={groups.online} myIdentity={myIdentity} />
                 <Group title={t('people.offline')} people={groups.offline} myIdentity={myIdentity} />
             </div>
@@ -119,10 +121,18 @@ const PersonRow = memo(function PersonRow({ person, isSelf }: { person: Person; 
                     {isBot && <BotBadge />}
                     {isSelf && <span className="person-you">{t('sidebar.you')}</span>}
                 </span>
-                {person.room && (
-                    <span className="people-row-room"><SpeakerIcon size={11} />{person.room}</span>
+                {person.activity && (
+                    <span className="people-row-activity" title={person.activity.kind === 'playing'
+                        ? t('people.playing', { name: person.activity.name })
+                        : t('people.listening', { title: person.activity.title })}>
+                        {person.activity.kind === 'playing' ? <GamepadIcon size={16} strokeWidth={2} /> : <MusicIcon size={15} strokeWidth={2} />}
+                        <span>{person.activity.kind === 'playing' ? person.activity.name : person.activity.title}</span>
+                    </span>
                 )}
             </span>
+            {person.sharing && (
+                <span className="people-row-marks" title={t('people.sharing')}><ScreenShareStatusIcon size={16} /></span>
+            )}
         </button>
     );
 });

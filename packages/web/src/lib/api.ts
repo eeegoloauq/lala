@@ -1,4 +1,4 @@
-import type { AvatarResponse, RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse, PresencePerson, PresenceResponse, PresenceTicketResponse, PresenceUpdate, ChannelsResponse, MessagesResponse, ChatMessage, ChatAttachment, UploadResponse, SendMessageRequest, PinsResponse } from './types';
+import type { AvatarResponse, RoomInfo, CreateRoomRequest, TokenRequest, TokenResponse, RoomBan, BansResponse, AccessStatus, InviteResponse, Me, ServerBan, ServerBansResponse, RoomBot, RoomBotsResponse, PresencePerson, PresenceResponse, PresenceTicketResponse, PresenceUpdate, PresenceUpdateResponse, ActivityImageResponse, ChannelsResponse, MessagesResponse, ChatMessage, ChatAttachment, UploadResponse, SendMessageRequest, PinsResponse } from './types';
 import { ApiError } from './types';
 import { getDeviceId } from './identity';
 import { IS_DEMO } from './env';
@@ -73,14 +73,32 @@ export function getMe(): Promise<Me> {
 /** Redeems the one-time link that makes the caller the server's first admin. */
 export const claimAdmin = (token: string) => request<void>('/claim', send('POST', { token }));
 
-/** Stores the caller's avatar (an image data URL) on the server; returns its version. */
-export async function uploadAvatar(dataUrl: string): Promise<string> {
-    // Decoded here: fetching a data: URL is a connection the CSP doesn't allow.
+/** An image data URL as a Blob; decoded here because fetching a data: URL is a connection the CSP doesn't allow. */
+function dataUrlBlob(dataUrl: string): Blob {
     const [head, base64 = ''] = dataUrl.split(',', 2);
     const type = /^data:([^;]+);base64$/.exec(head)?.[1] ?? 'image/jpeg';
-    const image = new Blob([Uint8Array.from(atob(base64), c => c.charCodeAt(0))], { type });
+    return new Blob([Uint8Array.from(atob(base64), c => c.charCodeAt(0))], { type });
+}
+
+/** Stores the caller's avatar (an image data URL) on the server; returns its version. */
+export async function uploadAvatar(dataUrl: string): Promise<string> {
+    const image = dataUrlBlob(dataUrl);
     const res = await request<AvatarResponse>('/me/avatar', { method: 'POST', headers: { 'Content-Type': image.type }, body: image });
     return res.avatar;
+}
+
+/** Stores a cover or game icon (an image data URL); returns its version for the activity. */
+export async function uploadActivityImage(dataUrl: string): Promise<string> {
+    const image = dataUrlBlob(dataUrl);
+    const res = await request<ActivityImageResponse>('/presence/images', { method: 'POST', headers: { 'Content-Type': image.type }, body: image });
+    return res.image;
+}
+
+/** Where an activity's image is served; the demo has no server and keeps data URLs. */
+export function activityImageUrl(image: string | undefined): string | undefined {
+    if (!image) return undefined;
+    if (IS_DEMO) return image.startsWith('data:') ? image : undefined;
+    return /^[0-9a-f]{16}$/.test(image) ? `${API_BASE}/presence/images/${image}` : undefined;
 }
 
 export function deleteAvatar(): Promise<void> {
@@ -96,8 +114,9 @@ export async function getPresenceTicket(): Promise<string> {
     return (await request<PresenceTicketResponse>('/presence/ticket', { method: 'POST' })).ticket;
 }
 
-export function putPresence(update: PresenceUpdate): Promise<void> {
-    return request<void>('/presence', send('PUT', update));
+/** Sends the status and profile; answers what the server is missing (an image to upload again), if anything. */
+export async function putPresence(update: PresenceUpdate): Promise<PresenceUpdateResponse | undefined> {
+    return request<PresenceUpdateResponse | undefined>('/presence', send('PUT', update));
 }
 
 export function getToken(req: TokenRequest): Promise<TokenResponse> {

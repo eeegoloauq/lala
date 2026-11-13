@@ -425,7 +425,15 @@
     "notifications": "Notifications",
     "desktopNotifications": "Desktop notifications",
     "desktopNotificationsDesc": "For mentions and replies to you; right-click a chat to change what it notifies about",
-    "notificationsBlocked": "Blocked in the browser's site settings"
+    "notificationsBlocked": "Blocked in the browser's site settings",
+    "aboutMe": "About me",
+    "aboutMeHint": "On your profile card, up to 190 characters.",
+    "shareLocalTime": "Show my local time",
+    "shareLocalTimeDesc": "Others see what time it is for you; your time zone goes with your profile.",
+    "shareActivity": "Show what I play and listen to",
+    "shareActivityDesc": "Lala sees running games and the music your players report to the system. Only the name, the picture and the time go to the server.",
+    "shareBrowserMedia": "Include browsers",
+    "shareBrowserMediaDesc": "Music in a browser tab, but also the titles of videos you watch there."
   },
   "update": {
     "available": "Update {{version}} available — downloading...",
@@ -522,7 +530,6 @@
   },
   "profile": {
     "title": "Profile of {{name}}",
-    "thisIsYou": "This is you.",
     "roomAdmin": "Runs this room.",
     "commands": "Commands",
     "canDo": "What it can do",
@@ -537,7 +544,17 @@
     "addedBy": "Added by {{name}}",
     "joinedAt": "Joined at {{time}}",
     "removeBot": "Remove",
-    "inRoom": "In {{room}}"
+    "inRoom": "In {{room}}",
+    "editProfile": "Edit profile",
+    "aboutMe": "About me",
+    "playing": "Playing",
+    "listening": "Listening",
+    "by": "by {{artist}}",
+    "localTime": "{{time}} local time",
+    "paused": "Paused",
+    "onDesktop": "On the desktop app",
+    "onWeb": "In a browser",
+    "onPhone": "On a phone"
   },
   "addBot": {
     "row": "Add bot",
@@ -598,11 +615,13 @@
   },
   "people": {
     "title": "People",
-    "inCall": "In a call",
     "online": "Online",
     "offline": "Offline",
     "show": "Show people",
-    "hide": "Hide people"
+    "hide": "Hide people",
+    "playing": "Playing {{name}}",
+    "listening": "Listening to {{title}}",
+    "sharing": "Sharing their screen"
   },
   "status": {
     "online": "Online",
@@ -621,5 +640,13 @@
     "agreed": "Agreed",
     "failed": "That didn't go through, try again",
     "roomsLocked": "Rooms and chats open once you agree to the rules."
+  },
+  "activityPrompt": {
+    "title": "Show what you play and listen to?",
+    "seenGame": "Lala noticed {{what}}.",
+    "seenSong": "Lala noticed {{what}} playing.",
+    "note": "Others would see the name, the picture and how long. You can change this in Settings, Profile.",
+    "yes": "Show",
+    "no": "Don't show"
   }
 }

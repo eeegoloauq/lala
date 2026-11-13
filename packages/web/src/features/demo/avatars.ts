@@ -49,12 +49,41 @@ export function demoAvatar(identity: string): string | undefined {
     // Lala posts the release notes in #announcements, under the app's own icon.
     if (identity === 'bot-lala') return `${import.meta.env.BASE_URL}icons/icon-maskable.svg`;
     const bot = BOTS[identity];
-    if (!bot) return undefined;
+    if (!bot) return demoPhoto(identity);
     let url = cache.get(identity);
     if (!url) {
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="${bot.bg}"/>${face(bot.head)}${bot.extra}</svg>`;
         url = `data:image/svg+xml,${encodeURIComponent(svg)}`;
         cache.set(identity, url);
     }
+    return url;
+}
+
+/** Photo-like pictures for a few demo people, so the profile banner has colors to take. */
+const PHOTOS: Record<string, string> = {
+    // A sunset over water.
+    mira: '<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7e5f"/><stop offset=".55" stop-color="#feb47b"/><stop offset=".56" stop-color="#3a6073"/><stop offset="1" stop-color="#16222a"/></linearGradient></defs><rect width="64" height="64" fill="url(#s)"/><circle cx="32" cy="35" r="9" fill="#ffd27f"/><rect y="35" width="64" height="29" fill="#2c4a5a" opacity=".85"/>',
+    // A forest under fog.
+    theo: '<rect width="64" height="64" fill="#a8c3b5"/><path d="M0 46l10-18 8 12 9-20 10 18 9-14 18 26v14H0z" fill="#3e6b57"/><path d="M0 54l14-12 12 8 14-10 24 14v10H0z" fill="#1f3d33"/>',
+    // A neon city at night.
+    pia: '<rect width="64" height="64" fill="#1a1035"/><circle cx="46" cy="16" r="7" fill="#f72585" opacity=".8"/><path d="M4 64V34h10v30M18 64V22h12v42M34 64V30h9v34M47 64V38h12v26" fill="#4361ee"/><path d="M20 28h3M25 34h3M20 40h3M37 36h3M50 44h3" stroke="#4cc9f0" stroke-width="2"/>',
+};
+
+/** An album cover and a game icon for the demo's activities. */
+export const DEMO_COVER = svgUrl('<defs><linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5f2c82"/><stop offset="1" stop-color="#49a09d"/></linearGradient></defs><rect width="64" height="64" fill="url(#c)"/><circle cx="32" cy="32" r="16" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2"/><circle cx="32" cy="32" r="4" fill="#fff" fill-opacity=".8"/>');
+export const DEMO_COVER_2 = svgUrl('<rect width="64" height="64" fill="#f4d35e"/><path d="M0 44q16-14 32 0t32 0v20H0z" fill="#ee964b"/><path d="M0 52q16-10 32 0t32 0v12H0z" fill="#0d3b66"/>');
+export const DEMO_GAME = svgUrl('<rect width="64" height="64" rx="12" fill="#0b132b"/><path d="M14 46l18-30 18 30z" fill="none" stroke="#5bc0be" stroke-width="4" stroke-linejoin="round"/><circle cx="32" cy="36" r="4" fill="#f4a259"/>');
+export const DEMO_GAME_2 = svgUrl('<rect width="64" height="64" rx="12" fill="#3d1308"/><circle cx="32" cy="32" r="14" fill="#f9a03f"/><circle cx="32" cy="32" r="22" fill="none" stroke="#f9a03f" stroke-width="2" stroke-dasharray="4 5"/>');
+
+function svgUrl(body: string): string {
+    return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${body}</svg>`)}`;
+}
+
+export function demoPhoto(identity: string): string | undefined {
+    const name = /^demo-([a-z]+)-/.exec(identity)?.[1];
+    const body = name && PHOTOS[name];
+    if (!body) return undefined;
+    let url = cache.get(identity);
+    if (!url) cache.set(identity, url = svgUrl(body));
     return url;
 }

@@ -10,7 +10,9 @@ import { BotBadge, ListensMark } from '../../ui/BotBadge';
 import { StatusDot } from '../../ui/StatusDot';
 import { useMyStatus, usePresence } from '../../lib/presence';
 import { Avatar } from '../room/VideoGrid/Avatar';
-import { CheckIcon, CrossIcon, EarIcon, OutIcon } from '../room/icons/Icons';
+import { CheckIcon, CrossIcon, EarIcon, EditIcon, OutIcon } from '../room/icons/Icons';
+import { useImagePalette } from '../../lib/imagePalette';
+import { ActivityBlock, DeviceMark, LocalTime } from './ProfileExtras';
 import { removeBot } from '../../lib/api';
 import { errorMessage } from '../../lib/errorMessage';
 import type { RoomInfo } from '../../lib/types';
@@ -24,19 +26,19 @@ const shortIdentity = (identity: string) =>
     isBotIdentity(identity) || identity.length <= 12 ? identity : `${identity.slice(0, 4)}…${identity.slice(-4)}`;
 
 /** The open profile card, if any; mounted once in App. */
-export function ProfileCardHost({ rooms }: { rooms: RoomInfo[] }) {
+export function ProfileCardHost({ rooms, onEditProfile }: { rooms: RoomInfo[]; onEditProfile: () => void }) {
     const open = useOpenProfile();
     if (!open) return null;
     // The room's creator moderates it; shown here rather than as a mark on every row.
     const room = rooms.find(r => r.participants.some(p => p.identity === open.identity));
-    return <ProfileCard key={open.identity} {...open} room={room} roomAdmin={!!room && room.adminIdentity === open.identity} />;
+    return <ProfileCard key={open.identity} {...open} room={room} roomAdmin={!!room && room.adminIdentity === open.identity} onEditProfile={onEditProfile} />;
 }
 
 const formatTime = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-interface ProfileCardProps { identity: string; name: string; x: number; y: number; room?: RoomInfo; roomAdmin: boolean }
+interface ProfileCardProps { identity: string; name: string; x: number; y: number; room?: RoomInfo; roomAdmin: boolean; onEditProfile: () => void }
 
-function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps) {
+function ProfileCard({ identity, name, x, y, room, roomAdmin, onEditProfile }: ProfileCardProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const me = useMeContext();
@@ -49,6 +51,9 @@ function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps
     // People only; a bot shows its own status line instead.
     const status = isBot || !presence ? undefined : isSelf ? myStatus : presence.get(identity)?.status ?? (room ? 'online' : undefined);
     const color = avatarColorForIdentity(identity);
+    // A picture colors the banner with its own palette; without one it keeps the identity's color.
+    const palette = useImagePalette(liveAvatar);
+    const profile = isBot || status === 'offline' ? undefined : presence?.get(identity)?.profile;
     const [position, setPosition] = useState({ left: x, top: y });
     const [removing, setRemoving] = useState(false);
     const [removeError, setRemoveError] = useState<string | null>(null);
@@ -66,7 +71,7 @@ function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps
             left: Math.max(MARGIN, Math.min(x, window.innerWidth - WIDTH - MARGIN)),
             top: Math.max(MARGIN, Math.min(y, window.innerHeight - height - MARGIN)),
         });
-    }, [x, y, bot, mayRemove]);
+    }, [x, y, bot, mayRemove, profile]);
 
     const remove = async () => {
         if (!room) return;
@@ -95,7 +100,18 @@ function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps
 
     return (
         <div className="profile-card" ref={ref} role="dialog" aria-label={t('profile.title', { name })} style={position}>
-            <div className="profile-cover" style={{ '--profile-color': color } as React.CSSProperties} />
+            <div
+                className={`profile-cover${palette ? ' profile-cover-palette' : ''}`}
+                style={(palette
+                    ? { '--profile-c1': palette[0], '--profile-c2': palette[1], '--profile-c3': palette[2] }
+                    : { '--profile-color': color }) as unknown as React.CSSProperties}
+            >
+                {isSelf && (
+                    <button className="profile-edit" onClick={() => { close(); onEditProfile(); }} title={t('profile.editProfile')} aria-label={t('profile.editProfile')}>
+                        <EditIcon size={15} strokeWidth={2} />
+                    </button>
+                )}
+            </div>
             <div className="profile-body">
                 <div className="profile-avatar">
                     <Avatar name={name} identity={identity} size={64} avatarUrl={liveAvatar} />
@@ -111,14 +127,19 @@ function ProfileCard({ identity, name, x, y, room, roomAdmin }: ProfileCardProps
                         <div className="profile-presence">
                             <StatusDot status={status} labelled={false} />
                             <span>{room ? t('profile.inRoom', { room: room.displayName }) : t(`status.${status}`)}</span>
+                            {profile?.device && <DeviceMark device={profile.device} />}
                         </div>
                     )}
+                    {profile?.timeZone && !isSelf && <LocalTime timeZone={profile.timeZone} />}
                 </div>
-                {(isSelf || roomAdmin) && (
-                    <p className="profile-about">
-                        {[isSelf && t('profile.thisIsYou'), roomAdmin && t('profile.roomAdmin')].filter(Boolean).join(' ')}
-                    </p>
+                {roomAdmin && <p className="profile-about">{t('profile.roomAdmin')}</p>}
+                {profile?.about && (
+                    <section>
+                        <h4 className="profile-label">{t('profile.aboutMe')}</h4>
+                        <p className="profile-bio">{profile.about}</p>
+                    </section>
                 )}
+                {profile?.activity && <ActivityBlock activity={profile.activity} />}
                 {(added || bot?.joinedAt) && (
                     <p className="profile-about">
                         {[added && t('profile.addedBy', { name: added.addedByName }), bot?.joinedAt && t('profile.joinedAt', { time: formatTime(bot.joinedAt) })].filter(Boolean).join(' · ')}

@@ -38,10 +38,11 @@ test('people see who is online, their status, who is in a call and who left', as
     await pickStatus(bob.page, 'Online');
     await expect(row(alice.page, 'Online', bobName).getByRole('img', { name: 'Online' })).toBeVisible();
 
-    // In a call, under the room's name.
+    // In a call he stays among the online people; the room list says where.
     const roomName = `People ${run}`;
     await createRoom(bob.page, roomName);
-    await expect(row(alice.page, 'In a call', bobName)).toContainText(roomName);
+    await expect(alice.page.locator('.channel-user-card[data-participant-room]', { hasText: bobName })).toBeVisible();
+    await expect(row(alice.page, 'Online', bobName)).toBeVisible();
 
     // Out of the call he is online again; closing the app takes him off the list
     // without waiting for his heartbeats to stop.
@@ -51,4 +52,26 @@ test('people see who is online, their status, who is in a call and who left', as
     await expect(alice.page.locator('.people-row', { hasText: bobName })).toHaveCount(0, { timeout: 15_000 });
 
     expect(alice.errors).toEqual([]);
+});
+
+test('a profile shows what someone wrote about themselves and their local time', async ({ browser }) => {
+    const run = Date.now().toString(36);
+    const [aliceName, bobName] = [`Alice ${run}`, `Bob ${run}`];
+    const alice = await enter(browser, aliceName, { profileAbout: `Around after six ${run}`, shareLocalTime: true });
+    const bob = await enter(browser, bobName, { shareLocalTime: false });
+
+    await row(bob.page, 'Online', aliceName).click();
+    const card = bob.page.getByRole('dialog', { name: `Profile of ${aliceName}` });
+    await expect(card.getByText(`Around after six ${run}`)).toBeVisible();
+    await expect(card.getByText(/local time$/)).toBeVisible();
+    await bob.page.keyboard.press('Escape');
+
+    // Bob shares no time zone, so his card has no local time.
+    await row(alice.page, 'Online', bobName).click();
+    const bobCard = alice.page.getByRole('dialog', { name: `Profile of ${bobName}` });
+    await expect(bobCard).toBeVisible();
+    await expect(bobCard.getByText(/local time$/)).toHaveCount(0);
+
+    expect(alice.errors).toEqual([]);
+    expect(bob.errors).toEqual([]);
 });

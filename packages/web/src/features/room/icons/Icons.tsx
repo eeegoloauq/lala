@@ -312,3 +312,56 @@ export function DiceIcon(props: IconProps) {
         </Svg>
     );
 }
+
+export function EditIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+        </Svg>
+    );
+}
+
+export function DesktopIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="3" y="4" width="18" height="12" rx="2" />
+            <path d="M8 20h8M12 16v4" />
+        </Svg>
+    );
+}
+
+export function PhoneIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+            <path d="M11 18.5h2" />
+        </Svg>
+    );
+}
+
+export function GlobeIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+        </Svg>
+    );
+}
+
+export function ClockIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+        </Svg>
+    );
+}
+
+export function GamepadIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M7 8h10a5 5 0 0 1 4.6 7l-.6 1.4a2.5 2.5 0 0 1-4.1.7L15 15H9l-1.9 2.1a2.5 2.5 0 0 1-4.1-.7L2.4 15A5 5 0 0 1 7 8z" />
+            <path d="M8 10.5v3M6.5 12h3M15.5 11.5h.01M17.5 12.5h.01" />
+        </Svg>
+    );
+}

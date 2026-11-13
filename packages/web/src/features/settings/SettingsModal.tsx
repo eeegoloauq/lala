@@ -148,6 +148,8 @@ export function SettingsModal({ settings, onUpdate, onClose, displayName, onRena
               onRename={onRename}
               myAvatar={myAvatar}
               onAvatarChange={onAvatarChange}
+              settings={settings}
+              onUpdate={onUpdate}
             />
 
             <SecuritySection headerRef={setSectionRef('security')} />
