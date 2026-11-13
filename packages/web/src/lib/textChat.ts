@@ -55,6 +55,25 @@ export function compareIds(a: string, b: string): number {
 
 const after = (id: string | undefined, than: string | undefined) => !!id && (!than || compareIds(id, than) > 0);
 
+/** Both read marks, per chat the later one: another tab or window of this app may have read further. */
+function mergeRead(a: Record<string, string>, b: Record<string, string>): Record<string, string> {
+    const merged = { ...a };
+    for (const [channel, id] of Object.entries(b)) {
+        if (typeof id === 'string' && after(id, merged[channel])) merged[channel] = id;
+    }
+    return merged;
+}
+
+// What another tab or window reads counts here too.
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+        if (e.key !== READ_KEY) return;
+        const state = store.get();
+        const read = mergeRead(state.read, loadRead());
+        if (Object.entries(read).some(([channel, id]) => state.read[channel] !== id)) update({ read });
+    });
+}
+
 export async function loadChannels(): Promise<void> {
     try {
         const { channels, rules, mentions } = await getChannels();
@@ -183,7 +202,7 @@ export function mentionsOf(text: string): Set<string> {
 export function markRead(channel: string, id: string | undefined): void {
     const state = store.get();
     if (!id || !after(id, state.read[channel])) return;
-    const read = { ...state.read, [channel]: id };
+    const read = mergeRead(loadRead(), { ...state.read, [channel]: id });
     try { localStorage.setItem(READ_KEY, JSON.stringify(read)); } catch { /* private mode: unread resets on reload */ }
     update({ read });
 }

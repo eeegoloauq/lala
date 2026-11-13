@@ -140,3 +140,23 @@ test('text chat files: the server names the type, and only pictures and media sh
     const stolen = await api(other.page, await device(other.page), 'POST', '/chats/general/messages', { text: 'mine now', attachments: [{ id: svg.id }] });
     expect(stolen.status).toBe(400);
 });
+
+test('a chat read in one tab is read in the other tabs too', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    const bob = await enter(browser, 'Bob');
+    const other = await alice.page.context().newPage();
+    await other.goto('/');
+    const general = (page: Page) => page.locator('.text-item', { hasText: 'general' });
+    await expect(general(other)).toBeVisible();
+
+    await general(alice.page).click();
+    const box = bob.page.getByPlaceholder('Message #general');
+    await general(bob.page).click();
+    await box.fill('read me in one tab');
+    await box.press('Enter');
+
+    // The tab showing the chat reads it; the other one follows instead of staying unread.
+    await expect(alice.page.locator('.tc-msg', { hasText: 'read me in one tab' })).toBeVisible({ timeout: 10_000 });
+    await expect(general(other)).not.toHaveClass(/text-item-unread/, { timeout: 5_000 });
+    expect(alice.errors).toEqual([]);
+});
