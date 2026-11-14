@@ -261,7 +261,8 @@
     "exitFullscreen": "Выйти из полного экрана",
     "focusOn": "Фокус на {{name}}",
     "showCameraLarge": "Показать камеру крупно",
-    "showScreenLarge": "Показать экран крупно"
+    "showScreenLarge": "Показать экран крупно",
+    "youAreSharing": "Вы демонстрируете экран"
   },
   "tile": {
     "screenSharing": "Демонстрация экрана",

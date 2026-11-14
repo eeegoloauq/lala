@@ -6,6 +6,7 @@ import type { Participant } from 'livekit-client';
 import { useCameraFlip } from '../hooks/useCameraFlip';
 import { FlipCameraIcon, ScreenShareStatusIcon, VideoIcon } from '../icons/Icons';
 import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
+import { useMediaQuery } from '../../../hooks/useMediaQuery';
 import { AmbientCanvas } from './AmbientCanvas';
 import type { FocusView } from './useFocus';
 
@@ -25,10 +26,11 @@ interface FocusMainProps {
     onSwap: () => void;
     onExit?: () => void;
     onMenu: (participant: Participant, e: React.MouseEvent) => void;
+    onStopShare: () => void;
 }
 
 /** The large view of the focus layout: a screen share or camera, with the other one as a PiP. */
-export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: FocusMainProps) {
+export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu, onStopShare }: FocusMainProps) {
     const { localParticipant } = useLocalParticipant();
     const handleFlip = useCameraFlip(localParticipant);
     const participant = focused?.track.participant;
@@ -41,6 +43,7 @@ export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu }: Foc
             } : null}
             pip={pip && { type: pip.type, video: <VideoTrack trackRef={pip.track} /> }}
             ambient={ambient}
+            onStopShare={focused?.type === 'screen' && participant?.identity === localParticipant.identity ? onStopShare : undefined}
             onSwap={onSwap}
             onExit={onExit}
             onMenu={participant && ((e) => onMenu(participant, e))}
@@ -54,15 +57,21 @@ interface FocusMainViewProps {
     focused: { type: FocusView['type']; name: string; video: (ref: Ref<HTMLVideoElement>) => ReactNode } | null;
     pip: { type: FocusView['type']; video: ReactNode } | null;
     ambient: boolean;
+    /** Set when the main view is your own screen share. */
+    onStopShare?: () => void;
     onSwap: () => void;
     onExit?: () => void;
     onMenu?: (e: React.MouseEvent) => void;
     onFlip?: () => void;
 }
 
+/** Phones and tablets share their whole screen, so showing it back is only a mirror of the mirror. */
+const OWN_SHARE_PLACEHOLDER_QUERY = '(pointer: coarse)';
+
 /** The large view from plain content; FocusMain fills it from LiveKit tracks. */
-export function FocusMainView({ focused, pip, ambient, onSwap, onExit, onMenu, onFlip }: FocusMainViewProps) {
+export function FocusMainView({ focused, pip, ambient, onStopShare, onSwap, onExit, onMenu, onFlip }: FocusMainViewProps) {
     const { t } = useTranslation();
+    const placeholder = useMediaQuery(OWN_SHARE_PLACEHOLDER_QUERY) && !!onStopShare;
     const mainRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -89,15 +98,27 @@ export function FocusMainView({ focused, pip, ambient, onSwap, onExit, onMenu, o
         <div
             className={`fl-main${focused?.type === 'camera' ? ' fl-main-camera' : ''}`}
             ref={mainRef}
-            onDoubleClick={fullscreenSupported ? toggleFullscreen : undefined}
+            onDoubleClick={fullscreenSupported && !placeholder ? toggleFullscreen : undefined}
             // A tap has no right button, so on touch screens it opens the menu.
             onClick={isTouchDevice ? onMenu : undefined}
             onContextMenu={onMenu}
         >
             {focused && (
                 <>
-                    {ambient && <AmbientCanvas videoRef={videoRef} />}
-                    {focused.video(videoRef)}
+                    {placeholder ? (
+                        <div className="fl-own-share">
+                            <ScreenShareStatusIcon size={28} strokeWidth={1.75} />
+                            <span>{t('focus.youAreSharing')}</span>
+                            <button className="btn" onClick={(e) => { e.stopPropagation(); onStopShare?.(); }}>
+                                {t('controls.screenShareStop')}
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {ambient && <AmbientCanvas videoRef={videoRef} />}
+                            {focused.video(videoRef)}
+                        </>
+                    )}
                     {pip && (
                         <div
                             className="fl-pip"
@@ -137,7 +158,7 @@ export function FocusMainView({ focused, pip, ambient, onSwap, onExit, onMenu, o
                                 <FlipCameraIcon size={16} strokeWidth={2} />
                             </button>
                         )}
-                        {fullscreenSupported && (
+                        {fullscreenSupported && !placeholder && (
                             <button
                                 className="fl-fullscreen-btn"
                                 onClick={toggleFullscreen}

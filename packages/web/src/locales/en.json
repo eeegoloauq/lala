@@ -255,7 +255,8 @@
     "exitFullscreen": "Exit fullscreen",
     "focusOn": "Focus on {{name}}",
     "showCameraLarge": "Show camera large",
-    "showScreenLarge": "Show screen large"
+    "showScreenLarge": "Show screen large",
+    "youAreSharing": "You're sharing your screen"
   },
   "tile": {
     "screenSharing": "Sharing screen",

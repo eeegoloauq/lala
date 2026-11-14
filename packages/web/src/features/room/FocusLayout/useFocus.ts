@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useTracks, useParticipants, useLocalParticipant, isTrackReference } from '@livekit/components-react';
 import type { TrackReferenceOrPlaceholder, TrackReference } from '@livekit/components-react';
 import { Track } from 'livekit-client';
+import { nextFocus } from './focusRules';
+import type { FocusPin } from './focusRules';
 
 const SCREEN_TRACKS = [Track.Source.ScreenShare];
 const CAMERA_TRACKS = [Track.Source.Camera];
@@ -19,9 +21,9 @@ function asActiveTrack(ref: TrackReferenceOrPlaceholder | undefined): TrackRefer
 }
 
 /**
- * Decides whose screen or camera fills the focus view: an explicit pick sticks, a new remote
- * screen share takes over, and when the focused person shows both, `swap` flips which one is
- * large and which is the picture-in-picture.
+ * Decides whose screen or camera fills the focus view (the rules are in `nextFocus`); when
+ * the focused person shows both, `swap` flips which one is large and which is the
+ * picture-in-picture.
  */
 export function useFocus(initialIdentity: string | null) {
     const participants = useParticipants();
@@ -50,7 +52,7 @@ export function useFocus(initialIdentity: string | null) {
     // Manual pin: set when the user explicitly clicks a strip tile. Blocks auto-focus
     // from stealing the view until the pinned participant leaves, or (if they were
     // pinned while sharing) their share ends.
-    const manualPinRef = useRef<{ identity: string; wasSharing: boolean } | null>(null);
+    const manualPinRef = useRef<FocusPin | null>(null);
     // Tracks screen-share identities seen on the previous run, so we can tell which
     // ones are brand new (for "newest share auto-focuses" below).
     const prevScreenKeysRef = useRef<Set<string>>(new Set());
@@ -71,37 +73,18 @@ export function useFocus(initialIdentity: string | null) {
         prevScreenKeysRef.current = currentScreenSet;
 
         setSelectedIdentity((current) => {
-            // Respect an active manual pin, unless the pinned participant left, or
-            // their pinned share just ended.
-            const pin = manualPinRef.current;
-            if (pin) {
-                const stillPresent = fresh.some((p) => p.identity === pin.identity);
-                const pinnedShareEnded = pin.wasSharing && !currentScreenSet.has(pin.identity);
-                if (stillPresent && !pinnedShareEnded) {
-                    return current;
-                }
-                manualPinRef.current = null;
-            }
-
-            if (!isFirstRun) {
-                // A brand-new REMOTE share always steals focus (newest wins if several
-                // appear at once). Your own new share only steals focus if nothing else
-                // is currently shared — you can already see your own screen.
-                const ownIdentity = localParticipant.identity;
-                const newRemoteShares = newlyAppeared.filter((id) => id !== ownIdentity);
-                const remoteShareExists = currentScreenIds.some((id) => id !== ownIdentity);
-                if (newRemoteShares.length > 0) {
-                    return newRemoteShares[newRemoteShares.length - 1];
-                }
-                if (newlyAppeared.includes(ownIdentity) && !remoteShareExists) {
-                    return ownIdentity;
-                }
-            }
-
-            if (current && fresh.some((p) => p.identity === current)) {
-                return current;
-            }
-            return currentScreenIds[0] ?? initialIdentity ?? fresh[0]?.identity ?? null;
+            const next = nextFocus({
+                current,
+                pin: manualPinRef.current,
+                own: localParticipant.identity,
+                shares: currentScreenSet,
+                appeared: newlyAppeared,
+                ended: [...prevScreenSet].filter((id) => !currentScreenSet.has(id)),
+                isPresent: (id) => fresh.some((p) => p.identity === id),
+                fallback: initialIdentity ?? fresh[0]?.identity ?? null,
+            });
+            manualPinRef.current = next.pin;
+            return next.selected;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [participantIds, screenKeys]);

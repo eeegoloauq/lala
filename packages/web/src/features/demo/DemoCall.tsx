@@ -243,6 +243,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
                     }}
                     pip={pip && { type: pip.type, video: <StreamVideo stream={streamOf(pip)} mirror={pip.type === 'camera'} /> }}
                     ambient={settings.ambientMode}
+                    onStopShare={focused?.type === 'screen' && focused.identity === MY_IDENTITY ? screen.toggle : undefined}
                     onSwap={focus.swap}
                     onExit={focus.exit}
                 />
@@ -250,15 +251,17 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
         >
             {people.map(p => {
                 const hasContent = screens.has(p.identity) || cameras.has(p.identity);
+                // With both a screen and a camera on, the main view already shows their camera, large or as the PiP.
+                const camera = pip?.identity === p.identity ? undefined : cameras.get(p.identity);
                 return (
                     <FocusStripTile
                         key={p.identity}
                         active={p.identity === focused?.identity}
+                        avatarOnly={!camera}
                         title={hasContent ? t('focus.focusOn', { name: p.name }) : undefined}
                         onClick={hasContent ? () => focus.pin(p.identity) : undefined}
                     >
-                        {/* With both a screen and a camera on, the main view already shows their camera, large or as the PiP. */}
-                        {tileFor(p, pip?.identity === p.identity ? undefined : cameras.get(p.identity))}
+                        {tileFor(p, camera)}
                     </FocusStripTile>
                 );
             })}

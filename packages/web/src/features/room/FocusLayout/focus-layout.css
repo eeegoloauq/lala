@@ -32,6 +32,27 @@
     z-index: 1;
 }
 
+/* Your own share on a phone or tablet: a note and Stop instead of the mirror. */
+.fl-own-share {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 24px 16px 56px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: center;
+}
+
+.fl-own-share .btn {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.fl-own-share .btn:hover {
+    background: var(--bg-active);
+}
+
 /* Ambient mode: blurred canvas behind video fills letterbox areas with color */
 .fl-ambient-canvas {
     position: absolute;
@@ -292,19 +313,79 @@
         max-height: 62dvh;
     }
 
+    /* One row that scrolls sideways: a camera as a small video, everyone else as an avatar
+       with the name under it. */
     .fl-strip {
-        flex: 1;
         height: auto;
-        min-height: 0;
-        flex-wrap: wrap;
-        align-content: flex-start;
-        overflow-x: hidden;
-        overflow-y: auto;
+        flex-shrink: 0;
+        align-items: flex-start;
     }
 
     .fl-strip-tile {
-        width: calc((100% - 12px) / 3);
-        height: auto;
-        aspect-ratio: 16 / 10;
+        width: 112px;
+        height: 70px;
+    }
+
+    .fl-strip-tile.fl-strip-avatar {
+        width: 64px;
+        border: none;
+        border-radius: 0;
+    }
+
+    .fl-strip-avatar .p-tile {
+        background: none;
+        border: none;
+        box-shadow: none;
+    }
+
+    .fl-strip-avatar .p-tile-avatar {
+        inset: 2px 0 auto;
+    }
+
+    .fl-strip-avatar .p-avatar-circle {
+        width: 44px;
+        height: 44px;
+        font-size: 17px !important;
+    }
+
+    /* The one shown large: a ring under the speaking ring. */
+    .fl-strip-avatar.fl-strip-active .p-avatar-circle {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+    }
+
+    .fl-strip-avatar .p-tile-meta {
+        position: absolute;
+        inset: auto 0 0;
+        justify-content: center;
+    }
+
+    .fl-strip-avatar .p-tile-name {
+        background: none;
+        backdrop-filter: none;
+        padding: 0;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-primary);
+        max-width: 100%;
+    }
+
+    /* States sit on the avatar's corner, as in the room list. */
+    .fl-strip-avatar .p-tile-status {
+        position: absolute;
+        top: 30px;
+        left: calc(50% + 8px);
+        padding: 2px 3px;
+        gap: 2px;
+    }
+
+    .fl-strip-avatar .p-tile-status-icon svg {
+        width: 11px;
+        height: 11px;
+    }
+
+    .fl-strip-avatar .p-tile-screen-badge {
+        top: 0;
+        right: 2px;
     }
 }

@@ -294,6 +294,7 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
                             ? <FocusLayout
                                 initialIdentity={focusedIdentity}
                                 onExit={focusedIdentity && !isScreenSharing ? () => setFocusedIdentity(null) : undefined}
+                                onStopShare={handleScreenShareToggle}
                             />
                             : <VideoGrid onFocusTile={setFocusedIdentity} onCamEnabled={setFocusedIdentity} />
                         }

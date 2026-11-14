@@ -15,9 +15,10 @@ import './focus-layout.css';
 interface FocusLayoutProps {
     initialIdentity?: string | null;
     onExit?: () => void;
+    onStopShare: () => void;
 }
 
-export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
+export function FocusLayout({ initialIdentity, onExit, onStopShare }: FocusLayoutProps) {
     const { t } = useTranslation();
     const { audioMuted, avatarCache, settings } = useRoomUIContext();
     const { localParticipant } = useLocalParticipant();
@@ -39,15 +40,18 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
 
     return (
         <FocusLayoutView
-            main={<FocusMain focused={focused} pip={pip} ambient={settings.ambientMode} onSwap={swap} onExit={onExit} onMenu={openMenu} />}
+            main={<FocusMain focused={focused} pip={pip} ambient={settings.ambientMode} onSwap={swap} onExit={onExit} onMenu={openMenu} onStopShare={onStopShare} />}
             overlay={contextMenuProps && <ParticipantContextMenu {...contextMenuProps} onClose={closeContextMenu} />}
         >
             {participants.map((p) => {
                 const hasContent = hasScreenShare(p.identity) || hasCamera(p.identity);
+                // With both a screen and a camera on, the main view already shows their camera, large or as the PiP.
+                const showCamera = pip?.track.participant.identity !== p.identity && hasCamera(p.identity);
                 return (
                     <FocusStripTile
                         key={p.identity}
                         active={p.identity === selectedIdentity}
+                        avatarOnly={!showCamera}
                         title={hasContent ? t('focus.focusOn', { name: p.name || p.identity }) : undefined}
                         onClick={(e) => {
                             if (hasContent) pin(p.identity);
@@ -58,8 +62,7 @@ export function FocusLayout({ initialIdentity, onExit }: FocusLayoutProps) {
                     >
                         <ParticipantTile
                             participant={p}
-                            // With both a screen and a camera on, the main view already shows their camera, large or as the PiP.
-                            trackRef={pip?.track.participant.identity === p.identity ? undefined : cameraMap.get(p.identity)}
+                            trackRef={showCamera ? cameraMap.get(p.identity) : undefined}
                             audioMuted={p.identity === localParticipant.identity ? audioMuted : undefined}
                             avatarUrl={avatarCache?.get(p.identity)}
                         />
@@ -83,6 +86,8 @@ export function FocusLayoutView({ main, overlay, children }: { main: ReactNode; 
 
 interface FocusStripTileProps {
     active: boolean;
+    /** No camera to show: phones draw them as a compact avatar. */
+    avatarOnly: boolean;
     /** Set when clicking focuses this person, who has a screen or camera to show. */
     title?: string;
     onClick?: (e: React.MouseEvent) => void;
@@ -91,10 +96,10 @@ interface FocusStripTileProps {
 }
 
 /** One person in the side strip. */
-export function FocusStripTile({ active, title, onClick, onContextMenu, children }: FocusStripTileProps) {
+export function FocusStripTile({ active, avatarOnly, title, onClick, onContextMenu, children }: FocusStripTileProps) {
     return (
         <div
-            className={`fl-strip-tile${active ? ' fl-strip-active' : ''}${title ? ' fl-strip-clickable' : ''}`}
+            className={`fl-strip-tile${active ? ' fl-strip-active' : ''}${avatarOnly ? ' fl-strip-avatar' : ''}${title ? ' fl-strip-clickable' : ''}`}
             onClick={onClick}
             onContextMenu={onContextMenu}
             title={title}
