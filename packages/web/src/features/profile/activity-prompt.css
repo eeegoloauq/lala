@@ -1,7 +1,7 @@
 /* Bottom left, above the room list's footer: noticed without covering the call. */
 .activity-prompt {
     position: fixed;
-    z-index: 250;
+    z-index: var(--z-prompt);
     left: 16px;
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     width: min(340px, calc(100vw - 32px));

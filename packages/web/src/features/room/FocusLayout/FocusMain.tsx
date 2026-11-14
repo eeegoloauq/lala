@@ -7,6 +7,7 @@ import { useCameraFlip } from '../hooks/useCameraFlip';
 import { FlipCameraIcon, ScreenShareStatusIcon, VideoIcon } from '../icons/Icons';
 import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
 import { useMediaQuery } from '../../../hooks/useMediaQuery';
+import { useLongPress } from '../../../hooks/useLongPress';
 import { AmbientCanvas } from './AmbientCanvas';
 import type { FocusView } from './useFocus';
 
@@ -25,7 +26,8 @@ interface FocusMainProps {
     ambient: boolean;
     onSwap: () => void;
     onExit?: () => void;
-    onMenu: (participant: Participant, e: React.MouseEvent) => void;
+    /** Opens the participant menu at a point on the page. */
+    onMenu: (participant: Participant, x: number, y: number) => void;
     onStopShare: () => void;
 }
 
@@ -46,7 +48,7 @@ export function FocusMain({ focused, pip, ambient, onSwap, onExit, onMenu, onSto
             onStopShare={focused?.type === 'screen' && participant?.identity === localParticipant.identity ? onStopShare : undefined}
             onSwap={onSwap}
             onExit={onExit}
-            onMenu={participant && ((e) => onMenu(participant, e))}
+            onMenu={participant && ((x, y) => onMenu(participant, x, y))}
             onFlip={isTouchDevice && focused?.type === 'camera' && participant?.identity === localParticipant.identity ? handleFlip : undefined}
         />
     );
@@ -61,17 +63,40 @@ interface FocusMainViewProps {
     onStopShare?: () => void;
     onSwap: () => void;
     onExit?: () => void;
-    onMenu?: (e: React.MouseEvent) => void;
+    onMenu?: (x: number, y: number) => void;
     onFlip?: () => void;
 }
 
 /** Phones and tablets share their whole screen, so showing it back is only a mirror of the mirror. */
 export const OWN_SHARE_PLACEHOLDER_QUERY = '(pointer: coarse)';
 
+/** A phone on its side: a screen share fills the screen, over the page (`.fl-main-fill`). */
+export const SHARE_FILL_QUERY = '(orientation: landscape) and (max-height: 500px) and (pointer: coarse)';
+
+/** How long the controls stay over a filling share after the last touch. */
+const CHROME_MS = 3500;
+
 /** The large view from plain content; FocusMain fills it from LiveKit tracks. */
 export function FocusMainView({ focused, pip, ambient, onStopShare, onSwap, onExit, onMenu, onFlip }: FocusMainViewProps) {
     const { t } = useTranslation();
     const placeholder = useMediaQuery(OWN_SHARE_PLACEHOLDER_QUERY) && !!onStopShare;
+    const fill = useMediaQuery(SHARE_FILL_QUERY) && focused?.type === 'screen' && !placeholder;
+    // Over a filling share, the call's controls show after a tap and hide again by themselves.
+    const [chrome, setChrome] = useState(false);
+    useEffect(() => {
+        if (!fill || !chrome) return;
+        let timer = setTimeout(() => setChrome(false), CHROME_MS);
+        const keep = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => setChrome(false), CHROME_MS);
+        };
+        document.addEventListener('pointerdown', keep, true);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('pointerdown', keep, true);
+        };
+    }, [fill, chrome]);
+    const longPress = useLongPress();
     const mainRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -96,12 +121,14 @@ export function FocusMainView({ focused, pip, ambient, onStopShare, onSwap, onEx
 
     return (
         <div
-            className={`fl-main${focused?.type === 'camera' ? ' fl-main-camera' : ''}`}
+            className={`fl-main${focused?.type === 'camera' ? ' fl-main-camera' : ''}${fill ? ' fl-main-fill' : ''}${fill && chrome ? ' fl-chrome' : ''}`}
             ref={mainRef}
+            // A filling share takes a tap for its controls, so a long press opens the menu (iOS fires no contextmenu).
+            {...(fill && onMenu ? longPress(onMenu) : {})}
             onDoubleClick={fullscreenSupported && !placeholder ? toggleFullscreen : undefined}
             // A tap has no right button, so on touch screens it opens the menu.
-            onClick={isTouchDevice ? onMenu : undefined}
-            onContextMenu={onMenu}
+            onClick={!isTouchDevice ? undefined : fill ? () => setChrome(c => !c) : onMenu && ((e) => onMenu(e.clientX, e.clientY))}
+            onContextMenu={onMenu && ((e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); })}
         >
             {focused && (
                 <>

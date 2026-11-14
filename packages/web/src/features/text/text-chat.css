@@ -328,7 +328,7 @@
 .tc-react-pop {
     position: fixed;
     width: 320px;
-    z-index: 300;
+    z-index: var(--z-popover);
 }
 
 .tc-react-pop .emoji-picker {
@@ -804,7 +804,7 @@
 
 .tc-pins {
     position: fixed;
-    z-index: 300;
+    z-index: var(--z-popover);
     max-height: min(480px, 70vh);
     display: flex;
     flex-direction: column;

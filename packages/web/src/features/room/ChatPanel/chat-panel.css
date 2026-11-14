@@ -1,5 +1,6 @@
 /* ─── Chat Panel ─── */
 .cp-panel {
+  isolation: isolate;
   width: 300px;
   flex-shrink: 0;
   background: var(--bg-secondary);
@@ -10,6 +11,23 @@
   /* Positioning context for the drag-drop overlay and the jump-to-latest pill —
      both escape .cp-messages' own scroll clipping by being absolute to this ancestor. */
   position: relative;
+}
+
+/* The call (RoomShell, the demo's call): stage and chat dock in a column, the control bar
+   over the bottom edge. */
+.call-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.call-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transition: opacity 0.2s;
 }
 
 /* RoomShell's stage, with the docked chat beside it on desktop (see .cp-dock below).
@@ -70,7 +88,7 @@
   background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  z-index: 20;
+  z-index: var(--z-call-panel);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   overflow: visible;
 }
@@ -83,7 +101,7 @@
     border-radius: 0;
     border: none;
     background: var(--bg-primary);
-    z-index: 1000;
+    z-index: var(--z-dialog);
   }
 
   .cp-panel.cp-overlay .cp-header {
@@ -585,7 +603,7 @@
 .cp-lightbox-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-viewer);
   display: flex;
   align-items: center;
   justify-content: center;

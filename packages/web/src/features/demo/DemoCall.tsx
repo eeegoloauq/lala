@@ -10,7 +10,8 @@ import { FocusLayoutView, FocusStripTile } from '../room/FocusLayout/FocusLayout
 import { FocusMainView, OWN_SHARE_PLACEHOLDER_QUERY } from '../room/FocusLayout/FocusMain';
 import { stripContent } from '../room/FocusLayout/focusRules';
 import { openInCall, useOpenInCall } from '../../lib/textChat';
-import { ChatPanel, DESKTOP_CHAT_QUERY } from '../room/ChatPanel/ChatPanel';
+import { ChatPanel, CHAT_BELOW_QUERY, DESKTOP_CHAT_QUERY } from '../room/ChatPanel/ChatPanel';
+import type { ChatPlacement } from '../room/ChatPanel/ChatPanel';
 import type { ChatEntry } from '../room/ChatPanel/MessageList';
 import type { AppSettings } from '../settings/types';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -46,6 +47,7 @@ const pick = <T,>(list: readonly T[]): T | undefined => list[Math.floor(Math.ran
 export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallProps) {
     const { t } = useTranslation();
     const isDesktopChat = useMediaQuery(DESKTOP_CHAT_QUERY);
+    const chatBelowFits = useMediaQuery(CHAT_BELOW_QUERY);
     const ownShareHidden = useMediaQuery(OWN_SHARE_PLACEHOLDER_QUERY);
     const [call, setCall] = useState<CallState | null>(() => callState(roomId));
     const [speaking, setSpeaking] = useState<ReadonlySet<string>>(new Set());
@@ -71,8 +73,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     const micLevelSpeaking = useSpeaking(mic.stream);
 
     // Effects below read the latest values without re-running for them.
-    const latest = useRef({ settings, onLeave, chatOpen, t });
-    useEffect(() => { latest.current = { settings, onLeave, chatOpen, t }; });
+    const latest = useRef({ settings, onLeave, chatSeen: chatOpen, t });
 
     // Your own leave plays the leave sound, as in a call.
     const leave = useCallback(() => {
@@ -90,7 +91,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
         addEntry({ kind: 'chat', msg });
         if (from.identity === MY_IDENTITY) return;
         if (latest.current.settings.soundChat) playChatSound();
-        if (!latest.current.chatOpen) setUnread(n => n + 1);
+        if (!latest.current.chatSeen) setUnread(n => n + 1);
     }, [addEntry]);
 
     // Joining: the room's people, sounds and notices as they come and go, the greeting.
@@ -209,6 +210,9 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     if (screen.stream) screens.set(MY_IDENTITY, screen.stream);
     const cameras = new Map<string, MediaStream>(cam.stream ? [[MY_IDENTITY, cam.stream]] : []);
     const focus = useDemoFocus(screens, cameras);
+    // As in RoomShell: on a phone held upright the chat sits under the people.
+    const chatBelow = chatBelowFits && focus.active && !chatOpen;
+    useEffect(() => { latest.current = { settings, onLeave, chatSeen: chatOpen || chatBelow, t }; });
     const nameOf = (identity: string) => people.find(p => p.identity === identity)?.name ?? name;
 
     const tileFor = (p: { identity: string; name: string; bot?: BotDetails }, video?: MediaStream, onClick?: () => void, isCamera = true) => {
@@ -234,8 +238,20 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     };
     const { focused, pip } = focus;
     const streamOf = (view: { identity: string; type: 'screen' | 'camera' }) => (view.type === 'screen' ? screens : cameras).get(view.identity)!;
+    const chat = (placement: ChatPlacement) => (
+        <ChatPanel
+            entries={entries}
+            send={send}
+            isSending={false}
+            localIdentity={MY_IDENTITY}
+            mayChat
+            placement={placement}
+            onClose={placement === 'inline' ? undefined : () => setChatOpen(false)}
+        />
+    );
     const stage = focus.active ? (
         <FocusLayoutView
+            below={chatBelow && chat('inline')}
             main={
                 <FocusMainView
                     focused={focused && {
@@ -280,27 +296,15 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
             })}
         </TileGrid>
     );
-    const chat = (overlay: boolean) => (
-        <ChatPanel
-            entries={entries}
-            send={send}
-            isSending={false}
-            localIdentity={MY_IDENTITY}
-            mayChat
-            overlay={overlay}
-            onClose={() => setChatOpen(false)}
-        />
-    );
-
     return (
-        <div className="demo-call">
+        <div className="call-shell">
             <div className="demo-call-note" role="note">{t('demo.callNote')}</div>
             <div className="cp-stage-row">
                 <div className="cp-stage">{stage}</div>
-                {isDesktopChat && <div className={`cp-dock${chatOpen ? ' cp-dock-open' : ''}`}>{chatMounted && chat(false)}</div>}
+                {isDesktopChat && <div className={`cp-dock${chatOpen ? ' cp-dock-open' : ''}`}>{chatMounted && chat('dock')}</div>}
             </div>
-            {!isDesktopChat && chatOpen && chat(true)}
-            <div className="demo-call-bar">
+            {!isDesktopChat && chatOpen && chat('overlay')}
+            <div className="call-controls">
                 <ControlBarView
                     mic={{ enabled: micOn, pending: mic.pending, toggle: toggleMic }}
                     cam={{ enabled: !!cam.stream, pending: cam.pending, toggle: cam.toggle }}

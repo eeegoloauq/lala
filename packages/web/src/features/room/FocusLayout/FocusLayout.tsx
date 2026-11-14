@@ -15,12 +15,14 @@ import { stripContent } from './focusRules';
 import './focus-layout.css';
 
 interface FocusLayoutProps {
+    /** Shown under the people when there is room: the call's chat on a phone held upright. */
+    below?: ReactNode;
     initialIdentity?: string | null;
     onExit?: () => void;
     onStopShare: () => void;
 }
 
-export function FocusLayout({ initialIdentity, onExit, onStopShare }: FocusLayoutProps) {
+export function FocusLayout({ below, initialIdentity, onExit, onStopShare }: FocusLayoutProps) {
     const { t } = useTranslation();
     const { audioMuted, avatarCache, settings } = useRoomUIContext();
     const { localParticipant } = useLocalParticipant();
@@ -43,8 +45,9 @@ export function FocusLayout({ initialIdentity, onExit, onStopShare }: FocusLayou
 
     return (
         <FocusLayoutView
-            main={<FocusMain focused={focused} pip={pip} ambient={settings.ambientMode} onSwap={swap} onExit={onExit} onMenu={openMenu} onStopShare={onStopShare} />}
+            main={<FocusMain focused={focused} pip={pip} ambient={settings.ambientMode} onSwap={swap} onExit={onExit} onMenu={openContextMenu} onStopShare={onStopShare} />}
             overlay={contextMenuProps && <ParticipantContextMenu {...contextMenuProps} onClose={closeContextMenu} />}
+            below={below}
         >
             {participants.map((p) => {
                 const hasContent = hasScreenShare(p.identity) || hasCamera(p.identity);
@@ -82,12 +85,13 @@ export function FocusLayout({ initialIdentity, onExit, onStopShare }: FocusLayou
     );
 }
 
-/** The focus layout's frame: the large view, a side strip of everyone (`children`) and an overlay such as a menu. */
-export function FocusLayoutView({ main, overlay, children }: { main: ReactNode; overlay?: ReactNode; children: ReactNode }) {
+/** The focus layout's frame: the large view, a strip of everyone (`children`), what goes under them and an overlay such as a menu. */
+export function FocusLayoutView({ main, overlay, below, children }: { main: ReactNode; overlay?: ReactNode; below?: ReactNode; children: ReactNode }) {
     return (
-        <div className="fl-area">
+        <div className={`fl-area${below ? ' fl-area-below' : ''}`}>
             {main}
             <div className="fl-strip">{children}</div>
+            {below && <div className="fl-below">{below}</div>}
             {overlay}
         </div>
     );

@@ -9,6 +9,7 @@
 }
 
 .fl-main {
+    isolation: isolate;
     flex: 1;
     background: #000;
     overflow: hidden;
@@ -388,4 +389,75 @@
         top: 0;
         right: 2px;
     }
+}
+
+/* ─── The call's chat under the people (CHAT_BELOW_QUERY, a phone held upright) ───
+   The share gives up some height so the chat keeps room for a few messages. */
+.fl-area-below .fl-main video {
+    max-height: 42dvh;
+}
+
+.fl-below {
+    flex: 1 1 0;
+    min-height: 120px;
+    display: flex;
+}
+
+.fl-below .cp-panel {
+    flex: 1;
+    width: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--tile-radius);
+}
+
+/* Typing: the keyboard takes the bottom, so the control bar steps aside for the composer. */
+.call-shell:has(.cp-inline:focus-within) .call-controls {
+    display: none;
+}
+
+.call-shell:has(.cp-inline:focus-within) .cp-stage-row {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─── A share filling a phone on its side (SHARE_FILL_QUERY) ───
+   The whole call covers the page, the share fills it edge to edge, and a tap brings the
+   call's controls and the share's own bar back over it for a moment (.fl-chrome). */
+.call-shell:has(.fl-main-fill) {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-share-fill);
+    background: #000;
+}
+
+.call-shell:has(.fl-main-fill) .cp-stage-row,
+.call-shell:has(.fl-main-fill) .fl-area {
+    padding: 0;
+}
+
+.call-shell:has(.fl-main-fill) .fl-strip {
+    display: none;
+}
+
+.fl-main.fl-main-fill {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.fl-main-fill .fl-main-bar {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    transition: opacity 0.2s;
+}
+
+.fl-main-fill:not(.fl-chrome) .fl-main-bar,
+.call-shell:has(.fl-main-fill:not(.fl-chrome)) .call-controls {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.fl-main-fill:not(.fl-chrome) .fl-main-bar * {
+    pointer-events: none;
 }

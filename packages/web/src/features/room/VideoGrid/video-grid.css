@@ -30,6 +30,7 @@
 /* ─── Participant Tile ─── */
 .p-tile {
     position: relative;
+    isolation: isolate;
     background: var(--bg-secondary);
     border-radius: var(--tile-radius);
     overflow: hidden;

@@ -27,7 +27,7 @@
     .app-layout.sidebar-hidden .sidebar-hamburger {
         display: flex;
         position: absolute;
-        z-index: 10;
+        z-index: var(--z-raised);
         top: 12px;
         left: 12px;
         width: 32px;
@@ -65,7 +65,7 @@
         display: block;
         position: fixed;
         inset: 0;
-        z-index: 200;
+        z-index: var(--z-drawer);
         pointer-events: none;
         transition: none;
     }
@@ -115,14 +115,14 @@
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.55);
-        z-index: 199;
+        z-index: calc(var(--z-drawer) - 1);
     }
 
     /* Hamburger — shown on mobile */
     .sidebar-hamburger {
         display: flex;
         position: absolute;
-        z-index: 10;
+        z-index: var(--z-raised);
         top: calc(6px + env(safe-area-inset-top, 0px));
         left: calc(8px + env(safe-area-inset-left, 0px));
         width: 44px;

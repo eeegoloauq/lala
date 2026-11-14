@@ -3,6 +3,23 @@
    Theme tokens and theme rules live in themes/, one file per theme.
    ============================================ */
 
+/* ─── Layers ───
+   What sits over what, lowest first; every layer over the page takes its z-index from here.
+   Inside a component, small plain numbers order its own parts; the component sets
+   `isolation: isolate` so they stay inside it. Not a theme concern, so not in themes/. */
+:root {
+  --z-raised: 10;        /* buttons over the page: the room list's and the people list's toggles */
+  --z-call-panel: 20;    /* over the call: the floating chat */
+  --z-call-notice: 40;   /* over the call: reconnecting banner, toasts */
+  --z-share-fill: 100;   /* a phone in landscape: the call covers the page while a share fills it */
+  --z-drawer: 200;       /* the room list and the people list as drawers; their backdrop just below */
+  --z-prompt: 300;       /* a question in the corner: share activity */
+  --z-dialog: 1000;      /* modals, settings, the screen share picker, the chat on a phone */
+  --z-popover: 1100;     /* cards and pickers opened from anywhere: profile card, emoji, pins, reactions */
+  --z-viewer: 1200;      /* a picture opened large */
+  --z-menu: 1300;        /* menus and select lists, over whatever opened them */
+}
+
 /* ─── Reset ─── */
 *,
 *::before,
@@ -175,7 +192,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: var(--z-dialog);
   animation: fadeIn 0.15s ease;
 }
 

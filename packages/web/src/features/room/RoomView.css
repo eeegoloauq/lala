@@ -43,7 +43,7 @@
     color: #fff;
     font-size: 13px;
     font-weight: 600;
-    z-index: 30;
+    z-index: var(--z-call-notice);
     flex-shrink: 0;
 }
 
@@ -71,7 +71,7 @@
     font-weight: 600;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-lg);
-    z-index: 40;
+    z-index: var(--z-call-notice);
     max-width: min(420px, calc(100vw - 32px));
     text-align: left;
 }
@@ -108,7 +108,7 @@
     font-size: 13px;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-lg);
-    z-index: 40;
+    z-index: var(--z-call-notice);
     max-width: min(420px, calc(100vw - 32px));
 }
 

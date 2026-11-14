@@ -54,7 +54,7 @@ export function Select({ value, onChange, options, label, className = '', disabl
             left: rect.left,
             width: rect.width,
             maxHeight: Math.min(MAX_LIST_HEIGHT, up ? above : below),
-            zIndex: 9999,
+            zIndex: 'var(--z-menu)',
         });
         setActive(selectedIndex);
         setOpen(true);

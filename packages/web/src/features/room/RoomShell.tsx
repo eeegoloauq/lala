@@ -8,7 +8,8 @@ import { VideoGrid } from './VideoGrid/VideoGrid';
 import { FocusLayout } from './FocusLayout/FocusLayout';
 import { ControlBar } from './ControlBar/ControlBar';
 import { openInCall, useOpenInCall } from '../../lib/textChat';
-import { ChatPanel, DESKTOP_CHAT_QUERY } from './ChatPanel/ChatPanel';
+import { ChatPanel, CHAT_BELOW_QUERY, DESKTOP_CHAT_QUERY } from './ChatPanel/ChatPanel';
+import type { ChatPlacement } from './ChatPanel/ChatPanel';
 import { useMicSound, useTalkingWhileMuted } from './hooks/useMicSounds';
 import { playMuteSound, playUnmuteSound } from '../../lib/sounds';
 import { useIosAudioKeepAlive } from './hooks/useIosAudioKeepAlive';
@@ -81,6 +82,7 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
 
     // Desktop: chat docks as a reflowing column (animated width). Mobile/narrow: existing overlay.
     const isDesktopChat = useMediaQuery(DESKTOP_CHAT_QUERY);
+    const chatBelowFits = useMediaQuery(CHAT_BELOW_QUERY);
 
     // Keep the docked ChatPanel mounted through its ~200ms close animation so the slide-out
     // shows real content sliding away, rather than the box shrinking around empty space.
@@ -144,7 +146,16 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
 
     useParticipantVolumeSync({ participants, volumes, onVolumeChange, screenVolumes });
 
-    const { unreadCount, resetUnread } = useChatNotifications(settings, messages, chatOpen, localParticipant.identity, fileTransfers);
+    const screenTracks = useTracks(SCREEN_SHARE_TRACKS);
+    const isScreenSharing = screenTracks.some(
+        (t) => isTrackReference(t) && t.publication.isSubscribed && !t.publication.isMuted,
+    );
+    const focusOn = isScreenSharing || !!focusedIdentity;
+    // A phone held upright has room under the people in the focus layout: the chat goes
+    // there, and the chat button still opens it fullscreen.
+    const chatBelow = chatBelowFits && focusOn && !chatOpen;
+
+    const { unreadCount, resetUnread } = useChatNotifications(settings, messages, chatOpen || chatBelow, localParticipant.identity, fileTransfers);
 
     const handleOpenChat = useCallback(() => {
         setChatOpen((v) => {
@@ -232,11 +243,6 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
         keyScreenShare: settings.keyScreenShare,
     });
 
-    const screenTracks = useTracks(SCREEN_SHARE_TRACKS);
-    const isScreenSharing = screenTracks.some(
-        (t) => isTrackReference(t) && t.publication.isSubscribed && !t.publication.isMuted,
-    );
-
     const roomUIValue = useMemo(() => ({
         audioMuted,
         avatarCache,
@@ -260,22 +266,22 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
         resetUnread();
     }, [chatDraft, resetUnread]);
 
-    const chatPanel = (overlay: boolean) => (
+    const chatPanel = (placement: ChatPlacement) => (
         <ChatPanel
             entries={chatEntries}
             send={send}
             isSending={isSending}
             localIdentity={localParticipant.identity}
             mayChat={mayChat}
-            onClose={() => setChatOpen(false)}
+            onClose={placement === 'inline' ? undefined : () => setChatOpen(false)}
             onSendFile={sendFile}
             onCancelFile={cancelSend}
-            overlay={overlay}
+            placement={placement}
         />
     );
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+        <div className="call-shell">
             <RoomAudioRenderer muted={audioMuted} />
 
             {showReconnecting && (
@@ -290,8 +296,9 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
             <div className="cp-stage-row">
                 <div className="cp-stage">
                     <RoomUIProvider value={roomUIValue}>
-                        {isScreenSharing || focusedIdentity
+                        {focusOn
                             ? <FocusLayout
+                                below={chatBelow && chatPanel('inline')}
                                 initialIdentity={focusedIdentity}
                                 onExit={focusedIdentity && !isScreenSharing ? () => setFocusedIdentity(null) : undefined}
                                 onStopShare={handleScreenShareToggle}
@@ -305,12 +312,12 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
                         className={`cp-dock${chatOpen ? ' cp-dock-open' : ''}`}
                         onTransitionEnd={handleDockTransitionEnd}
                     >
-                        {chatMounted && chatPanel(false)}
+                        {chatMounted && chatPanel('dock')}
                     </div>
                 )}
             </div>
 
-            {!isDesktopChat && chatOpen && chatPanel(true)}
+            {!isDesktopChat && chatOpen && chatPanel('overlay')}
 
             {screenShareModalOpen && (
                 <Suspense fallback={null}>
@@ -345,7 +352,7 @@ export function RoomShell({ canModerate, name, startDeafened = false, onOpenSett
                 </div>
             )}
 
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+            <div className="call-controls">
                 <ControlBar
                     mic={mic}
                     cam={cam}

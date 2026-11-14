@@ -118,7 +118,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
-    z-index: 199;
+    z-index: calc(var(--z-drawer) - 1);
 }
 
 .people-panel.people-overlay {
@@ -126,7 +126,7 @@
     top: 0;
     right: 0;
     bottom: 0;
-    z-index: 200;
+    z-index: var(--z-drawer);
     width: min(85%, 300px);
     min-width: 0;
     box-shadow: var(--shadow-lg);
@@ -136,7 +136,7 @@
 /* The button that shows and hides the panel, at the top right of the page. */
 .people-toggle {
     position: absolute;
-    z-index: 10;
+    z-index: var(--z-raised);
     top: 12px;
     right: 12px;
     width: 32px;

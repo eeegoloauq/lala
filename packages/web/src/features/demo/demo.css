@@ -1,18 +1,3 @@
-/* Laid out like RoomShell: stage and chat dock in a column, the control bar over the bottom edge. */
-.demo-call {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    position: relative;
-}
-
-.demo-call-bar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-}
-
 /* Says once, quietly, that this call is a simulation. */
 .demo-call-note {
     align-self: center;
@@ -24,4 +9,8 @@
     color: var(--text-muted);
     font-size: 12px;
     text-align: center;
+}
+
+.call-shell:has(.fl-main-fill) .demo-call-note {
+    display: none;
 }

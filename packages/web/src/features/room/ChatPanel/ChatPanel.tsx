@@ -17,6 +17,12 @@ import './chat-panel.css';
 /** Below this width the chat stays the existing floating/fullscreen overlay; at or above it, chat docks as a proper reflowing column. */
 export const DESKTOP_CHAT_QUERY = '(min-width: 900px)';
 
+/** A phone held upright: while the focus layout is on, the call's chat sits under the people (focus-layout.css). */
+export const CHAT_BELOW_QUERY = '(max-width: 640px) and (orientation: portrait)';
+
+/** `dock`: a column beside the call; `overlay`: a floating window, fullscreen on a phone; `inline`: in the space under the people, without a header. */
+export type ChatPlacement = 'dock' | 'overlay' | 'inline';
+
 interface ChatPanelProps {
     entries: ChatEntry[];
     send: (msg: string) => Promise<unknown>;
@@ -26,16 +32,17 @@ interface ChatPanelProps {
     /** Whether the room lets us chat. */
     mayChat: boolean;
     onClose?: () => void;
-    overlay?: boolean;
+    placement?: ChatPlacement;
     /** Sends a File as a byte-stream chat attachment; resolves with an error tag on failure (e.g. too large). */
     onSendFile?: (file: File) => Promise<{ ok: boolean; error?: 'tooLarge' }>;
     /** Cancels an in-progress outgoing file transfer. */
     onCancelFile?: (id: string) => void;
 }
 
-export function ChatPanel({ entries, send, isSending, localIdentity, mayChat, onClose, overlay = false, onSendFile, onCancelFile }: ChatPanelProps) {
+export function ChatPanel({ entries, send, isSending, localIdentity, mayChat, onClose, placement = 'dock', onSendFile, onCancelFile }: ChatPanelProps) {
     const { t } = useTranslation();
     const panelRef = useRef<HTMLDivElement>(null);
+    const overlay = placement === 'overlay';
     const { startDrag, startResize } = useFloatingPanel(panelRef, overlay);
     // A text chat picked in the room list shows here instead of the call's chat until closed.
     const textChannel = useOpenInCall();
@@ -70,7 +77,7 @@ export function ChatPanel({ entries, send, isSending, localIdentity, mayChat, on
     return (
         <div
             ref={panelRef}
-            className={`cp-panel${overlay ? ' cp-overlay' : ''}`}
+            className={`cp-panel${overlay ? ' cp-overlay' : ''}${placement === 'inline' ? ' cp-inline' : ''}`}
             onDragEnter={(e) => {
                 if (!draggingFiles(e)) return;
                 e.preventDefault();
@@ -102,7 +109,7 @@ export function ChatPanel({ entries, send, isSending, localIdentity, mayChat, on
                 <div key={dir} className={`cp-resize cp-resize-${dir}`} onMouseDown={e => startResize(e, dir)} />
             ))}
 
-            <div className="cp-header" onMouseDown={overlay ? startDrag : undefined}>
+            {placement !== 'inline' && <div className="cp-header" onMouseDown={overlay ? startDrag : undefined}>
                 {textChannel ? (
                     <span className="cp-header-text">
                         <button className="cp-back" onMouseDown={e => e.stopPropagation()} onClick={() => openInCall(null)} title={t('chat.backToCall')} aria-label={t('chat.backToCall')}>←</button>
@@ -115,7 +122,7 @@ export function ChatPanel({ entries, send, isSending, localIdentity, mayChat, on
                 {onClose && (
                     <button className="cp-close" onMouseDown={e => e.stopPropagation()} onClick={onClose} title={t('chat.close')}>✕</button>
                 )}
-            </div>
+            </div>}
 
             {textChannel === RULES_IN_CALL ? <RulesView compact /> : textChannel ? <TextChannelView key={textChannel} channel={textChannel} compact /> : (<>
             <MessageList entries={entries} localIdentity={localIdentity} onCancelFile={onCancelFile} />
