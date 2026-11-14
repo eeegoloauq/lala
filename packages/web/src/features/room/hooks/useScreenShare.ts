@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useLocalParticipant, useTracks, isTrackReference } from '@livekit/components-react';
-import { Track, AudioPresets } from 'livekit-client';
+import { Track, AudioPresets, VideoPreset } from 'livekit-client';
 import type { AudioCaptureOptions, VideoEncoding, VideoResolution } from 'livekit-client';
-import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS } from '../../../lib/constants';
+import { SCREEN_SHARE_FPS_STEPS, SCREEN_SHARE_BITRATE_STEPS, SCREEN_SHARE_THUMBNAIL } from '../../../lib/constants';
 import { IS_ELECTRON as isElectron, IS_LINUX, SCREEN_AUDIO_SUPPORTED } from '../../../lib/env';
 
 /**
@@ -11,6 +11,9 @@ import { IS_ELECTRON as isElectron, IS_LINUX, SCREEN_AUDIO_SUPPORTED } from '../
  * restrictOwnAudio keeps the call's own playout out of the capture where the
  * platform supports it, so participants don't hear themselves back.
  */
+const { width, height, maxBitrate, maxFramerate } = SCREEN_SHARE_THUMBNAIL;
+const thumbnailLayer = new VideoPreset(width, height, maxBitrate, maxFramerate);
+
 const screenShareAudioOptions: AudioCaptureOptions = {
     restrictOwnAudio: true,
     echoCancellation: false,
@@ -82,7 +85,10 @@ export function useScreenShare() {
                 },
                 {
                     videoEncoding: quality.encoding,
-                    simulcast: false,
+                    // The full share plus a small layer for thumbnails (constants.ts). LiveKit
+                    // adds it only for a source at least 480px on its long side.
+                    simulcast: true,
+                    screenShareSimulcastLayers: [thumbnailLayer],
                     dtx: false,
                     red: false,
                     audioPreset: AudioPresets.musicHighQualityStereo,

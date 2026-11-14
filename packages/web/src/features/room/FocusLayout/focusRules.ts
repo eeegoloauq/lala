@@ -40,3 +40,14 @@ export function nextFocus({ current, pin, own, shares, appeared, ended, isPresen
     if (current && isPresent(current)) return { selected: current, pin: null };
     return { selected: shares.values().next().value ?? fallback, pin: null };
 }
+
+/**
+ * What a person's tile in the strip shows: a live thumbnail of their screen share, else their
+ * camera, else nothing (the avatar). Whoever fills the main view shows nothing there: their
+ * screen and camera are already on view, large or as the picture-in-picture.
+ */
+export function stripContent({ screen, camera, shownLarge }: { screen: boolean; camera: boolean; shownLarge: boolean }): 'screen' | 'camera' | null {
+    if (shownLarge) return null;
+    if (screen) return 'screen';
+    return camera ? 'camera' : null;
+}

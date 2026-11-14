@@ -9,6 +9,12 @@ export const MAX_NAME_LENGTH = 20;
 export const SCREEN_SHARE_FPS_STEPS = [30, 60] as const;
 export const SCREEN_SHARE_BITRATE_STEPS = [1, 2, 5, 8, 15] as const; // Mbps
 
+/**
+ * The screen share's extra layer for live thumbnails: the short side 180px at 5 fps. With
+ * dynacast the sharer encodes it only while someone's thumbnail shows it.
+ */
+export const SCREEN_SHARE_THUMBNAIL = { width: 320, height: 180, maxBitrate: 150_000, maxFramerate: 5 } as const;
+
 export function screenShareBitrateLabel(mbps: number): string {
     if (mbps <= 1) return '480p';
     if (mbps <= 2) return '720p';

@@ -7,7 +7,8 @@ import { ParticipantTileView } from '../room/VideoGrid/ParticipantTile';
 import { TileGrid } from '../room/VideoGrid/TileGrid';
 import { ControlBarView } from '../room/ControlBar/ControlBar';
 import { FocusLayoutView, FocusStripTile } from '../room/FocusLayout/FocusLayout';
-import { FocusMainView } from '../room/FocusLayout/FocusMain';
+import { FocusMainView, OWN_SHARE_PLACEHOLDER_QUERY } from '../room/FocusLayout/FocusMain';
+import { stripContent } from '../room/FocusLayout/focusRules';
 import { openInCall, useOpenInCall } from '../../lib/textChat';
 import { ChatPanel, DESKTOP_CHAT_QUERY } from '../room/ChatPanel/ChatPanel';
 import type { ChatEntry } from '../room/ChatPanel/MessageList';
@@ -45,6 +46,7 @@ const pick = <T,>(list: readonly T[]): T | undefined => list[Math.floor(Math.ran
 export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallProps) {
     const { t } = useTranslation();
     const isDesktopChat = useMediaQuery(DESKTOP_CHAT_QUERY);
+    const ownShareHidden = useMediaQuery(OWN_SHARE_PLACEHOLDER_QUERY);
     const [call, setCall] = useState<CallState | null>(() => callState(roomId));
     const [speaking, setSpeaking] = useState<ReadonlySet<string>>(new Set());
     const [chatOpen, setChatOpen] = useState(false);
@@ -209,14 +211,14 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     const focus = useDemoFocus(screens, cameras);
     const nameOf = (identity: string) => people.find(p => p.identity === identity)?.name ?? name;
 
-    const tileFor = (p: { identity: string; name: string; bot?: BotDetails }, video?: MediaStream, onClick?: () => void) => {
+    const tileFor = (p: { identity: string; name: string; bot?: BotDetails }, video?: MediaStream, onClick?: () => void, isCamera = true) => {
         const mine = p.identity === MY_IDENTITY;
         return (
             <ParticipantTileView
                 name={p.name}
                 identity={p.identity}
                 avatarUrl={mine ? myAvatar : avatars.get(p.identity)}
-                video={video ? <StreamVideo stream={video} mirror={mine} /> : undefined}
+                video={video ? <StreamVideo stream={video} mirror={mine && isCamera} /> : undefined}
                 speaking={speakingNow.has(p.identity)}
                 screenSharing={screens.has(p.identity)}
                 micMuted={mine ? !micOn : !!call?.muted.has(p.identity) || !!call?.serverMuted.has(p.identity)}
@@ -251,17 +253,21 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
         >
             {people.map(p => {
                 const hasContent = screens.has(p.identity) || cameras.has(p.identity);
-                // With both a screen and a camera on, the main view already shows their camera, large or as the PiP.
-                const camera = pip?.identity === p.identity ? undefined : cameras.get(p.identity);
+                const content = stripContent({
+                    screen: screens.has(p.identity) && !(p.identity === MY_IDENTITY && ownShareHidden),
+                    camera: cameras.has(p.identity),
+                    shownLarge: p.identity === focused?.identity,
+                });
+                const video = content && streamOf({ identity: p.identity, type: content });
                 return (
                     <FocusStripTile
                         key={p.identity}
                         active={p.identity === focused?.identity}
-                        avatarOnly={!camera}
+                        avatarOnly={!video}
                         title={hasContent ? t('focus.focusOn', { name: p.name }) : undefined}
                         onClick={hasContent ? () => focus.pin(p.identity) : undefined}
                     >
-                        {tileFor(p, camera)}
+                        {tileFor(p, video || undefined, undefined, content === 'camera')}
                     </FocusStripTile>
                 );
             })}

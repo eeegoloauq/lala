@@ -8,8 +8,10 @@ import { ParticipantContextMenu } from '../VideoGrid/ParticipantContextMenu';
 import { useParticipantContextMenu } from '../hooks/useParticipantContextMenu';
 import { useRoomUIContext } from '../RoomUIContext';
 import { IS_TOUCH as isTouchDevice } from '../../../lib/env';
+import { useMediaQuery } from '../../../hooks/useMediaQuery';
 import { useFocus } from './useFocus';
-import { FocusMain } from './FocusMain';
+import { FocusMain, OWN_SHARE_PLACEHOLDER_QUERY } from './FocusMain';
+import { stripContent } from './focusRules';
 import './focus-layout.css';
 
 interface FocusLayoutProps {
@@ -22,7 +24,8 @@ export function FocusLayout({ initialIdentity, onExit, onStopShare }: FocusLayou
     const { t } = useTranslation();
     const { audioMuted, avatarCache, settings } = useRoomUIContext();
     const { localParticipant } = useLocalParticipant();
-    const { participants, cameraMap, selectedIdentity, focused, pip, hasScreenShare, hasCamera, pin, swap } = useFocus(initialIdentity ?? null);
+    const { participants, cameraMap, selectedIdentity, focused, pip, hasScreenShare, screenOf, hasCamera, pin, swap } = useFocus(initialIdentity ?? null);
+    const ownShareHidden = useMediaQuery(OWN_SHARE_PLACEHOLDER_QUERY);
     const { contextMenuProps, openContextMenu, closeContextMenu } = useParticipantContextMenu();
 
     const openMenu = useCallback((participant: Participant, e: React.MouseEvent) => {
@@ -45,13 +48,19 @@ export function FocusLayout({ initialIdentity, onExit, onStopShare }: FocusLayou
         >
             {participants.map((p) => {
                 const hasContent = hasScreenShare(p.identity) || hasCamera(p.identity);
-                // With both a screen and a camera on, the main view already shows their camera, large or as the PiP.
-                const showCamera = pip?.track.participant.identity !== p.identity && hasCamera(p.identity);
+                const own = p.identity === localParticipant.identity;
+                const screen = screenOf(p.identity);
+                const content = stripContent({
+                    // A share without the thumbnail layer (an older client, a small source) would come at full size.
+                    screen: !!screen && (own ? !ownShareHidden : !!screen.publication.simulcasted),
+                    camera: hasCamera(p.identity),
+                    shownLarge: focused?.track.participant.identity === p.identity,
+                });
                 return (
                     <FocusStripTile
                         key={p.identity}
                         active={p.identity === selectedIdentity}
-                        avatarOnly={!showCamera}
+                        avatarOnly={!content}
                         title={hasContent ? t('focus.focusOn', { name: p.name || p.identity }) : undefined}
                         onClick={(e) => {
                             if (hasContent) pin(p.identity);
@@ -62,7 +71,7 @@ export function FocusLayout({ initialIdentity, onExit, onStopShare }: FocusLayou
                     >
                         <ParticipantTile
                             participant={p}
-                            trackRef={showCamera ? cameraMap.get(p.identity) : undefined}
+                            trackRef={content === 'screen' ? screen : content === 'camera' ? cameraMap.get(p.identity) : undefined}
                             audioMuted={p.identity === localParticipant.identity ? audioMuted : undefined}
                             avatarUrl={avatarCache?.get(p.identity)}
                         />
@@ -86,7 +95,7 @@ export function FocusLayoutView({ main, overlay, children }: { main: ReactNode; 
 
 interface FocusStripTileProps {
     active: boolean;
-    /** No camera to show: phones draw them as a compact avatar. */
+    /** No video to show: phones draw them as a compact avatar. */
     avatarOnly: boolean;
     /** Set when clicking focuses this person, who has a screen or camera to show. */
     title?: string;

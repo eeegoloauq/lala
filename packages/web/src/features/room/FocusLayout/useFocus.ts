@@ -133,6 +133,7 @@ export function useFocus(initialIdentity: string | null) {
         focused,
         pip,
         hasScreenShare: (identity: string) => screenMap.has(identity),
+        screenOf: (identity: string) => screenMap.get(identity),
         hasCamera: (identity: string) => !!activeCamera(identity),
         /** Focuses someone by hand; auto-focus leaves them alone until they leave or stop sharing. */
         pin: (identity: string) => {

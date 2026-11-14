@@ -88,7 +88,7 @@ function room(name: string, people: Person[], extra: Partial<DemoRoom> = {}): De
 
 // Seeded rooms keep fixed IDs, so a demo link like /room/lounge survives the reset on reload.
 const rooms: DemoRoom[] = [
-    room('Lounge', [...CROWD.slice(0, 4), RADIO], { id: 'lounge', permanent: true, muted: new Set([CROWD[2].identity]), sharing: new Set([CROWD[1].identity]) }),
+    room('Lounge', [...CROWD.slice(0, 4), RADIO], { id: 'lounge', permanent: true, muted: new Set([CROWD[2].identity]), sharing: new Set([CROWD[1].identity, CROWD[3].identity]) }),
     room('Gaming', [...CROWD.slice(4, 7), MINUTES], { id: 'gaming', deafened: new Set([CROWD[6].identity]) }),
     room('Study', CROWD.slice(7, 9), { id: 'study', maxParticipants: 2 }),
     room(`Locked · ${DEMO_PASSWORD}`, CROWD.slice(9, 10), { id: 'locked' }),
@@ -294,7 +294,8 @@ function startActivity() {
             else from.muted.add(who.identity);
         } else if (from.sharing.has(who.identity)) {
             from.sharing.delete(who.identity);
-        } else if (from.sharing.size === 0) {
+        } else if (from.sharing.size < 2) {
+            // Up to two at once, so the one not on view shows as a thumbnail.
             from.sharing.add(who.identity);
         }
         changed();

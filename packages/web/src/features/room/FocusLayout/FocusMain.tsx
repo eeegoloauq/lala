@@ -66,7 +66,7 @@ interface FocusMainViewProps {
 }
 
 /** Phones and tablets share their whole screen, so showing it back is only a mirror of the mirror. */
-const OWN_SHARE_PLACEHOLDER_QUERY = '(pointer: coarse)';
+export const OWN_SHARE_PLACEHOLDER_QUERY = '(pointer: coarse)';
 
 /** The large view from plain content; FocusMain fills it from LiveKit tracks. */
 export function FocusMainView({ focused, pip, ambient, onStopShare, onSwap, onExit, onMenu, onFlip }: FocusMainViewProps) {

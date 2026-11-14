@@ -210,6 +210,38 @@ test('a viewer receives a screen share', async ({ browser }) => {
     expect(bob.errors).toEqual([]);
 });
 
+test('a share not on view plays as a thumbnail from its small layer', async ({ browser }) => {
+    const alice = await enter(browser, 'Alice');
+    await createRoom(alice.page, 'Two screens');
+    const bob = await enter(browser, 'Bob');
+    await bob.page.goto(alice.page.url());
+    await expect.poll(async () => (await media(bob.page)).audio, { timeout: 20_000 }).toBe(1);
+
+    for (const { page } of [alice, bob]) {
+        await page.getByRole('button', { name: 'Share screen' }).click();
+        await page.getByRole('button', { name: 'Start', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'Stop screen share' })).toBeVisible();
+    }
+    // Bob keeps Alice's share on view; he puts his own there, so hers moves to the strip.
+    const main = bob.page.locator('.fl-main');
+    await expect(main.locator('.fl-main-label')).toHaveText('Alice');
+    await bob.page.locator('.fl-strip .p-tile', { hasText: 'Bob' }).click();
+    await expect(main.locator('.fl-main-label')).toHaveText('Bob');
+
+    const width = (selector: string) => bob.page.locator(selector).evaluate((v: HTMLVideoElement) => v.currentTime > 0.5 ? v.videoWidth : 0);
+    const thumbnail = '.fl-strip-tile:has-text("Alice") video';
+    await expect.poll(() => width(thumbnail), { timeout: 20_000 }).toBeGreaterThan(0);
+    await expect.poll(() => width(thumbnail), { timeout: 20_000 }).toBeLessThanOrEqual(320);
+
+    // Back on view, her share comes at full size.
+    await bob.page.locator('.fl-strip .p-tile', { hasText: 'Alice' }).click();
+    await expect(main.locator('.fl-main-label')).toHaveText('Alice');
+    await expect.poll(() => width('.fl-main video'), { timeout: 20_000 }).toBeGreaterThan(320);
+
+    expect(alice.errors).toEqual([]);
+    expect(bob.errors).toEqual([]);
+});
+
 test('the room creator mutes, kicks, bans and deletes', async ({ browser }) => {
     const alice = await enter(browser, 'Alice');
     await alice.page.getByRole('button', { name: 'Create channel' }).click();
