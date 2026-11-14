@@ -1,6 +1,7 @@
 .profile-card {
     position: fixed;
-    z-index: 300;
+    /* Above the phone's fullscreen call chat (1000), whose avatars open it. */
+    z-index: 1100;
     width: 288px;
     max-width: calc(100vw - 24px);
     background: var(--bg-sidebar);

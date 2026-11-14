@@ -157,6 +157,14 @@
     color: white;
 }
 
+/* Too short for a line above the avatar (the phone's strip under a screen share): the
+   status stays in the profile card. */
+@container (max-height: 90px) {
+    .p-tile-bot-status {
+        display: none;
+    }
+}
+
 /* Small tiles, such as the strip beside a screen share: the name and the states that
    matter; the connection bars return in a bigger tile. */
 @container (max-width: 220px) {
