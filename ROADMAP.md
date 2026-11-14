@@ -4,10 +4,9 @@
 
 In this order; each builds on the one before.
 
-1. **The call on a phone.** While someone shares: live thumbnails of other shares (a small
-   extra layer of the screen share, sent only while someone shows it), the call's chat in
-   the space under the people, a landscape layout where the share fills the screen, and one
-   scale for overlay layers. Then emoji reactions over a share.
+1. **The call on a phone.** While someone shares: the call's chat in the space under the
+   people, a landscape layout where the share fills the screen, and one scale for overlay
+   layers. Then emoji reactions over a share.
 2. **An AFK room.** From the config: people idle for a set time are moved there with their
    microphone off, using the move moderators already have.
 3. **Pinned rooms.** An admin pins a room someone created so it stays when empty, with its
