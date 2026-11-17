@@ -32,7 +32,7 @@ import { getTemplates, saveTemplate } from './lib/roomTemplates';
 import { resetRoomSession, setModerationInRoom } from './lib/roomStatusStore';
 import { setListedRooms } from './lib/moving';
 import { useTextChatSync } from './hooks/useTextChatSync';
-import { loadChannels, openInCall, RULES_IN_CALL, useChannels, useRulesPending } from './lib/textChat';
+import { loadChannels, openInCall, RULES_IN_CALL, useChannels, useChannelsFailed, useRulesPending } from './lib/textChat';
 import { setNotifyContext } from './lib/chatNotify';
 import { useMyStatus } from './lib/presence';
 import { presenceChanged } from './lib/presence';
@@ -40,6 +40,7 @@ import { RULES_REQUIRED_EVENT } from './lib/api';
 import { TextChannelView } from './features/text/TextChannelView';
 import { RulesView } from './features/text/RulesView';
 import type { TextTarget } from './features/text/TextChannelList';
+import { DelayedLoading } from './ui/DelayedLoading';
 import './App.css';
 
 const SettingsModal = lazy(() => import('./features/settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
@@ -48,7 +49,7 @@ export default function App() {
     const { t } = useTranslation();
     const { rooms, error: roomsError, addRoom, refresh: refreshRooms } = useRooms();
     const { displayName, setDisplayName } = useDisplayName();
-    const me = useMe();
+    const { me, failed: meFailed, retry: retryMe } = useMe();
     const { settings, updateSettings } = useSettings();
     const route = useRoute();
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -98,9 +99,13 @@ export default function App() {
     }, [me]);
     usePublishAvatars(rooms, me?.identity, myAvatar);
     useTextChatSync(me?.identity, !!me?.textChats);
-    // The server wants its rules agreed to first: until then the rules are all there is.
+    const channels = useChannels();
+    const channelsFailed = useChannelsFailed();
+    // Wait for the server to say whether it requires agreement before showing the lobby.
+    const checkingRules = !me || (!!me.textChats && channels === null);
     const rulesPending = useRulesPending();
-    usePresenceSync(me?.identity, displayName, settings.presenceStatus, rulesPending, {
+    const gated = checkingRules || rulesPending;
+    usePresenceSync(me?.identity, displayName, settings.presenceStatus, gated, {
         about: settings.profileAbout,
         shareLocalTime: settings.shareLocalTime,
         shareActivity: settings.shareActivity,
@@ -120,7 +125,8 @@ export default function App() {
     // The people list sits beside the call. Wide screens show it unless hidden (remembered);
     // narrower ones start without it, and phones open it as a drawer over the page.
     // A server without presence has no list and no button for it.
-    const hasPresence = usePresence() !== null;
+    const presenceList = usePresence();
+    const hasPresence = !gated && presenceList !== null;
     const isWide = useMediaQuery('(min-width: 1100px)');
     const [peopleOpen, setPeopleOpen] = useState(false);
     const peopleDocked = hasPresence && !isPhone && (isWide ? !settings.peopleHidden : peopleOpen);
@@ -154,7 +160,7 @@ export default function App() {
         setThemeInputs({ accent: settings.accentColor });
     }, [setThemeInputs, settings.accentColor]);
 
-    const activeRoom = rulesPending ? null : route.roomId;
+    const activeRoom = gated ? null : route.roomId;
     // Outside a call the main area may show a text chat or the rules; in a call, chats open
     // in its side panel so the call stays on screen.
     const textView = rulesPending ? { kind: 'rules' as const } : activeRoom ? null : route.text;
@@ -193,8 +199,6 @@ export default function App() {
     }, [activeRoom, route]);
 
     // What chat notifications need from here: settings, Do Not Disturb, names, and a way to open a chat.
-    const channels = useChannels();
-    const presenceList = usePresence();
     const myStatus = useMyStatus();
     useEffect(() => {
         setNotifyContext({
@@ -238,12 +242,12 @@ export default function App() {
     // in one room. Once per launch, and a room link opened at launch wins.
     const autoJoinTried = useRef(false);
     useEffect(() => {
-        if (autoJoinTried.current || !displayName) return;
+        if (autoJoinTried.current || !displayName || gated) return;
         autoJoinTried.current = true;
         const last = getTemplates()[0];
         if (!settings.autoJoinLastRoom || route.roomId || !last) return;
         handleCreateRoom(last).catch(err => console.warn('[App] Joining the last room failed:', err));
-    }, [displayName, settings.autoJoinLastRoom, route.roomId, handleCreateRoom]);
+    }, [displayName, gated, settings.autoJoinLastRoom, route.roomId, handleCreateRoom]);
 
     if (!displayName) {
         return (
@@ -277,7 +281,21 @@ export default function App() {
             </div>
         );
     }
-
+    if (checkingRules) {
+        const failed = me ? channelsFailed : meFailed;
+        return (
+            <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
+                {failed ? (
+                    <div className="home-card">
+                        <p role="alert">{t('errors.server_unavailable')}</p>
+                        <button className="btn btn-primary" type="button" onClick={me ? loadChannels : retryMe}>{t('chat.retry')}</button>
+                    </div>
+                ) : (
+                    <DelayedLoading><span className="empty-state-sub" role="status">{t('chat.loading')}</span></DelayedLoading>
+                )}
+            </div>
+        );
+    }
 
     return (
         <MeContext.Provider value={me}>
@@ -371,7 +389,7 @@ export default function App() {
                 )}
 
                 <ProfileCardHost rooms={rooms} onEditProfile={() => setSettingsOpen(true)} />
-                {settings.shareActivity === 'ask' && <ActivityPrompt onAnswer={shareActivity => updateSettings({ shareActivity })} />}
+                {!gated && settings.shareActivity === 'ask' && <ActivityPrompt onAnswer={shareActivity => updateSettings({ shareActivity })} />}
 
                 {settingsOpen && (
                     <Suspense fallback={null}>

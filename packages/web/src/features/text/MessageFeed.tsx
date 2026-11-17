@@ -13,6 +13,7 @@ import { isBotIdentity } from '../../lib/bots';
 import { useDismiss } from '../../hooks/useDismiss';
 import { BotBadge } from '../../ui/BotBadge';
 import { ChatText } from '../../ui/ChatText';
+import { DelayedLoading } from '../../ui/DelayedLoading';
 import { ImageLightbox } from '../room/ChatPanel/ImageLightbox';
 import { Attachment } from './Attachment';
 import { MessageMenu } from './ChatMenus';
@@ -163,7 +164,7 @@ export function MessageFeed({ channel, myIdentity, isAdmin, compact = false, onR
             <div className="tc-list" ref={listRef} role="log" aria-live="polite" aria-relevant="additions">
                 <div ref={itemsRef}>
                 <div ref={topRef} className="tc-top">
-                    {history?.loading && <div className="tc-loading" aria-label={t('chat.loading')} />}
+                    {history?.loading && <DelayedLoading><div className="tc-loading" role="status" aria-label={t('chat.loading')} /></DelayedLoading>}
                     {history?.error === 'forbidden' && <div className="tc-start">{t('chat.forbidden')}</div>}
                     {history?.error === 'failed' && (
                         <div className="tc-start">

@@ -18,6 +18,7 @@ export interface ChannelHistory {
 interface TextChatState {
     /** Null until the first answer, or when the server has no text chats. */
     channels: TextChannel[] | null;
+    channelsFailed?: boolean;
     rules?: ServerRules;
     mentions: Array<{ channel: string; id: string }>;
     /** The last message ID read in each chat; kept on this device only. */
@@ -75,13 +76,17 @@ if (typeof window !== 'undefined') {
 }
 
 export async function loadChannels(): Promise<void> {
+    if (store.get().channelsFailed) update({ channelsFailed: false });
     try {
         const { channels, rules, mentions } = await getChannels();
         update({ channels, rules, mentions });
     } catch (err) {
         // An older API that claims chats but has no route answers 404: the app shows none.
         if (err instanceof ApiError && err.status === 404) update({ channels: [], rules: undefined, mentions: [] });
-        else if (!(err instanceof ApiError && err.code === 'rules_required')) console.warn('[textChat] Loading chats failed:', err);
+        else {
+            if (store.get().channels === null) update({ channelsFailed: true });
+            if (!(err instanceof ApiError && err.code === 'rules_required')) console.warn('[textChat] Loading chats failed:', err);
+        }
     }
 }
 
@@ -289,6 +294,7 @@ const useTextChat = () => useSyncExternalStore(store.subscribe, store.get);
 
 export const useChannels = () => useSyncExternalStore(store.subscribe, () => store.get().channels);
 export const useRules = () => useSyncExternalStore(store.subscribe, () => store.get().rules);
+export const useChannelsFailed = () => useSyncExternalStore(store.subscribe, () => !!store.get().channelsFailed);
 export const useFocusTarget = () => useSyncExternalStore(store.subscribe, () => store.get().focus);
 export const usePins = (channel: string) => useSyncExternalStore(store.subscribe, () => store.get().pins[channel]);
 export const useOpenInCall = () => useSyncExternalStore(store.subscribe, () => store.get().openInCall);

@@ -17,6 +17,7 @@ import { useLiveSettings } from './hooks/useLiveSettings';
 import { LockIcon } from './icons/Icons';
 import { playLeaveSound } from '../../lib/sounds';
 import { IS_DEMO } from '../../lib/env';
+import { DelayedLoading } from '../../ui/DelayedLoading';
 import './RoomView.css';
 
 // The demo build stands in for the call; null in the regular build, which drops the import.
@@ -522,7 +523,11 @@ export function RoomView({ roomName, name, hashPassword, settings, onUpdateSetti
     }
 
     if (!connection || (e2eeSetup && encryptedRoom !== room)) {
-        return <div className="empty-state"><p style={{ color: 'var(--text-muted)' }}>{t('room.connecting')}</p></div>;
+        return (
+            <div className="empty-state">
+                <DelayedLoading><span className="empty-state-sub" role="status">{t('room.connecting')}</span></DelayedLoading>
+            </div>
+        );
     }
 
     if (DemoCall) {

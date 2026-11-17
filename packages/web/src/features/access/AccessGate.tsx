@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import { getAccess, submitAccessPassword, submitAccessInvite, ACCESS_REQUIRED_EVENT } from '../../lib/api';
 import { ApiError } from '../../lib/types';
 import { AccessRequiredContext } from './accessContext';
+import { DelayedLoading } from '../../ui/DelayedLoading';
 import './access-gate.css';
 
 function errorText(err: unknown, t: TFunction): string {
@@ -73,7 +74,13 @@ export function AccessGate({ invite, children }: { invite: string | null; childr
         }
     };
 
-    if (state === 'checking') return null;
+    if (state === 'checking') {
+        return (
+            <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
+                <DelayedLoading><span className="empty-state-sub" role="status">{t('chat.loading')}</span></DelayedLoading>
+            </div>
+        );
+    }
     if (state === 'open') return <AccessRequiredContext.Provider value={required}>{children}</AccessRequiredContext.Provider>;
 
     return (
