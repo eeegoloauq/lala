@@ -76,11 +76,15 @@ export function shownStatus(state: PresenceState | undefined): PresenceStatus {
 }
 
 let broadcastTimer: ReturnType<typeof setTimeout> | undefined;
+let revision = 0;
+export const presenceRevision = () => revision;
+
 /** One event for a burst of changes; clients refetch the list on it. */
 function announce(): void {
     if (broadcastTimer) return;
     broadcastTimer = setTimeout(() => {
         broadcastTimer = undefined;
+        revision++;
         broadcastSse('presence_updated');
     }, BROADCAST_DELAY_MS);
 }

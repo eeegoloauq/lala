@@ -7,18 +7,18 @@ import { isShutOut, serverBannedIdentities } from '../lib/bans';
 import { config } from '../lib/config';
 import { avatarVersions } from '../lib/avatars';
 import { sanitizeDisplayText } from '../lib/sanitize';
-import { PRESENCE_CHOICES, beat, buildPresenceList, issueTicket, loadPresence } from '../lib/presence';
+import { PRESENCE_CHOICES, beat, buildPresenceList, issueTicket, loadPresence, presenceRevision } from '../lib/presence';
 import { parseProfile } from '../lib/profile';
 import { MAX_ACTIVITY_IMAGE_BYTES, getActivityImage, putActivityImage, touchActivityImage } from '../lib/activityImages';
 
 const IMAGE_VERSION = /^[0-9a-f]{16}$/;
 
 /**
- * What the list is built from, shared for a second: every client refetches on the same
- * event, and only the caller's own row differs between them.
+ * Share the list data for up to a second. A presence event invalidates the previous
+ * snapshot so clients refetching in response see the change that triggered it.
  */
 const CACHE_MS = 1000;
-let cached: { at: number; data: Promise<Awaited<ReturnType<typeof loadListData>>> } | undefined;
+let cached: { at: number; revision: number; data: Promise<Awaited<ReturnType<typeof loadListData>>> } | undefined;
 
 async function loadListData() {
     const users = config().users;
@@ -28,9 +28,10 @@ async function loadListData() {
 }
 
 function listData() {
-    if (!cached || Date.now() - cached.at > CACHE_MS) {
+    const revision = presenceRevision();
+    if (!cached || cached.revision !== revision || Date.now() - cached.at > CACHE_MS) {
         const data = loadListData();
-        cached = { at: Date.now(), data };
+        cached = { at: Date.now(), revision, data };
         data.catch(() => { if (cached?.data === data) cached = undefined; });
     }
     return cached.data;
