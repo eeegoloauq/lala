@@ -19,7 +19,8 @@ import { getMyAvatar } from '../../lib/avatarUtils';
 import { playChatSound, playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playScreenShareStartSound, playScreenShareStopSound } from '../../lib/sounds';
 import { useAvatarMap, setBotsInRoom, setDeafenedInRoom, setLiveParticipants, setMutedInRoom, setSpeakingUsers } from '../../lib/roomStatusStore';
 import type { BotDetails } from '../../lib/bots';
-import { MY_IDENTITY, callState, enterRoom, leaveRoom, onRoomsChanged, setMyState } from './server';
+import type { BotCard } from '../../lib/types';
+import { MY_IDENTITY, RADIO_ID, callState, currentRadioTrack, enterRoom, findRadioTrack, leaveRoom, nextRadioTrack, onRoomsChanged, setMyState, setRadioTrack } from './server';
 import type { CallState } from './server';
 import { fakeScreen } from './fakeScreen';
 import { useDemoFocus } from './useDemoFocus';
@@ -74,6 +75,7 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
 
     // Effects below read the latest values without re-running for them.
     const latest = useRef({ settings, onLeave, chatSeen: chatOpen, t });
+    const announcedRoom = useRef<string | null>(null);
 
     // Your own leave plays the leave sound, as in a call.
     const leave = useCallback(() => {
@@ -85,9 +87,12 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     const addSystem = useCallback((text: string) => {
         addEntry({ kind: 'system', id: `${Date.now()}-${Math.random()}`, timestamp: Date.now(), text });
     }, [addEntry]);
-    const receive = useCallback((from: { identity: string; name: string }, message: string) => {
+    const receive = useCallback((from: { identity: string; name: string }, message: string, card?: BotCard) => {
         // MessageList reads only the sender's identity and name, so plain values stand in for a Participant.
-        const msg: ReceivedChatMessage = { id: `${Date.now()}-${Math.random()}`, timestamp: Date.now(), message, from: from as unknown as Participant };
+        const msg: ReceivedChatMessage = {
+            id: `${Date.now()}-${Math.random()}`, timestamp: Date.now(), message, from: from as unknown as Participant,
+            attributes: card && { 'lala.card': JSON.stringify(card) },
+        };
         addEntry({ kind: 'chat', msg });
         if (from.identity === MY_IDENTITY) return;
         if (latest.current.settings.soundChat) playChatSound();
@@ -98,9 +103,12 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
     useEffect(() => {
         const { settings: s, t: tr } = latest.current;
         enterRoom(roomId, name);
-        if (s.soundJoinLeave) playJoinSound();
-        addSystem(tr('system.youJoined'));
         let previous = callState(roomId);
+        if (announcedRoom.current !== roomId) {
+            announcedRoom.current = roomId;
+            if (s.soundJoinLeave) playJoinSound();
+            addSystem(tr('system.youJoined'));
+        }
         const sync = () => {
             const next = callState(roomId);
             if (!next) { leave(); return; }
@@ -192,7 +200,30 @@ export default function DemoCall({ roomId, name, settings, onLeave }: DemoCallPr
         receive({ identity: MY_IDENTITY, name }, message);
         // A bot answers its own commands.
         const command = message.split(/\s/)[0];
-        const answering = call?.people.find(p => p.bot?.commands.some(c => c.name === command));
+        const answering = callState(roomId)?.people.find(p => p.bot?.commands.some(c => c.name === command));
+        if (answering?.identity === RADIO_ID) {
+            if (command === '!queue') {
+                const next = nextRadioTrack();
+                receive(answering, [next.title, next.artist].filter(Boolean).join(' · '));
+                return;
+            }
+            const query = message.slice(command.length).trim();
+            let track = currentRadioTrack();
+            if (command === '!skip') {
+                track = nextRadioTrack();
+                setRadioTrack(roomId, track);
+            } else if (command === '!play' && query) {
+                track = { ...findRadioTrack(query), addedBy: name };
+                setRadioTrack(roomId, track);
+            }
+            const addedBy = track.addedBy && t('profile.addedBy', { name: track.addedBy });
+            receive(answering, t('profile.playing'), {
+                title: track.title,
+                text: [track.artist, track.duration, addedBy].filter(Boolean).join(' · '),
+                icon: 'music',
+            });
+            return;
+        }
         if (answering) {
             setTimeout(() => receive(answering, t('demo.botReply', { command })), 600);
             return;

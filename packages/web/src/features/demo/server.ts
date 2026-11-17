@@ -46,9 +46,24 @@ const randomId = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b =
 const person = (name: string): Person => ({ identity: `demo-${name.toLowerCase()}-${randomId()}`, name });
 
 const bot = (key: string, details: Omit<BotDetails, 'name'>): Person => ({ identity: `bot-${key}`, name: key[0].toUpperCase() + key.slice(1), bot: { name: key[0].toUpperCase() + key.slice(1), ...details } });
+interface RadioTrack {
+    title: string;
+    artist?: string;
+    duration?: string;
+    addedBy?: string;
+}
+
+const RADIO_TRACKS: readonly RadioTrack[] = [
+    { title: 'Teardrop', artist: 'Massive Attack', duration: '5:29' },
+    { title: 'All I Need', artist: 'Air', duration: '4:28' },
+    { title: 'Roygbiv', artist: 'Boards of Canada', duration: '2:31' },
+];
+const radioStatus = (track: RadioTrack) => [track.title, track.artist].filter(Boolean).join(' · ');
+let radioTrack = RADIO_TRACKS[0];
+export const RADIO_ID = 'bot-radio';
 const RADIO = bot('radio', {
-    status: 'Teardrop · Massive Attack',
-    commands: [{ name: '!play', description: 'song name or link' }, { name: '!skip', description: 'next song' }, { name: '!queue', description: "what's next" }],
+    status: radioStatus(radioTrack),
+    commands: [{ name: '!play', description: 'song name' }, { name: '!skip', description: 'next song' }, { name: '!queue', description: "what's next" }, { name: '!np', description: 'current song' }],
     speaks: true, chats: true, listens: false,
 });
 const MINUTES = bot('minutes', {
@@ -200,6 +215,30 @@ export interface CallState {
 export function callState(roomId: string): CallState | null {
     const r = rooms.find(x => x.id === roomId);
     return r ? { people: [...r.people], muted: new Set(r.muted), deafened: new Set(r.deafened), serverMuted: new Set(r.serverMuted), sharing: new Set(r.sharing), added: [...r.added] } : null;
+}
+
+export function currentRadioTrack(): RadioTrack {
+    return radioTrack;
+}
+
+export function nextRadioTrack(): RadioTrack {
+    const current = RADIO_TRACKS.findIndex(track => radioStatus(track) === radioStatus(radioTrack));
+    return RADIO_TRACKS[(current + 1) % RADIO_TRACKS.length];
+}
+
+export function findRadioTrack(query: string): RadioTrack {
+    const normalized = query.toLowerCase();
+    return RADIO_TRACKS.find(({ title, artist }) =>
+        [title, `${artist} ${title}`, `${title} ${artist}`].some(value => value.toLowerCase() === normalized)
+    ) ?? { title: Array.from(query).slice(0, 60).join('') };
+}
+
+export function setRadioTrack(roomId: string, track: RadioTrack): void {
+    const radio = rooms.find(r => r.id === roomId)?.people.find(p => p.identity === RADIO_ID);
+    if (!radio?.bot) return;
+    radioTrack = track;
+    radio.bot = { ...radio.bot, status: radioStatus(track) };
+    changed();
 }
 
 /** The visitor is in the room's call; a no-op when they already are (the token request adds them). */

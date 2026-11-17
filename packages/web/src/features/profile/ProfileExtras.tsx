@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PresenceActivity, PresenceProfile } from '../../lib/types';
-import { safeActivityUrl } from '../../lib/activityLinks';
-import { activityImageUrl } from '../../lib/api';
-import { ClockIcon, DesktopIcon, GlobeIcon, MusicIcon, PhoneIcon } from '../room/icons/Icons';
+import { ActivityRow } from '../../ui/ActivityRow';
+import { ClockIcon, DesktopIcon, GlobeIcon, PhoneIcon } from '../room/icons/Icons';
 
 /** The current time, ticking every `ms`; the timers on the card move with it. */
 function useNow(ms: number): number {
@@ -60,19 +59,13 @@ export function LocalTime({ timeZone }: { timeZone: string }) {
 export function ActivityBlock({ activity }: { activity: PresenceActivity }) {
     const { t, i18n } = useTranslation();
     const now = useNow(activity.kind === 'listening' && !activity.paused ? 1000 : 30_000);
-    const url = safeActivityUrl(activity.url);
-
     if (activity.kind === 'playing') {
         return (
             <section>
                 <h4 className="profile-label">{t('profile.playing')}</h4>
-                <div className="profile-activity">
-                    <ActivityImage src={activity.image} />
-                    <div className="profile-activity-text">
-                        <strong><Title text={activity.name} url={url} /></strong>
-                        <span>{formatLength(now - activity.startedAt, i18n.language)}</span>
-                    </div>
-                </div>
+                <ActivityRow title={activity.name} image={activity.image} url={activity.url}>
+                    <span>{formatLength(now - activity.startedAt, i18n.language)}</span>
+                </ActivityRow>
             </section>
         );
     }
@@ -87,14 +80,10 @@ export function ActivityBlock({ activity }: { activity: PresenceActivity }) {
                 <span>{t('profile.listening')}</span>
                 <span className="profile-player">{activity.player}</span>
             </h4>
-            <div className="profile-activity">
-                <ActivityImage src={activity.image} music />
-                <div className="profile-activity-text">
-                    <strong><Title text={activity.title} url={url} /></strong>
-                    {activity.artist && <span title={activity.artist}>{t('profile.by', { artist: activity.artist })}</span>}
-                    {activity.album && <span className="profile-album" title={activity.album}>{activity.album}</span>}
-                </div>
-            </div>
+            <ActivityRow title={activity.title} image={activity.image} url={activity.url} music>
+                {activity.artist && <span title={activity.artist}>{t('profile.by', { artist: activity.artist })}</span>}
+                {activity.album && <span className="profile-album" title={activity.album}>{activity.album}</span>}
+            </ActivityRow>
             {durationMs ? (
                 <div className="profile-progress">
                     <progress max={durationMs} value={position} aria-label={`${clock(position)} / ${clock(durationMs)}`} />
@@ -105,21 +94,5 @@ export function ActivityBlock({ activity }: { activity: PresenceActivity }) {
                 </div>
             ) : null}
         </section>
-    );
-}
-
-/** A title that opens the track or game page when its link passed the allowlist. */
-function Title({ text, url }: { text: string; url?: string }) {
-    if (!url) return <span title={text}>{text}</span>;
-    return <a className="profile-activity-link" href={url} target="_blank" rel="noopener noreferrer" title={`${text} · ${new URL(url).hostname}`}>{text}</a>;
-}
-
-function ActivityImage({ src, music }: { src?: string; music?: boolean }) {
-    const url = activityImageUrl(src);
-    const [failed, setFailed] = useState<string>();
-    return (
-        <div className="profile-activity-image">
-            {url && failed !== url ? <img src={url} alt="" onError={() => setFailed(url)} /> : music ? <MusicIcon size={22} /> : null}
-        </div>
     );
 }

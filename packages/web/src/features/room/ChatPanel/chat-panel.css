@@ -732,6 +732,11 @@
   overflow-wrap: anywhere;
 }
 
+.cp-card .profile-activity-text > * {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .cp-card-body small {
   font-size: 12px;
   color: var(--text-secondary);
